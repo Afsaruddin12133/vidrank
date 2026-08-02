@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "VidRank",
+  "version": "1.0.4",
+  "description": "Optimize Every Video. Unlock Better YouTube Rankings.",
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://studio.youtube.com/*"
+  ],
+  "oauth2": {
+    "client_id": "5551217356-fgq5f1bviauro52kkl0oq9vs85350m26.apps.googleusercontent.com",
+    "scopes": [
+      "profile",
+      "email"
+    ]
+  },
+  "background": {
+    "service_worker": "src/js/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://studio.youtube.com/*"
+      ],
+      "js": [
+        "src/js/tagGenerator.js",
+        "src/js/ui.js",
+        "src/js/content.js"
+      ],
+      "css": [
+        "src/css/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "assets/icons/logo.png",
+    "48": "assets/icons/logo.png",
+    "128": "assets/icons/logo.png"
+  },
+  "action": {
+    "default_popup": "src/html/popup.html",
+    "default_title": "VidRank",
+    "default_icon": {
+      "16": "assets/icons/logo.png",
+      "48": "assets/icons/logo.png",
+      "128": "assets/icons/logo.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/icons/logo.png"
+      ],
+      "matches": [
+        "https://studio.youtube.com/*"
+      ]
+    }
+  ]
+}

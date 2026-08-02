@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VidRank Settings</title>
+  <link rel="stylesheet" href="../css/popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="logo-area">
+        <img src="../../assets/icons/logo.png" width="24" height="24" alt="VidRank Logo">
+        <h1>VidRank</h1>
+        <p style="font-size: 10px; color: #aaaaaa; margin: 4px 0 0 0;">Optimize Every Video. Unlock Better YouTube Rankings.</p>
+      </div>
+      <a href="https://studio.youtube.com" target="_blank" class="studio-link" title="Open YouTube Studio">
+        Studio ↗
+      </a>
+    </header>
+
+    <!-- Login View -->
+    <main id="login-view" class="popup-main" style="display: none; text-align: center; padding: 40px 20px;">
+      <h2 style="margin-bottom: 20px; color: white;">Welcome to VidRank</h2>
+      <p style="color: #aaaaaa; margin-bottom: 30px;">Please sign in with Google to optimize your videos.</p>
+      <button id="btn-google-login" style="background: white; color: black; border-radius: 8px; padding: 12px; width: 100%; border: none; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; font-family: 'Outfit', sans-serif; font-size: 14px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with Google
+      </button>
+      <div id="login-error" style="color: #ff4444; margin-top: 15px; font-size: 12px; display: none;"></div>
+    </main>
+
+    <!-- Settings Forms -->
+    <main id="app-view" class="popup-main" style="display: none;">
+      <section class="settings-section">
+        <h2>Global Settings</h2>
+        
+
+        
+
+
+        <div class="setting-item">
+          <div class="setting-details">
+            <span class="setting-title">Auto Insert</span>
+            <span class="setting-desc">Insert tags directly into Tags input</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="popup-toggle-insert">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+
+
+        <div class="setting-item">
+          <div class="setting-details">
+            <span class="setting-title">Hashtag Mode</span>
+            <span class="setting-desc">Remove spaces and prepend # to tags</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="popup-toggle-hashtag">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-details">
+            <span class="setting-title">Preferred Separator</span>
+            <span class="setting-desc">Separation delimiter when copying</span>
+          </div>
+          <select id="popup-select-separator" class="form-select">
+            <option value=",">Comma ( , )</option>
+            <option value=";">Semicolon ( ; )</option>
+            <option value="\n">Newline (Enter)</option>
+          </select>
+        </div>
+
+        <div class="setting-item-column">
+          <div class="setting-details-row">
+            <span class="setting-title">Max Tag Count</span>
+            <span class="setting-value" id="popup-tags-count-val">35</span>
+          </div>
+          <input type="range" id="popup-slider-tags-count" min="20" max="50" value="35" class="form-slider">
+        </div>
+
+
+      </section>
+
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="popup-footer" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>Powered by VidRank</span>
+      <a id="btn-logout" href="#" style="color: #ff4444; text-decoration: none; font-size: 12px; display: none;">Sign Out</a>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/tagGenerator.js"></script>
+  <script src="../js/popup.js"></script>
+</body>
+</html>
