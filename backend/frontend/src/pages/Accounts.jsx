@@ -54,6 +54,7 @@ export default function Accounts() {
             <thead>
               <tr>
                 <th>Provider</th>
+                <th>API key</th>
                 <th>Label</th>
                 <th>Health</th>
                 <th>Used / limit (today)</th>
@@ -100,15 +101,19 @@ function AccountRow({ a, h, used, usedPct, limit, live, inCooldown, now, onToggl
   const [label, setLabel] = useState(a.label || '')
   const [dailylimit, setDailylimit] = useState(a.daily_limit)
   const [rpmlimit, setRpmlimit] = useState(a.rpm_limit)
+  const [key, setKey] = useState('')
   const [err, setErr] = useState(null)
 
   function save() {
-    updateAccount(a.id, {
+    const payload = {
       label,
       daily_limit: Number(dailylimit),
       rpm_limit: Number(rpmlimit),
-    }).then(() => {
+    }
+    if (key.trim()) payload.key = key.trim()
+    updateAccount(a.id, payload).then(() => {
       setErr(null)
+      setKey('')
       setEditing(false)
     }).catch((e) => setErr(e.message || 'Save failed.'))
   }
@@ -126,6 +131,12 @@ function AccountRow({ a, h, used, usedPct, limit, live, inCooldown, now, onToggl
   return (
     <tr className={a.enabled ? '' : 'row-disabled'}>
       <td><span className={`provider provider-${a.provider}`}>{a.provider}</span></td>
+      <td>
+        {editing
+          ? <input type="password" className="in" placeholder="new key (blank = keep)" value={key}
+              onChange={(e) => setKey(e.target.value)} title="Paste a new provider API key, or leave blank to keep the current one." />
+          : <span className="mono" title={a.key_preview || undefined}>{a.key_preview || '—'}</span>}
+      </td>
       <td>
         {editing
           ? <input className="in" value={label} onChange={(e) => setLabel(e.target.value)} />

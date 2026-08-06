@@ -33,6 +33,7 @@ new_sqlite_classes = ["QuotaDO", "RateStateDO"]
 QuotaDO = { type = "durable-object", storage = "sqlite" }
 RateStateDO = { type = "durable-object", storage = "sqlite" }
 
+
 [[queues.producers]]
 binding = "FREE_QUEUE"
 queue = "free-jobs"
@@ -57,7 +58,12 @@ max_concurrency = 50  # Higher concurrency for pro users
 
 [vars]
 GROQ_MODEL = "llama-3.1-8b-instant"
-AUTH_PROJECT_ID = "vidrank-5e540"  # Firebase project id (aud/iss check in app/firebase.py)
+ALLOWED_ORIGINS = "https://vidrank-dashboard.pages.dev,https://f186ad36.vidrank-dashboard.pages.dev,https://localhost:5173"
+
+# Firebase auth is delegated to the vidrank-auth service worker (free-plan split).
+[[services]]
+binding = "AUTH"
+service = "vidrank-auth"
 
 # Secrets (Cloudflare Secrets, not in this file):
 #   ENCRYPTION_KEY  (32B, AES-GCM of provider keys)

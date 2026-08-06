@@ -47,7 +47,11 @@ CREATE TABLE IF NOT EXISTS usage_log (           -- append-only, batched writes
   cache_hit     INTEGER NOT NULL DEFAULT 0,
   latency_ms    INTEGER,
   status        INTEGER NOT NULL,
-  ts            INTEGER NOT NULL
+  ts            INTEGER NOT NULL,
+  error_msg     TEXT,
+  country       TEXT,
+  region        TEXT,
+  city          TEXT
 );
 
 CREATE TABLE IF NOT EXISTS usage_daily (         -- rollups for dashboard (1 row/day)

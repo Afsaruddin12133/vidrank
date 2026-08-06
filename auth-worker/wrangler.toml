@@ -1,0 +1,11 @@
+# VIDRANK auth service — Firebase ID token verification (service binding target)
+name = "vidrank-auth"
+main = "entry.py"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["python_workers"]
+
+[observability]
+enabled = true
+
+[vars]
+AUTH_PROJECT_ID = "vidrank-5e540"

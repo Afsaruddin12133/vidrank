@@ -13,6 +13,10 @@ import time
 
 from . import contracts as C
 from . import db
+try:
+    from workers import DurableObject  # type: ignore
+except Exception:
+    DurableObject = object
 
 DAY_S = 86400
 
@@ -21,7 +25,7 @@ class QuotaError(Exception):
     """Raised by QuotaDO.inc when the user is out of quota."""
 
 
-class QuotaDO:
+class QuotaDO(DurableObject):
     """Cloudflare Durable Object: per-user quota counter.
 
     Instantiated via env.<BIND_QUOTA>.get(uid) and called as an RPC:

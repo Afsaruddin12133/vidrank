@@ -1,10 +1,16 @@
-"""Firebase ID-token verification using official firebase_admin SDK."""
+"""Firebase ID-token verification client — calls the vidrank-auth service
+worker over a service binding instead of bundling the firebase-admin SDK.
+
+The heavy firebase_admin package lives in the separate `auth-worker/` project
+so the main API worker stays under Cloudflare's free-plan 3 MiB size cap.
+
+Interface is unchanged from the old in-process implementation:
+    verify_token(token, env) -> dict   # raises AuthError / TokenExpired
+    revoke_session(env, uid) -> None
+"""
 from __future__ import annotations
 
-import os
-import sys
-import firebase_admin
-from firebase_admin import auth, credentials
+import json
 
 
 class AuthError(Exception):
@@ -16,51 +22,51 @@ class TokenExpired(AuthError):
     pass
 
 
-_app = None
+# Path used when calling the auth service over the AUTH service binding.
+_AUTH_URL = "https://vidrank-auth/verify"
 
 
-def _get_firebase_app():
-    global _app
-    if _app is None and not firebase_admin._apps:
-        # Search for auth.json in backend/ or scripts/
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cert_path = os.path.join(base_dir, "auth.json")
-        if not os.path.exists(cert_path):
-            cert_path = os.path.join(os.path.dirname(base_dir), "scripts", "auth.json")
-
-        if os.path.exists(cert_path):
-            cred = credentials.Certificate(cert_path)
-            _app = firebase_admin.initialize_app(cred)
-            print(f"[firebase] Initialized Firebase Admin SDK with key: {cert_path}", file=sys.stderr, flush=True)
-        else:
-            _app = firebase_admin.initialize_app()
-            print("[firebase] Initialized Firebase Admin SDK with default credentials", file=sys.stderr, flush=True)
-    return _app
+async def _call_auth(env, payload: dict) -> dict:
+    if env is None or not hasattr(env, "AUTH"):
+        raise AuthError("auth service binding unavailable")
+    resp = await env.AUTH.fetch(
+        _AUTH_URL,
+        method="POST",
+        body=json.dumps(payload),
+        headers={"Content-Type": "application/json"},
+    )
+    text = await resp.text()
+    try:
+        data = json.loads(text)
+    except Exception:
+        print(f"[auth] bad response from auth service: {text[:200]}", flush=True)
+        raise AuthError("auth service returned invalid response")
+    return data
 
 
 async def verify_token(token: str, env=None) -> dict:
-    """Verify Firebase ID token using firebase_admin SDK."""
+    """Verify Firebase ID token by calling the vidrank-auth service worker."""
     if not token:
         raise AuthError("missing token")
 
-    _get_firebase_app()
+    data = await _call_auth(env, {"token": token})
 
-    try:
-        claims = auth.verify_id_token(token)
-        print(f"[auth-success] Verified token for {claims.get('email')} (uid: {claims.get('uid')})", file=sys.stderr, flush=True)
+    if data.get("ok"):
+        claims = data.get("claims") or {}
+        print(f"[auth-success] Verified token for {claims.get('email')} (uid: {claims.get('uid')})", flush=True)
         return claims
-    except (auth.ExpiredIdTokenError, auth.RevokedIdTokenError) as e:
-        print(f"[auth-expired] {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        raise TokenExpired(str(e)) from e
-    except Exception as e:
-        print(f"[auth-debug] Firebase Admin verification failed: {e}", file=sys.stderr, flush=True)
-        raise AuthError(str(e)) from e
+
+    code = data.get("code")
+    if code == "token_expired":
+        print(f"[auth-expired] {data.get('detail')}", flush=True)
+        raise TokenExpired(data.get("detail") or "token expired")
+    print(f"[auth-debug] Auth service rejected token: {data.get('detail')}", flush=True)
+    raise AuthError(data.get("detail") or "unauthorized")
 
 
 async def revoke_session(env, uid: str) -> None:
-    """Revoke user refresh tokens using Firebase Admin SDK."""
+    """Revoke user refresh tokens (delegated to the auth service worker)."""
     try:
-        _get_firebase_app()
-        auth.revoke_refresh_tokens(uid)
+        await _call_auth(env, {"action": "revoke", "uid": uid})
     except Exception as e:
-        print(f"[auth-debug] Revoke failed: {e}", file=sys.stderr, flush=True)
+        print(f"[auth-debug] Revoke failed: {e}", flush=True)

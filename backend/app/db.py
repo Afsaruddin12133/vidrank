@@ -95,7 +95,7 @@ async def list_enabled_accounts(env) -> list[dict[str, Any]]:
 async def list_accounts(env) -> list[dict[str, Any]]:
     return await _fetch_all(
         env,
-        "SELECT id, provider, label, daily_limit, rpm_limit, enabled, created_at "
+        "SELECT id, provider, label, key_enc, daily_limit, rpm_limit, enabled, created_at "
         "FROM accounts ORDER BY created_at DESC",
     )
 
@@ -120,9 +120,9 @@ async def add_account(env, account: dict) -> None:
 
 
 async def update_account(env, account_id: str, fields: dict) -> None:
-    """Update editable account fields: label, daily_limit, rpm_limit, enabled."""
+    """Update editable account fields: label, daily_limit, rpm_limit, enabled, key_enc."""
     cols, params = [], []
-    for key in ("label", "daily_limit", "rpm_limit", "enabled"):
+    for key in ("label", "daily_limit", "rpm_limit", "enabled", "key_enc"):
         if key in fields and fields[key] is not None:
             cols.append(f"{key}=?")
             params.append(fields[key])
@@ -160,17 +160,34 @@ async def set_user_tier(env, uid: str, tier: str) -> None:
 
 
 async def get_usage_days(env, days: int) -> list[dict[str, Any]]:
+    """Site-wide daily rollup, aggregated LIVE from usage_log (rollup tables are
+    not written by anything; actual telemetry lives only in usage_log)."""
+    cutoff = int(time.time()) - days * 86400
     return await _fetch_all(
         env,
-        "SELECT * FROM usage_daily ORDER BY day DESC LIMIT ?1", days,
+        "SELECT substr(date(ts,'unixepoch'),1,10) AS day, "
+        " COUNT(*) AS total_requests, "
+        " SUM(CASE WHEN COALESCE(u.tier,'free')='pro' THEN 1 ELSE 0 END) AS pro_requests, "
+        " SUM(CASE WHEN COALESCE(u.tier,'free')='free' THEN 1 ELSE 0 END) AS free_requests, "
+        " SUM(CASE WHEN cache_hit THEN 1 ELSE 0 END) AS cache_hits, "
+        " SUM(CASE WHEN status>=400 THEN 1 ELSE 0 END) AS errors, "
+        " AVG(latency_ms) AS avg_latency_ms "
+        "FROM usage_log l LEFT JOIN users u ON u.firebase_uid=l.user_id "
+        "WHERE l.ts>=?1 GROUP BY day ORDER BY day DESC LIMIT ?2",
+        cutoff, days,
     )
 
 
 async def get_account_usage_days(env, account_id: str, days: int) -> list[dict[str, Any]]:
+    """Per-account daily usage, aggregated live from usage_log."""
+    cutoff = int(time.time()) - days * 86400
     return await _fetch_all(
         env,
-        "SELECT * FROM account_usage_daily WHERE account_id=?1 ORDER BY day DESC LIMIT ?2",
-        account_id, days,
+        "SELECT date(ts,'unixepoch') AS day, COUNT(*) AS requests, "
+        " SUM(CASE WHEN status>=400 THEN 1 ELSE 0 END) AS errors, "
+        " AVG(latency_ms) AS avg_latency_ms "
+        "FROM usage_log WHERE account_id=?1 AND ts>=?2 GROUP BY day ORDER BY day DESC LIMIT ?3",
+        account_id, cutoff, days,
     )
 
 
@@ -188,15 +205,18 @@ class BatchedFlusher:
 
     def __init__(self, env) -> None:
         self._env = env
-        self._usage: list[tuple] = []  # (user_id, account_id, model, pt, ct, cache_hit, latency, status, ts)
+        self._usage: list[tuple] = []  # (user_id, account_id, model, pt, ct, cache_hit, latency, status, ts, err, country, region, city)
+        self.geo: tuple = (None, None, None)  # set per-request by middleware (request.cf)
 
     def log_usage(self, *, user_id: str, account_id: str | None, model: str,
                   prompt_tokens: int = 0, completion_tokens: int = 0,
                   cache_hit: bool = False, latency_ms: int | None = None,
-                  status: int = 200, ts: int) -> None:
+                  status: int = 200, ts: int, error_msg: str | None = None,
+                  geo: tuple | None = None) -> None:
+        country, region, city = geo or self.geo
         self._usage.append(
             (user_id, account_id, model, prompt_tokens, completion_tokens,
-             int(cache_hit), latency_ms, status, ts)
+             int(cache_hit), latency_ms, status, ts, error_msg, country, region, city)
         )
         if len(self._usage) >= BATCH_SIZE:
             self.flush_now()
@@ -208,8 +228,8 @@ class BatchedFlusher:
         sql = (
             "INSERT INTO usage_log "
             "(user_id, account_id, model, prompt_tokens, completion_tokens, "
-            " cache_hit, latency_ms, status, ts) VALUES "
-            + ",".join("(?,?,?,?,?,?,?,?,?)" for _ in batch)
+            " cache_hit, latency_ms, status, ts, error_msg, country, region, city) VALUES "
+            + ",".join("(?,?,?,?,?,?,?,?,?,?,?,?,?)" for _ in batch)
         )
         params: list[Any] = []
         for row in batch:

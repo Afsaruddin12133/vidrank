@@ -78,6 +78,19 @@ class _DO:
         return _noop
 
 
+class _KV:
+    """In-memory KV shim so cache layer (exact/semantic) works locally; lost on restart."""
+
+    def __init__(self):
+        self._d = {}
+
+    async def get(self, k, _type=None):
+        return self._d.get(k)
+
+    async def put(self, k, v, expiration_ttl=None):
+        self._d[k] = v
+
+
 class _DOStub:
     """env.QUOTA.get(uid) / env.RATESTATE.get(id) -> async no-op (admin routes never touch these)."""
 
@@ -170,6 +183,7 @@ class _Env:
 def _make_env():
     e = _Env()
     e.DB = SQLiteD1(_d1_path())
+    e.KV = _KV()
     e.QUOTA = _DOStub()
     e.RATESTATE = _DOStub()
     e.KV = _KVFile()

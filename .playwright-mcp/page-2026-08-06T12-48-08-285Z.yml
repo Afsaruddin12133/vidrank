@@ -1,0 +1,481 @@
+- generic [ref=e13]:
+  - banner [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]: ▣
+      - text: vidrank
+      - generic [ref=e17]: admin
+    - navigation [ref=e18]:
+      - button "Dashboard" [ref=e19] [cursor=pointer]
+      - button "Accounts" [ref=e20] [cursor=pointer]
+      - button "Tracing / Analytics" [ref=e21] [cursor=pointer]
+    - button "Sign out" [ref=e23] [cursor=pointer]
+  - main [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]: Add account
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - generic [ref=e31]:
+                - radio "groq" [checked] [ref=e32]
+                - text: groq
+              - generic [ref=e33]:
+                - radio "openrouter" [ref=e34]
+                - text: openrouter
+            - generic [ref=e35]:
+              - generic [ref=e36]: Label
+              - textbox "Label" [ref=e37]:
+                - /placeholder: groq-key-1
+            - generic [ref=e38]:
+              - generic [ref=e39]: API key
+              - textbox "API key" [ref=e40]:
+                - /placeholder: sk-...
+            - generic [ref=e41]:
+              - generic [ref=e42]:
+                - generic [ref=e43]: Daily limit
+                - spinbutton "Daily limit" [ref=e44]
+              - generic [ref=e45]:
+                - generic [ref=e46]: RPM limit
+                - spinbutton "RPM limit" [ref=e47]
+            - button "Add" [ref=e48] [cursor=pointer]
+        - generic [ref=e49]:
+          - generic [ref=e50]: Plan limits
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: free
+              - generic [ref=e54]:
+                - generic [ref=e55]: daily limit
+                - spinbutton "daily limit" [ref=e56]
+              - button "save" [ref=e57] [cursor=pointer]
+            - generic [ref=e58]:
+              - generic [ref=e59]: pro
+              - generic [ref=e60]:
+                - generic [ref=e61]: daily limit
+                - spinbutton "daily limit" [disabled] [ref=e62]
+              - button "save" [ref=e63] [cursor=pointer]
+            - generic [ref=e64]: Pro is unlimited (NULL). Free defaults to 10. Edits write Firestore, synced to D1 within ~5 min.
+      - generic [ref=e65]:
+        - generic [ref=e66]: Accounts — live (24)
+        - table [ref=e67]:
+          - rowgroup [ref=e68]:
+            - row "Provider API key Label Health Used / limit (today) RPM State Cooldown / reset Enabled Actions" [ref=e69]:
+              - columnheader "Provider" [ref=e70]
+              - columnheader "API key" [ref=e71]
+              - columnheader "Label" [ref=e72]
+              - columnheader "Health" [ref=e73]
+              - columnheader "Used / limit (today)" [ref=e74]
+              - columnheader "RPM" [ref=e75]
+              - columnheader "State" [ref=e76]
+              - columnheader "Cooldown / reset" [ref=e77]
+              - columnheader "Enabled" [ref=e78]
+              - columnheader "Actions" [ref=e79]
+          - rowgroup [ref=e80]:
+            - row "openrouter sk-or-…732c OR Prod 4 — 0 / 50 — live — edit ✕" [ref=e81]:
+              - cell "openrouter" [ref=e82]
+              - cell "sk-or-…732c" [ref=e83]
+              - cell "OR Prod 4" [ref=e84]
+              - cell "—" [ref=e85]
+              - cell "0 / 50" [ref=e86]:
+                - generic [ref=e88]: 0 / 50
+              - cell "—" [ref=e90]
+              - cell "live" [ref=e91]:
+                - generic [ref=e92]: live
+              - cell "—" [ref=e93]
+              - cell [ref=e94]:
+                - generic [ref=e95]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e97]:
+                - button "edit" [ref=e98] [cursor=pointer]
+                - button "✕" [ref=e99] [cursor=pointer]
+            - row "openrouter sk-or-…470a OR Prod 5 — 0 / 50 — live — edit ✕" [ref=e100]:
+              - cell "openrouter" [ref=e101]
+              - cell "sk-or-…470a" [ref=e102]
+              - cell "OR Prod 5" [ref=e103]
+              - cell "—" [ref=e104]
+              - cell "0 / 50" [ref=e105]:
+                - generic [ref=e107]: 0 / 50
+              - cell "—" [ref=e109]
+              - cell "live" [ref=e110]:
+                - generic [ref=e111]: live
+              - cell "—" [ref=e112]
+              - cell [ref=e113]:
+                - generic [ref=e114]:
+                  - checkbox
+              - cell "edit ✕" [ref=e116]:
+                - button "edit" [ref=e117] [cursor=pointer]
+                - button "✕" [ref=e118] [cursor=pointer]
+            - row "openrouter sk-or-…a5d6 OR Prod 6 — 0 / 50 — live — edit ✕" [ref=e119]:
+              - cell "openrouter" [ref=e120]
+              - cell "sk-or-…a5d6" [ref=e121]
+              - cell "OR Prod 6" [ref=e122]
+              - cell "—" [ref=e123]
+              - cell "0 / 50" [ref=e124]:
+                - generic [ref=e126]: 0 / 50
+              - cell "—" [ref=e128]
+              - cell "live" [ref=e129]:
+                - generic [ref=e130]: live
+              - cell "—" [ref=e131]
+              - cell [ref=e132]:
+                - generic [ref=e133]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e135]:
+                - button "edit" [ref=e136] [cursor=pointer]
+                - button "✕" [ref=e137] [cursor=pointer]
+            - row "openrouter sk-or-…76ba OR Prod 7 — 0 / 50 — live — edit ✕" [ref=e138]:
+              - cell "openrouter" [ref=e139]
+              - cell "sk-or-…76ba" [ref=e140]
+              - cell "OR Prod 7" [ref=e141]
+              - cell "—" [ref=e142]
+              - cell "0 / 50" [ref=e143]:
+                - generic [ref=e145]: 0 / 50
+              - cell "—" [ref=e147]
+              - cell "live" [ref=e148]:
+                - generic [ref=e149]: live
+              - cell "—" [ref=e150]
+              - cell [ref=e151]:
+                - generic [ref=e152]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e154]:
+                - button "edit" [ref=e155] [cursor=pointer]
+                - button "✕" [ref=e156] [cursor=pointer]
+            - row "openrouter sk-or-…2c12 OR Prod 8 — 0 / 50 — live — edit ✕" [ref=e157]:
+              - cell "openrouter" [ref=e158]
+              - cell "sk-or-…2c12" [ref=e159]
+              - cell "OR Prod 8" [ref=e160]
+              - cell "—" [ref=e161]
+              - cell "0 / 50" [ref=e162]:
+                - generic [ref=e164]: 0 / 50
+              - cell "—" [ref=e166]
+              - cell "live" [ref=e167]:
+                - generic [ref=e168]: live
+              - cell "—" [ref=e169]
+              - cell [ref=e170]:
+                - generic [ref=e171]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e173]:
+                - button "edit" [ref=e174] [cursor=pointer]
+                - button "✕" [ref=e175] [cursor=pointer]
+            - row "openrouter sk-or-…d1f0 OR Prod 3 — 0 / 50 — live — edit ✕" [ref=e176]:
+              - cell "openrouter" [ref=e177]
+              - cell "sk-or-…d1f0" [ref=e178]
+              - cell "OR Prod 3" [ref=e179]
+              - cell "—" [ref=e180]
+              - cell "0 / 50" [ref=e181]:
+                - generic [ref=e183]: 0 / 50
+              - cell "—" [ref=e185]
+              - cell "live" [ref=e186]:
+                - generic [ref=e187]: live
+              - cell "—" [ref=e188]
+              - cell [ref=e189]:
+                - generic [ref=e190]:
+                  - checkbox
+              - cell "edit ✕" [ref=e192]:
+                - button "edit" [ref=e193] [cursor=pointer]
+                - button "✕" [ref=e194] [cursor=pointer]
+            - row "openrouter sk-or-…9367 OR Prod 2 — 0 / 50 — live — edit ✕" [ref=e195]:
+              - cell "openrouter" [ref=e196]
+              - cell "sk-or-…9367" [ref=e197]
+              - cell "OR Prod 2" [ref=e198]
+              - cell "—" [ref=e199]
+              - cell "0 / 50" [ref=e200]:
+                - generic [ref=e202]: 0 / 50
+              - cell "—" [ref=e204]
+              - cell "live" [ref=e205]:
+                - generic [ref=e206]: live
+              - cell "—" [ref=e207]
+              - cell [ref=e208]:
+                - generic [ref=e209]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e211]:
+                - button "edit" [ref=e212] [cursor=pointer]
+                - button "✕" [ref=e213] [cursor=pointer]
+            - row "openrouter sk-or-…2661 OR Prod 1 — 0 / 50 — live — edit ✕" [ref=e214]:
+              - cell "openrouter" [ref=e215]
+              - cell "sk-or-…2661" [ref=e216]
+              - cell "OR Prod 1" [ref=e217]
+              - cell "—" [ref=e218]
+              - cell "0 / 50" [ref=e219]:
+                - generic [ref=e221]: 0 / 50
+              - cell "—" [ref=e223]
+              - cell "live" [ref=e224]:
+                - generic [ref=e225]: live
+              - cell "—" [ref=e226]
+              - cell [ref=e227]:
+                - generic [ref=e228]:
+                  - checkbox [checked]
+              - cell "edit ✕" [ref=e230]:
+                - button "edit" [ref=e231] [cursor=pointer]
+                - button "✕" [ref=e232] [cursor=pointer]
+            - row "openrouter sk-or-…048f OpenRouter Account 7 — 0 / 50 — live — edit ✕" [ref=e233]:
+              - cell "openrouter" [ref=e234]
+              - cell "sk-or-…048f" [ref=e235]
+              - cell "OpenRouter Account 7" [ref=e236]
+              - cell "—" [ref=e237]
+              - cell "0 / 50" [ref=e238]:
+                - generic [ref=e240]: 0 / 50
+              - cell "—" [ref=e242]
+              - cell "live" [ref=e243]:
+                - generic [ref=e244]: live
+              - cell "—" [ref=e245]
+              - cell [ref=e246]:
+                - generic [ref=e247]:
+                  - checkbox
+              - cell "edit ✕" [ref=e249]:
+                - button "edit" [ref=e250] [cursor=pointer]
+                - button "✕" [ref=e251] [cursor=pointer]
+            - row "openrouter sk-or-…09e7 OpenRouter Account 8 — 0 / 50 — live — edit ✕" [ref=e252]:
+              - cell "openrouter" [ref=e253]
+              - cell "sk-or-…09e7" [ref=e254]
+              - cell "OpenRouter Account 8" [ref=e255]
+              - cell "—" [ref=e256]
+              - cell "0 / 50" [ref=e257]:
+                - generic [ref=e259]: 0 / 50
+              - cell "—" [ref=e261]
+              - cell "live" [ref=e262]:
+                - generic [ref=e263]: live
+              - cell "—" [ref=e264]
+              - cell [ref=e265]:
+                - generic [ref=e266]:
+                  - checkbox
+              - cell "edit ✕" [ref=e268]:
+                - button "edit" [ref=e269] [cursor=pointer]
+                - button "✕" [ref=e270] [cursor=pointer]
+            - row "openrouter sk-or-…470a OpenRouter Account 5 — 0 / 50 — live — edit ✕" [ref=e271]:
+              - cell "openrouter" [ref=e272]
+              - cell "sk-or-…470a" [ref=e273]
+              - cell "OpenRouter Account 5" [ref=e274]
+              - cell "—" [ref=e275]
+              - cell "0 / 50" [ref=e276]:
+                - generic [ref=e278]: 0 / 50
+              - cell "—" [ref=e280]
+              - cell "live" [ref=e281]:
+                - generic [ref=e282]: live
+              - cell "—" [ref=e283]
+              - cell [ref=e284]:
+                - generic [ref=e285]:
+                  - checkbox
+              - cell "edit ✕" [ref=e287]:
+                - button "edit" [ref=e288] [cursor=pointer]
+                - button "✕" [ref=e289] [cursor=pointer]
+            - row "openrouter sk-or-…3eb9 OpenRouter Account 6 — 0 / 50 — live — edit ✕" [ref=e290]:
+              - cell "openrouter" [ref=e291]
+              - cell "sk-or-…3eb9" [ref=e292]
+              - cell "OpenRouter Account 6" [ref=e293]
+              - cell "—" [ref=e294]
+              - cell "0 / 50" [ref=e295]:
+                - generic [ref=e297]: 0 / 50
+              - cell "—" [ref=e299]
+              - cell "live" [ref=e300]:
+                - generic [ref=e301]: live
+              - cell "—" [ref=e302]
+              - cell [ref=e303]:
+                - generic [ref=e304]:
+                  - checkbox
+              - cell "edit ✕" [ref=e306]:
+                - button "edit" [ref=e307] [cursor=pointer]
+                - button "✕" [ref=e308] [cursor=pointer]
+            - row "openrouter sk-or-…d1f0 OpenRouter Account 3 — 0 / 50 — live — edit ✕" [ref=e309]:
+              - cell "openrouter" [ref=e310]
+              - cell "sk-or-…d1f0" [ref=e311]
+              - cell "OpenRouter Account 3" [ref=e312]
+              - cell "—" [ref=e313]
+              - cell "0 / 50" [ref=e314]:
+                - generic [ref=e316]: 0 / 50
+              - cell "—" [ref=e318]
+              - cell "live" [ref=e319]:
+                - generic [ref=e320]: live
+              - cell "—" [ref=e321]
+              - cell [ref=e322]:
+                - generic [ref=e323]:
+                  - checkbox
+              - cell "edit ✕" [ref=e325]:
+                - button "edit" [ref=e326] [cursor=pointer]
+                - button "✕" [ref=e327] [cursor=pointer]
+            - row "openrouter sk-or-…fece OpenRouter Account 4 — 0 / 50 — live — edit ✕" [ref=e328]:
+              - cell "openrouter" [ref=e329]
+              - cell "sk-or-…fece" [ref=e330]
+              - cell "OpenRouter Account 4" [ref=e331]
+              - cell "—" [ref=e332]
+              - cell "0 / 50" [ref=e333]:
+                - generic [ref=e335]: 0 / 50
+              - cell "—" [ref=e337]
+              - cell "live" [ref=e338]:
+                - generic [ref=e339]: live
+              - cell "—" [ref=e340]
+              - cell [ref=e341]:
+                - generic [ref=e342]:
+                  - checkbox
+              - cell "edit ✕" [ref=e344]:
+                - button "edit" [ref=e345] [cursor=pointer]
+                - button "✕" [ref=e346] [cursor=pointer]
+            - row "openrouter sk-or-…aee1 OpenRouter Account 1 — 0 / 50 — live — edit ✕" [ref=e347]:
+              - cell "openrouter" [ref=e348]
+              - cell "sk-or-…aee1" [ref=e349]
+              - cell "OpenRouter Account 1" [ref=e350]
+              - cell "—" [ref=e351]
+              - cell "0 / 50" [ref=e352]:
+                - generic [ref=e354]: 0 / 50
+              - cell "—" [ref=e356]
+              - cell "live" [ref=e357]:
+                - generic [ref=e358]: live
+              - cell "—" [ref=e359]
+              - cell [ref=e360]:
+                - generic [ref=e361]:
+                  - checkbox
+              - cell "edit ✕" [ref=e363]:
+                - button "edit" [ref=e364] [cursor=pointer]
+                - button "✕" [ref=e365] [cursor=pointer]
+            - row "openrouter sk-or-…3e4f OpenRouter Account 2 — 0 / 50 — live — edit ✕" [ref=e366]:
+              - cell "openrouter" [ref=e367]
+              - cell "sk-or-…3e4f" [ref=e368]
+              - cell "OpenRouter Account 2" [ref=e369]
+              - cell "—" [ref=e370]
+              - cell "0 / 50" [ref=e371]:
+                - generic [ref=e373]: 0 / 50
+              - cell "—" [ref=e375]
+              - cell "live" [ref=e376]:
+                - generic [ref=e377]: live
+              - cell "—" [ref=e378]
+              - cell [ref=e379]:
+                - generic [ref=e380]:
+                  - checkbox
+              - cell "edit ✕" [ref=e382]:
+                - button "edit" [ref=e383] [cursor=pointer]
+                - button "✕" [ref=e384] [cursor=pointer]
+            - row "openrouter ••••kNFwQ= OpenRouter Account 1 — 0 / 1,000 — live — edit ✕" [ref=e385]:
+              - cell "openrouter" [ref=e386]
+              - cell "••••kNFwQ=" [ref=e387]
+              - cell "OpenRouter Account 1" [ref=e388]
+              - cell "—" [ref=e389]
+              - cell "0 / 1,000" [ref=e390]:
+                - generic [ref=e392]: 0 / 1,000
+              - cell "—" [ref=e394]
+              - cell "live" [ref=e395]:
+                - generic [ref=e396]: live
+              - cell "—" [ref=e397]
+              - cell [ref=e398]:
+                - generic [ref=e399]:
+                  - checkbox
+              - cell "edit ✕" [ref=e401]:
+                - button "edit" [ref=e402] [cursor=pointer]
+                - button "✕" [ref=e403] [cursor=pointer]
+            - row "openrouter ••••1GggQ= OpenRouter Account 2 — 0 / 1,000 — live — edit ✕" [ref=e404]:
+              - cell "openrouter" [ref=e405]
+              - cell "••••1GggQ=" [ref=e406]
+              - cell "OpenRouter Account 2" [ref=e407]
+              - cell "—" [ref=e408]
+              - cell "0 / 1,000" [ref=e409]:
+                - generic [ref=e411]: 0 / 1,000
+              - cell "—" [ref=e413]
+              - cell "live" [ref=e414]:
+                - generic [ref=e415]: live
+              - cell "—" [ref=e416]
+              - cell [ref=e417]:
+                - generic [ref=e418]:
+                  - checkbox
+              - cell "edit ✕" [ref=e420]:
+                - button "edit" [ref=e421] [cursor=pointer]
+                - button "✕" [ref=e422] [cursor=pointer]
+            - row "openrouter ••••mHVWk= OpenRouter Account 3 — 0 / 1,000 — live — edit ✕" [ref=e423]:
+              - cell "openrouter" [ref=e424]
+              - cell "••••mHVWk=" [ref=e425]
+              - cell "OpenRouter Account 3" [ref=e426]
+              - cell "—" [ref=e427]
+              - cell "0 / 1,000" [ref=e428]:
+                - generic [ref=e430]: 0 / 1,000
+              - cell "—" [ref=e432]
+              - cell "live" [ref=e433]:
+                - generic [ref=e434]: live
+              - cell "—" [ref=e435]
+              - cell [ref=e436]:
+                - generic [ref=e437]:
+                  - checkbox
+              - cell "edit ✕" [ref=e439]:
+                - button "edit" [ref=e440] [cursor=pointer]
+                - button "✕" [ref=e441] [cursor=pointer]
+            - row "openrouter ••••bNvs8= OpenRouter Account 4 — 0 / 1,000 — live — edit ✕" [ref=e442]:
+              - cell "openrouter" [ref=e443]
+              - cell "••••bNvs8=" [ref=e444]
+              - cell "OpenRouter Account 4" [ref=e445]
+              - cell "—" [ref=e446]
+              - cell "0 / 1,000" [ref=e447]:
+                - generic [ref=e449]: 0 / 1,000
+              - cell "—" [ref=e451]
+              - cell "live" [ref=e452]:
+                - generic [ref=e453]: live
+              - cell "—" [ref=e454]
+              - cell [ref=e455]:
+                - generic [ref=e456]:
+                  - checkbox
+              - cell "edit ✕" [ref=e458]:
+                - button "edit" [ref=e459] [cursor=pointer]
+                - button "✕" [ref=e460] [cursor=pointer]
+            - row "openrouter ••••e6gTo= OpenRouter Account 5 — 0 / 1,000 — live — edit ✕" [ref=e461]:
+              - cell "openrouter" [ref=e462]
+              - cell "••••e6gTo=" [ref=e463]
+              - cell "OpenRouter Account 5" [ref=e464]
+              - cell "—" [ref=e465]
+              - cell "0 / 1,000" [ref=e466]:
+                - generic [ref=e468]: 0 / 1,000
+              - cell "—" [ref=e470]
+              - cell "live" [ref=e471]:
+                - generic [ref=e472]: live
+              - cell "—" [ref=e473]
+              - cell [ref=e474]:
+                - generic [ref=e475]:
+                  - checkbox
+              - cell "edit ✕" [ref=e477]:
+                - button "edit" [ref=e478] [cursor=pointer]
+                - button "✕" [ref=e479] [cursor=pointer]
+            - row "openrouter ••••S4MtM= OpenRouter Account 6 — 0 / 1,000 — live — edit ✕" [ref=e480]:
+              - cell "openrouter" [ref=e481]
+              - cell "••••S4MtM=" [ref=e482]
+              - cell "OpenRouter Account 6" [ref=e483]
+              - cell "—" [ref=e484]
+              - cell "0 / 1,000" [ref=e485]:
+                - generic [ref=e487]: 0 / 1,000
+              - cell "—" [ref=e489]
+              - cell "live" [ref=e490]:
+                - generic [ref=e491]: live
+              - cell "—" [ref=e492]
+              - cell [ref=e493]:
+                - generic [ref=e494]:
+                  - checkbox
+              - cell "edit ✕" [ref=e496]:
+                - button "edit" [ref=e497] [cursor=pointer]
+                - button "✕" [ref=e498] [cursor=pointer]
+            - row "openrouter ••••VhABA= OpenRouter Account 7 — 0 / 1,000 — live — edit ✕" [ref=e499]:
+              - cell "openrouter" [ref=e500]
+              - cell "••••VhABA=" [ref=e501]
+              - cell "OpenRouter Account 7" [ref=e502]
+              - cell "—" [ref=e503]
+              - cell "0 / 1,000" [ref=e504]:
+                - generic [ref=e506]: 0 / 1,000
+              - cell "—" [ref=e508]
+              - cell "live" [ref=e509]:
+                - generic [ref=e510]: live
+              - cell "—" [ref=e511]
+              - cell [ref=e512]:
+                - generic [ref=e513]:
+                  - checkbox
+              - cell "edit ✕" [ref=e515]:
+                - button "edit" [ref=e516] [cursor=pointer]
+                - button "✕" [ref=e517] [cursor=pointer]
+            - row "openrouter ••••+6x2I= OpenRouter Account 8 — 0 / 1,000 — live — edit ✕" [ref=e518]:
+              - cell "openrouter" [ref=e519]
+              - cell "••••+6x2I=" [ref=e520]
+              - cell "OpenRouter Account 8" [ref=e521]
+              - cell "—" [ref=e522]
+              - cell "0 / 1,000" [ref=e523]:
+                - generic [ref=e525]: 0 / 1,000
+              - cell "—" [ref=e527]
+              - cell "live" [ref=e528]:
+                - generic [ref=e529]: live
+              - cell "—" [ref=e530]
+              - cell [ref=e531]:
+                - generic [ref=e532]:
+                  - checkbox
+              - cell "edit ✕" [ref=e534]:
+                - button "edit" [ref=e535] [cursor=pointer]
+                - button "✕" [ref=e536] [cursor=pointer]
+        - generic [ref=e537]: Adding an account adds its full limit to the pool automatically — the router reads the dynamic list.

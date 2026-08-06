@@ -13,6 +13,10 @@ from __future__ import annotations
 import time
 
 from . import contracts as C
+try:
+    from workers import DurableObject  # type: ignore
+except Exception:
+    DurableObject = object
 
 WINDOW_S = 60
 HEADER_FRESH_S = 300
@@ -20,7 +24,7 @@ COOLDOWN_DEFAULT_S = 30
 HEALTH_FLOOR = 0.3
 
 
-class RateStateDO:
+class RateStateDO(DurableObject):
     """Cloudflare Durable Object. One instance per account id (storage key = id)."""
 
     def __init__(self, state, env) -> None:

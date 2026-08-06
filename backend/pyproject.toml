@@ -13,5 +13,10 @@ dev = [
     "workers-runtime-sdk",
     "uvicorn",
     "httpx",
-    "cryptography",  # RS256 verification of Firebase ID tokens (app/firebase.py)
+    "cryptography",  # RS256 verification of Firebase ID tokens (dev only; prod uses vidrank-auth service)
+    "firebase-admin",  # dev only (sync scripts) — prod verification is delegated to vidrank-auth
 ]
+
+[tool.pyright]
+extraPaths = ["python_modules"]
+

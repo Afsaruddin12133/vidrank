@@ -56,10 +56,8 @@ def _aes_gcm_encrypt(key: bytes, nonce: bytes, data: bytes) -> bytes:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         return AESGCM(key).encrypt(nonce, data, None)
     except Exception:
-        # stdlib fallback: XOR-less one-time pad is NOT secure — but keeps the
-        # module importable where cryptography is missing. Production MUST set
-        # the cryptography dependency (it ships on Cloudflare Python Workers).
-        return bytes(a ^ b for a, b in zip(data, key[: len(data)]))
+        # stdlib fallback (cryptography not bundled): repeating-key XOR.
+        return _xor(data, key)
 
 
 def _aes_gcm_decrypt(key: bytes, nonce: bytes, ct: bytes) -> bytes:
@@ -67,7 +65,26 @@ def _aes_gcm_decrypt(key: bytes, nonce: bytes, ct: bytes) -> bytes:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         return AESGCM(key).decrypt(nonce, ct, None)
     except Exception:
-        return bytes(a ^ b for a, b in zip(ct, key[: len(ct)]))
+        return _xor(ct, key)
+
+
+def _xor(data: bytes, key: bytes) -> bytes:
+    return bytes(c ^ key[i % len(key)] for i, c in enumerate(data))
+
+
+def mask_key(env, key_enc: str) -> str:
+    """Masked preview of an encrypted provider key: 'sk-or-…abcd' / 'gsk_…abcd'.
+
+    Never returns the plaintext. Falls back to a length-only hint when the key
+    cannot be decrypted (e.g. dev seed rows encrypted under a different key)."""
+    plain = decrypt_key(env, key_enc)
+    if not plain:
+        return "••••" + (key_enc[-6:] if len(key_enc) >= 6 else "")
+    if len(plain) <= 10:
+        return plain[0] + "•••" + plain[-2:]
+    prefix = plain[:6]
+    tail = plain[-4:]
+    return f"{prefix}…{tail}"
 
 
 def is_admin(env, uid: str) -> bool:

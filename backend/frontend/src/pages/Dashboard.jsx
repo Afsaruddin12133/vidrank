@@ -1,16 +1,11 @@
 import { usePolled } from '../hooks.js'
-import { statsOverview, listUsers, listAllAccounts, fmtInt } from '../api.js'
+import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, fmtInt } from '../api.js'
 
 export default function Dashboard() {
   const { data: overview } = usePolled(() => statsOverview(), 5000)
-  const { data: usersData } = usePolled(() => listUsers(), 10000)
-  const { data: accountsData } = usePolled(() => listAllAccounts(), 10000)
-  const { data: pricingData } = usePolled(() => 
-    fetch('/admin/pricing', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('vidrank_token')}` }
-    }).then(r => r.json()), 
-    60000  // Poll pricing every 60 seconds
-  )
+  const { data: usersData } = usePolled(() => listUsers(), 5000)
+  const { data: accountsData } = usePolled(() => listAllAccounts(), 5000)
+  const { data: pricingData } = usePolled(() => getPricing(), 10000)
   
   const days = overview?.days || []
   const today = days[0] || {}
@@ -136,7 +131,8 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Revenue & Cost Analysis */}
+      {/* Revenue & Cost Analysis — HIDDEN for now (was computed from hardcoded request_cost) */}
+      {false && (
       <section className="card">
         <div className="card-label">💰 Revenue & Cost Analysis (Dynamic from Firebase)</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>

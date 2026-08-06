@@ -9,8 +9,13 @@ import hashlib
 import json
 import random
 import time
-import urllib.request
-import urllib.error
+
+try:
+    from js import fetch as js_fetch  # outbound HTTP in Python Workers
+    from js import JSON as js_JSON
+except ImportError:
+    js_fetch = None
+    js_JSON = None
 
 from . import contracts as C
 from . import db
@@ -77,14 +82,26 @@ def _sticky_index(key: str, n: int) -> int:
 # --------------------------------------------------------------------------- #
 # Execution
 # --------------------------------------------------------------------------- #
-def _headers_map(headers_obj) -> dict:
-    out = {}
-    for h in ("x-ratelimit-remaining-requests", "x-ratelimit-remaining-tokens",
-              "x-ratelimit-reset", "retry-after"):
-        v = headers_obj.get(h)
-        if v is not None:
-            out[h] = v
-    return out
+async def _provider_post(url: str, body: dict, bearer: str, timeout_s: int = TIMEOUT_S) -> dict:
+    """POST to the provider via the JS fetch API (urllib can't open sockets here).
+
+    Returns {status, body, headers}. Raises on network failure.
+    """
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {bearer}"}
+    init = js_JSON.parse(json.dumps({
+        "method": "POST",
+        "headers": headers,
+        "body": json.dumps(body),
+    }))
+    resp = await js_fetch(url, init)
+    raw = await resp.text()
+    hdrs = {}
+    try:
+        for k, v in resp.headers.entries():
+            hdrs[str(k).lower()] = str(v)
+    except Exception:
+        pass
+    return {"status": resp.status, "body": raw, "headers": hdrs}
 
 
 def _rate_headers(headers: dict) -> dict:
@@ -133,6 +150,7 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
     status: int = 503
     used_id: str = account["id"]
     cache_hit: bool = False
+    error_msg: str = ""
 
     for attempt in range(max(1, C.FALLBACK_TRIES)):
         acc = account if attempt == 0 else None
@@ -155,31 +173,15 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             "temperature": payload.get("temperature", 0.7),
             "max_tokens": payload.get("max_tokens", 1024),
         }
-        req = urllib.request.Request(
-            url, data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {_decode_key(env, acc)}"},
-            method="POST",
-        )
         start = time.time()
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
-                latency_ms = int((time.time() - start) * 1000)
-                status = resp.status
-                raw = resp.read().decode()
-                hdrs = _headers_map(dict(resp.headers))
-                await _observe(env, acc, status, hdrs, latency_ms)
-                if status < 400:
-                    try:
-                        data = json.loads(raw)
-                        content = (data["choices"][0]["message"]["content"] or "").strip()
-                    except (KeyError, IndexError, ValueError):
-                        content = raw
-                    break
-        except urllib.error.HTTPError as e:
+            result = await _provider_post(url, body, _decode_key(env, acc), TIMEOUT_S)
             latency_ms = int((time.time() - start) * 1000)
-            status = e.code
-            hdrs = _headers_map(dict(e.headers))
+            status = result["status"]
+            raw = result["body"]
+            hdrs = result["headers"]
+            if status >= 400:
+                error_msg = raw[:500]
             await _observe(env, acc, status, hdrs, latency_ms)
             if status == 429:
                 try:
@@ -190,9 +192,19 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
                         await env.RATESTATE.get(used_id).note_cooldown(30)
                 except Exception:
                     pass
-        except Exception:
+            if status < 400:
+                try:
+                    data = json.loads(raw)
+                    content = (data["choices"][0]["message"]["content"] or "").strip()
+                except (KeyError, IndexError, ValueError):
+                    content = raw
+                break
+        except Exception as e:
             latency_ms = int((time.time() - start) * 1000)
             status = 503
+            import traceback
+            error_msg = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"[:1500]
+            print(f"[router] provider call failed for {acc.get('id')}: {error_msg}", flush=True)
             try:
                 await env.RATESTATE.get(used_id).note_cooldown(10)
             except Exception:
@@ -206,6 +218,7 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
         "latency_ms": latency_ms,
         "account_id": used_id,
         "cache_hit": cache_hit,
+        "error_msg": error_msg,
     }
 
 

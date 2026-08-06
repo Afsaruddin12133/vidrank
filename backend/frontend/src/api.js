@@ -5,6 +5,11 @@
 const TOKEN_KEY = 'vidrank_token'
 let _token = localStorage.getItem(TOKEN_KEY) || ''
 
+// Backend base. Set VITE_API_BACKEND at build time when the dashboard is
+// served from a different origin than the backend (Pages). Empty = same-origin
+// (vite dev proxy forwards /v1 and /admin locally).
+const _BASE = (import.meta.env.VITE_API_BACKEND || '').replace(/\/+$/, '')
+
 // ---- admin login (password) ----
 export const adminLogin = (password) => _json('/admin/login', 'POST', { password })
 export const setToken = (token) => {
@@ -34,7 +39,7 @@ async function _req(path, options = {}) {
   if (_token) headers['Authorization'] = `Bearer ${_token}`
   let resp
   try {
-    resp = await fetch(path, { ...options, headers })
+    resp = await fetch(_BASE + path, { ...options, headers })
   } catch {
     throw new ApiError('backend unreachable', 0)
   }
@@ -74,10 +79,14 @@ export const listUsers = (tier) => _get(tier ? `/admin/users?tier=${tier}` : '/a
 export const setUserTier = (uid, tier) => _json(`/admin/users/${uid}`, 'PATCH', { tier })
 export const listPlans = () => _get('/admin/plans')
 export const updatePlan = (payload) => _json('/admin/plans', 'PATCH', payload)
+export const getPricing = () => _get('/admin/pricing')
 
 // ---- /admin stats ----
 export const statsOverview = () => _get('/admin/stats/overview')
 export const statsUsage = (days = 7) => _get(`/admin/stats/usage?days=${days}`)
+
+// ---- /admin geo ----
+export const adminGeo = (days = 30) => _get(`/admin/geo?days=${days}`)
 
 // ---- formatting helpers (shared) ----
 export const fmtInt = (n) => (n == null || isNaN(n) ? '—' : Number(n).toLocaleString('en-US'))

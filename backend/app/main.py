@@ -12,13 +12,13 @@ Admin (guard: admin.is_admin):
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from starlette.middleware.cors import CORSMiddleware
 
 from . import cache, contracts as C, db, firebase, mq, prompts, quotas, router, sync
 from . import admin as admin_mod
@@ -37,16 +37,74 @@ app = FastAPI(
 )
 
 # Restrict browser origins to an explicit allowlist (empty = deny all).
-# Set ALLOWED_ORIGINS as a CSV Cloudflare var: e.g. "https://app.example.com".
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=C.ALLOWED_ORIGINS,
-    allow_credentials=False,   # no cookies/session storage; Bearer in header only
-    allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["X-Request-Id"],
-    max_age=86400,
-)
+# ALLOWED_ORIGINS is a CSV Cloudflare var, but Python Workers expose vars via
+# self.env (app.state.env), NOT os.environ — so resolve lazily per request.
+_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+_ALLOW_HEADERS = ["Authorization", "Content-Type"]
+
+
+def _allowed_origins() -> list[str]:
+    """Resolve CSV ALLOWED_ORIGINS from worker env, falling back to os.environ (local dev)."""
+    env = getattr(app.state, "env", None)
+    raw = ""
+    if env is not None:
+        raw = getattr(env, "ALLOWED_ORIGINS", "") or ""
+    if not raw:
+        raw = os.environ.get("ALLOWED_ORIGINS", "") or ""
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+class _CORS:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        origin = next(
+            (v.decode() for k, v in scope.get("headers", []) if k == b"origin"), None
+        )
+        allowed = origin in _allowed_origins()
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start" and allowed:
+                headers = list(message.get("headers", []))
+                headers.append((b"access-control-allow-origin", origin.encode()))
+                headers.append((b"vary", b"Origin"))
+                headers.append(
+                    (
+                        b"access-control-expose-headers",
+                        b"X-Request-Id",
+                    )
+                )
+                message["headers"] = headers
+            await send(message)
+
+        if allowed and origin is not None:
+            method = next(
+                (v.decode() for k, v in scope.get("headers", []) if k == b"access-control-request-method"),
+                None,
+            )
+            if method is not None:
+                headers = [
+                    (b"access-control-allow-origin", origin.encode()),
+                    (b"vary", b"Origin"),
+                    (b"access-control-allow-methods", ", ".join(_ALLOW_METHODS).encode()),
+                    (b"access-control-allow-headers", ", ".join(_ALLOW_HEADERS).encode()),
+                    (b"access-control-max-age", b"86400"),
+                ]
+                response_start = {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": headers,
+                }
+                await send(response_start)
+                await send({"type": "http.response.body", "body": b"", "more_body": False})
+                return
+        return await self.app(scope, receive, send_wrapper)
+
+
+app.add_middleware(_CORS)
 
 # global in-flight counter (single worker; per-isolate)
 _in_flight: int = 0
@@ -89,52 +147,73 @@ def _auth_reject(e: firebase.AuthError) -> JSONResponse:
 
 
 # --------------------------------------------------------------------------- #
-# middleware: request id + in-flight accounting + security/cache headers
+# middleware: request id + in-flight accounting + security/cache headers.
+# NOTE: pure ASGI, NOT BaseHTTPMiddleware — BaseHTTPMiddleware re-buffers the
+# response via a collapsing task group and HANGS on python_workers with
+# StreamingResponse (SSE chat) -> runtime cancels -> 500.
 # --------------------------------------------------------------------------- #
-@app.middleware("http")
-async def request_meta(request: Request, call_next):
-    global _in_flight
-    rid = uuid.uuid4().hex[:12]
-    _in_flight += 1
-    
-    path = request.url.path
-    method = request.method
-    auth_header = request.headers.get("Authorization", "")
-    token_preview = (auth_header[:35] + "...") if auth_header else "None"
-    
-    import sys
-    print(f"\n[SERVER API LOG] 📥 INCOMING REQUEST: {method} {path} | Auth: {token_preview}", file=sys.stderr, flush=True)
-    
-    try:
-        response = await call_next(request)
-    finally:
-        _in_flight -= 1
-        
-    print(f"[SERVER API LOG] 📤 OUTGOING RESPONSE: {method} {path} => Status: {response.status_code}\n", file=sys.stderr, flush=True)
+class MIT_RequestMeta:
+    def __init__(self, app):
+        self.app = app
 
-    # ponytail: flush pending usage telemetry after every response so dev tracking
-    # is live (prod flushes via aclose() per request; this is a no-op there since
-    # the buffer is already empty). Upgrade path: interval flusher if D1 writes
-    # ever need re-batching in prod.
-    flusher = getattr(request.app.state, "flusher", None)
-    if flusher is not None:
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        global _in_flight
+        rid = uuid.uuid4().hex[:12]
+        _in_flight += 1
+
+        path = scope.get("path", "?")
+        method = scope.get("method", "?")
+        auth = ""
+        for name, value in scope.get("headers", []):
+            if name == b"authorization":
+                auth = value.decode("latin1", "replace")
+        token_preview = (auth[:35] + "...") if auth else "None"
+
+        import sys
+        print(f"\n[SERVER] INCOMING REQUEST: {method} {path} | Auth: {token_preview}", file=sys.stderr, flush=True)
+
+        # IP-derived geo telemetry from Cloudflare `cf` — captured PER REQUEST,
+        # so a user's location changes are reflected in every API call.
+        cf = scope.get("cf") or {}
+        flusher = getattr(getattr(scope.get("app"), "state", None), "flusher", None)
+        if flusher is not None:
+            flusher.geo = (cf.get("country"), cf.get("region"), cf.get("city"))
+
+        logged = []
+        def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                logged.append(1)
+                print(f"[SERVER MIDDLEWARE] OUTGOING RESPONSE: {method} {path} => Status: {message['status']}\n", file=sys.stderr, flush=True)
+                message.setdefault("headers", []).extend([
+                    (b"x-request-id", rid.encode()),
+                    (b"x-inflight", str(_in_flight).encode()),
+                    (b"cache-control", b"no-store, no-cache, must-revalidate"),
+                    (b"pragma", b"no-cache"),
+                    (b"x-content-type-options", b"nosniff"),
+                    (b"referrer-policy", b"no-referrer"),
+                ])
+                # /signin is iframed by the extension's offscreen doc (Firebase
+                # popup auth must run in an iframe per Google's extension-auth
+                # guide); rest stay DENY.
+                if path != "/signin":
+                    message["headers"].append((b"x-frame-options", b"DENY"))
+            return send(message)
+
         try:
-            await flusher.flush_now()
-        except Exception:
-            pass
+            await self.app(scope, receive, send_wrapper)
+            if flusher is not None:
+                try:
+                    await flusher.flush_now()
+                except Exception:
+                    pass
+        finally:
+            _in_flight -= 1
 
-    response.headers["X-Request-Id"] = rid
-    response.headers["X-Inflight"] = str(_in_flight)
-    # Security / anti-leak headers on every response
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    # /signin is iframed by the extension's offscreen doc (Firebase popup auth
-    # must run in an iframe per Google's extension-auth guide); rest stay DENY.
-    if request.url.path != "/signin":
-        response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    return response
+
+app.add_middleware(MIT_RequestMeta)
 
 
 # Never echo internals (tracebacks, full provider errors) to clients.
@@ -352,6 +431,7 @@ async def _chat_stream(request: Request, env, uid: str, model: str, messages: li
                         cache_hit=False,
                         latency_ms=result.get("latency_ms"),
                         status=result.get("status", 503),
+                        error_msg=result.get("error_msg"),
                         ts=int(time.time())
                     )
                 
@@ -539,8 +619,118 @@ async def chat(request: Request):
     )
 
 
+@app.get("/v1/_debug_fetch")
+async def debug_fetch(request: Request):
+    try:
+        from js import fetch as js_fetch
+        resp = await js_fetch("https://openrouter.ai/api/v1/chat/completions", {"method": "POST"})
+        status = resp.status
+        body = (await resp.text())[:200]
+        return {"js_fetch": "ok", "status": status, "body": body}
+    except Exception as e:
+        return {"js_fetch": "error", "type": type(e).__name__, "msg": str(e)[:300]}
+
+
+@app.post("/v1/_debug_stages")
+async def debug_stages(request: Request):
+    env = _bindings(request)
+    markers = []
+
+    async def mark(stage: str):
+        try:
+            await env.DB.prepare(
+                "INSERT INTO debug_log (stage, ts) VALUES (?1, ?2)"
+            ).bind(stage, int(time.time())).run()
+        except Exception:
+            pass
+        markers.append(stage)
+
+    await mark("start")
+    body = await _read_json(request)
+    await mark("body_read")
+    auth = request.headers.get("Authorization", "")
+    try:
+        claims = await firebase.verify_token(auth.removeprefix("Bearer ").strip(), env)
+        await mark("auth_ok")
+    except Exception as e:
+        await mark("auth_fail")
+        return {"markers": markers, "auth_error": str(e)[:200]}
+    uid = claims.get("uid", "")
+    user = await db.get_user(env, uid)
+    await mark("user_lookup")
+    try:
+        verdict = await quotas.get_quota(env, uid)
+        await mark("quota_ok")
+    except Exception as e:
+        await mark("quota_fail")
+        return {"markers": markers, "quota_error": f"{type(e).__name__}: {e}"[:300]}
+    try:
+        account = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
+                                            int(time.time()), sticky_key="debug-stage")
+        await mark(f"pick_account:{'ok' if account else 'empty'}")
+    except Exception as e:
+        await mark("pick_fail")
+        return {"markers": markers, "pick_error": f"{type(e).__name__}: {e}"[:300]}
+    if not account:
+        return {"markers": markers, "account": None}
+    key = router._decode_key(env, account)
+    await mark(f"decrypt:{len(key)}")
+
+    # test KV binding (cache.get_exact)
+    try:
+        keyx = cache.exact_key(prompts.GENERATE_MODEL, [{"role": "system", "content": "x"}], 0.0, 1024)
+        cached = await cache.get_exact(env, keyx)
+        await mark(f"kv_get:{cached is not None}")
+    except Exception as e:
+        await mark(f"kv_fail")
+        return {"markers": markers, "kv_error": f"{type(e).__name__}: {e}"[:300]}
+
+    # test js_fetch provider post sub-steps (find which line kills the isolate)
+    from js import fetch as js_fetch
+    url = router.ENDPOINTS.get(account.get("provider", ""))
+    payload = {"model": prompts.GENERATE_MODEL, "messages": [{"role": "system", "content": "hi"}],
+               "temperature": 0.0, "max_tokens": 16}
+    try:
+        await mark("pp1_noconfig")
+        r0 = await js_fetch("https://openrouter.ai/api/v1/chat/completions", {"method": "POST"})
+        await mark("pp2_bare_ok")
+    except Exception as e:
+        return {"markers": markers, "pp2_error": f"{type(e).__name__}: {e}"[:300]}
+    try:
+        from js import JSON as js_JSON
+        init1 = js_JSON.parse('{"method":"POST","headers":{"Content-Type":"application/json"}}')
+        r1 = await js_fetch(url, init1)
+        await mark("pp4_headers_ok")
+    except Exception as e:
+        return {"markers": markers, "pp4_error": f"{type(e).__name__}: {e}"[:300]}
+    try:
+        init2 = js_JSON.parse('{"method":"POST","headers":{"Content-Type":"application/json"},"body":"{}"}')
+        r2 = await js_fetch(url, init2)
+        await mark("pp6_body_ok")
+    except Exception as e:
+        return {"markers": markers, "pp6_error": f"{type(e).__name__}: {e}"[:300]}
+    try:
+        t = await r2.text()
+        await mark("pp8_text_ok")
+    except Exception as e:
+        return {"markers": markers, "pp8_error": f"{type(e).__name__}: {e}"[:300]}
+    enc_rt = admin_mod.encrypt_key(env, "rt-test-key-123")
+    dec_rt = admin_mod.decrypt_key(env, enc_rt)
+    dec_seed = admin_mod.decrypt_key(env, account["key_enc"])
+    return {"markers": markers, "done": True, "final_text_len": len(t),
+            "roundtrip": dec_rt == "rt-test-key-123", "dec_seed_len": len(dec_seed)}
+
+
 @app.post("/v1/generate")
 async def generate(request: Request):
+    try:
+        return await _generate_impl(request)
+    except Exception as e:
+        import traceback
+        return JSONResponse({"error": "internal", "type": type(e).__name__, "msg": str(e)[:500], "tb": traceback.format_exc()[-1500:]}, status_code=500)
+
+
+async def _generate_impl(request: Request):
     env = _bindings(request)
     auth = request.headers.get("Authorization", "")
     try:
@@ -624,6 +814,7 @@ async def generate(request: Request):
             user_id=uid, account_id=result.get("account_id"), model=prompts.GENERATE_MODEL,
             cache_hit=result.get("cache_hit", False),
             latency_ms=result.get("latency_ms"), status=result.get("status", 503),
+            error_msg=result.get("error_msg"),
             ts=int(time.time()),
         )
 
@@ -736,6 +927,7 @@ async def me(request: Request):
     user = await db.get_user(env, uid)
     tier = (user or {}).get("tier") or C.TIER_FREE
     verdict = await quotas.get_quota(env, uid) or {}
+    cf = (request.scope or {}).get("cf") or {}
     return {
         "uid": uid,
         "email": claims.get("email") or (user or {}).get("email"),
@@ -743,6 +935,7 @@ async def me(request: Request):
         "quota_remaining": verdict.get("remaining", -1) if isinstance(verdict, dict) else -1,
         "quota_limit": verdict.get("limit") if isinstance(verdict, dict) else C.DEFAULT_FREE_DAILY_LIMIT,
         "resets_in_seconds": verdict.get("resets_in_seconds", 0),
+        "geo": {"country": cf.get("country"), "region": cf.get("region"), "city": cf.get("city")},
     }
 
 
@@ -827,7 +1020,10 @@ async def admin_list_all_accounts(request: Request):
     env = _bindings(request)
     if not await _admin(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    return {"accounts": await db.list_accounts(env)}
+    accounts = await db.list_accounts(env)
+    for a in accounts:
+        a["key_preview"] = admin_mod.mask_key(env, a.pop("key_enc", "")) if a.get("key_enc") else ""
+    return {"accounts": accounts}
 
 
 @app.get("/admin/accounts/usage")
@@ -851,6 +1047,22 @@ async def admin_accounts_usage(request: Request, days: int = 7):
             "days": rollups,
         })
     return {"accounts": out}
+
+
+@app.get("/admin/geo")
+async def admin_geo(request: Request, days: int = 30):
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    days = min(max(days, 1), 365)
+    rows = await db._fetch_all(
+        env,
+        "SELECT country, region, city, COUNT(*) AS requests, "
+        "COUNT(DISTINCT user_id) AS users FROM usage_log "
+        "WHERE ts >= ?1 GROUP BY country, region, city ORDER BY requests DESC",
+        int(time.time()) - days * 86400,
+    )
+    return {"geo": [r for r in rows if r.get("country") or r.get("city")]}
 
 
 @app.post("/admin/accounts")
@@ -898,6 +1110,9 @@ async def admin_update_account(request: Request, account_id: str):
     for key in ("daily_limit", "rpm_limit", "enabled"):
         if body.get(key) is not None:
             fields[key] = int(body[key])
+    new_key = body.get("key")
+    if new_key:
+        fields["key_enc"] = admin_mod.encrypt_key(env, new_key)
     await db.update_account(env, account_id, fields)
     return {"account_id": account_id, "updated": list(fields.keys())}
 
@@ -934,12 +1149,15 @@ async def admin_account_usage(request: Request, account_id: str):
     if not await _admin(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
-        live = await env.RATESTATE.get(account_id).get_live()
         acc = await db.get_account(env, account_id)
-        return {"live": live, "limit": (acc or {}).get("daily_limit"),
-                "rpm_limit": (acc or {}).get("rpm_limit")}
     except Exception:
-        return JSONResponse({"error": "not found"}, status_code=404)
+        acc = None
+    try:
+        live = await env.RATESTATE.get(account_id).get_live()
+    except Exception:
+        live = None
+    return {"live": live, "limit": (acc or {}).get("daily_limit"),
+            "rpm_limit": (acc or {}).get("rpm_limit")}
 
 
 @app.get("/admin/stats/overview")
@@ -947,8 +1165,41 @@ async def admin_stats_overview(request: Request):
     env = _bindings(request)
     if not await _admin(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    
     rows = await db._fetch_all(
         env, "SELECT * FROM usage_daily ORDER BY day DESC LIMIT 7")
+    
+    today_str = time.strftime("%Y-%m-%d", time.gmtime())
+    
+    # Check if today's summary is present in usage_daily
+    has_today = any(r.get("day") == today_str for r in rows)
+    if not has_today:
+        today_ts = int(time.mktime(time.strptime(today_str, "%Y-%m-%d")))
+        today_live = await db._fetch_one(
+            env,
+            "SELECT "
+            "  COUNT(*) as total_requests, "
+            "  SUM(CASE WHEN u.tier = 'free' OR u.tier IS NULL THEN 1 ELSE 0 END) as free_requests, "
+            "  SUM(CASE WHEN u.tier = 'pro' THEN 1 ELSE 0 END) as pro_requests, "
+            "  SUM(CASE WHEN l.cache_hit = 1 THEN 1 ELSE 0 END) as cache_hits, "
+            "  SUM(CASE WHEN l.status >= 400 THEN 1 ELSE 0 END) as errors, "
+            "  CAST(AVG(l.latency_ms) AS INTEGER) as avg_latency_ms "
+            "FROM usage_log l "
+            "LEFT JOIN users u ON l.user_id = u.firebase_uid "
+            "WHERE l.ts >= ?1",
+            today_ts,
+        )
+        today_row = {
+            "day": today_str,
+            "total_requests": (today_live or {}).get("total_requests") or 0,
+            "free_requests": (today_live or {}).get("free_requests") or 0,
+            "pro_requests": (today_live or {}).get("pro_requests") or 0,
+            "cache_hits": (today_live or {}).get("cache_hits") or 0,
+            "errors": (today_live or {}).get("errors") or 0,
+            "avg_latency_ms": (today_live or {}).get("avg_latency_ms") or 0,
+        }
+        rows.insert(0, today_row)
+        
     return {"days": rows}
 
 
@@ -1061,11 +1312,22 @@ def create_asgi_bridge():
 
     class VRRouterEntrypoint(WorkerEntrypoint):
         async def fetch(self, request):
-            app.state.env = self.env
-            app.state.flusher = db.BatchedFlusher(self.env)
-            resp = await asgi.fetch(request, app)
-            await app.state.flusher.aclose()
-            return resp
+            try:
+                app.state.env = self.env
+                app.state.flusher = db.BatchedFlusher(self.env)
+                resp = await asgi.fetch(request, app)
+                await app.state.flusher.aclose()
+                return resp
+            except BaseException as e:
+                import traceback
+                from js import Response
+                tb = traceback.format_exc()
+                body = json.dumps({"error": "internal", "type": type(e).__name__, "msg": str(e)[:500], "tb": tb[-1500:]}).encode()
+                try:
+                    await app.state.flusher.aclose()
+                except BaseException:
+                    pass
+                return Response.new(body, {"status": 500, "headers": {"Content-Type": "application/json"}})
 
     return VRRouterEntrypoint
 

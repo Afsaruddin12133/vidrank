@@ -13,6 +13,11 @@ from app.main import app
 from app.quotas import QuotaDO  # noqa: F401  (exported for wrangler DO bindings)
 from app.ratestate import RateStateDO  # noqa: F401
 
+# Re-export as module-level names so the worker runtime / API reconciliation
+# can statically resolve the Durable Object classes declared in wrangler.toml.
+QuotaDO = QuotaDO  # noqa: PLW0127
+RateStateDO = RateStateDO  # noqa: PLW0127
+
 
 class Default(WorkerEntrypoint):
     async def fetch(self, request):

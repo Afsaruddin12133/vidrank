@@ -6,9 +6,8 @@ import { auth } from './firebase-config.js';
 import { GoogleAuthProvider, signInWithCredential, signOut } from 'firebase/auth/web-extension';
 
 // Backend base URL - Environment-based configuration
-const BACKEND_URL = typeof process !== 'undefined' && process.env.BACKEND_URL
-  ? process.env.BACKEND_URL
-  : 'http://localhost:8787/v1';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+  || 'http://localhost:8787/v1';
 
 console.log('[VidRank] Background script loaded. Backend URL:', BACKEND_URL);
 
@@ -186,9 +185,6 @@ async function getAuthDataFromIndexedDB() {
           if (defaultEntry && defaultEntry.value && defaultEntry.value.stsTokenManager) {
             const sts = defaultEntry.value.stsTokenManager;
             console.log('[VidRank IndexedDB] Found Auth Entry in IndexedDB!');
-            console.log('[VidRank IndexedDB] 🔑 Access Token:', sts.accessToken);
-            console.log('[VidRank IndexedDB] 🔄 Refresh Token:', sts.refreshToken);
-            console.log('[VidRank IndexedDB] ⏰ Expiration Time:', new Date(sts.expirationTime).toLocaleString());
             resolve(sts);
           } else {
             console.warn('[VidRank IndexedDB] No auth tokens found in IndexedDB entries:', entries);
@@ -213,7 +209,6 @@ async function getIdToken() {
   // 1. Check active Firebase Auth memory instance
   if (auth.currentUser) {
     const memToken = await auth.currentUser.getIdToken(true);
-    console.log('[VidRank Auth] 🔑 Retrived Access Token from Firebase Auth memory:', memToken);
     return memToken;
   }
 
@@ -225,18 +220,15 @@ async function getIdToken() {
 
     // If access token is active (with 60s safety window)
     if (accessToken && expirationTime && (expirationTime - now > 60000)) {
-      console.log('[VidRank Auth] ✅ Using active Access Token retrieved directly from IndexedDB:');
-      console.log('[VidRank Auth] 🔑 Access Token:', accessToken);
-      console.log('[VidRank Auth] 🔄 Refresh Token:', refreshToken);
+      console.log('[VidRank Auth] Using active Access Token from IndexedDB');
       return accessToken;
     }
 
     // If expired, exchange refreshToken for a new accessToken via Google OAuth API
     if (refreshToken) {
-      console.log('[VidRank Auth] ⚠️ Access token in IndexedDB is expired. Refreshing using Refresh Token...');
-      console.log('[VidRank Auth] 🔄 Refresh Token being used:', refreshToken);
+      console.log('[VidRank Auth] Refreshing expired Access Token using Refresh Token...');
       try {
-        const apiKey = "AiZaSyAlRH6242b-yDFn5E9yfyIwof6LsL7nWp8";
+        const apiKey = "AIzaSyAlRH6242b-yDFn5E9yfyIwof6LsL7nWp8";
         const refreshRes = await fetch(`https://securetoken.googleapis.com/v1/token?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -249,8 +241,7 @@ async function getIdToken() {
         if (refreshRes.ok) {
           const refreshData = await refreshRes.json();
           if (refreshData.id_token) {
-            console.log('[VidRank Auth] ✨ Successfully acquired fresh ID Token from Refresh Token!');
-            console.log('[VidRank Auth] 🔑 Fresh Access Token:', refreshData.id_token);
+            console.log('[VidRank Auth] Successfully acquired fresh ID Token');
             return refreshData.id_token;
           }
         }

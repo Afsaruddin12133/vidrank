@@ -1,0 +1,8 @@
+[project]
+name = "vidrank-auth"
+version = "0.1.0"
+description = "VIDRANK Firebase auth service worker (verifies Firebase ID tokens)"
+requires-python = ">=3.13"
+dependencies = [
+    "firebase-admin",
+]
