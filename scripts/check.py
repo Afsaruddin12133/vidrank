@@ -1,0 +1,15 @@
+from firebase_admin import auth, credentials, initialize_app
+
+# 1. Initialize SDK with service account
+cred = credentials.Certificate("auth.json")
+initialize_app(cred)
+
+# 2. Verify the Access Token received from frontend
+try:
+    decoded_token = auth.verify_id_token("eyJhbGciOiJSUzI1NiIsImtpZCI6IjIwY2FkODZkNzY5ZmFkZTViODkxNmQ5Y2U1MDc0YzgyMGYwNjdkNTIiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiRmFoYWQgQWxpIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0xTTmdqdFBiV2ZMT2Myc19YWVdFZF80NGFWN2J3bkNyeTRDS1NjdURhQllTc3lHeFE9czk2LWMiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdmlkcmFuay01ZTU0MCIsImF1ZCI6InZpZHJhbmstNWU1NDAiLCJhdXRoX3RpbWUiOjE3ODU5NDIxMzcsInVzZXJfaWQiOiJuQmRPYnBERXliVE5PSXdBeFdNeHlHVXNCRHkyIiwic3ViIjoibkJkT2JwREV5YlROT0l3QXhXTXh5R1VzQkR5MiIsImlhdCI6MTc4NTk0MjEzOCwiZXhwIjoxNzg1OTQ1NzM4LCJlbWFpbCI6ImJ1c2luZXNzLmZhaGFkYWxpQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Imdvb2dsZS5jb20iOlsiMTA3NTYwMDQzOTY1MjU3NDgzODg1Il0sImVtYWlsIjpbImJ1c2luZXNzLmZhaGFkYWxpQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6Imdvb2dsZS5jb20ifX0.ClCj7YR8xcp3StajroUYy2hXLnKatECjH6NYVVoxqsMGMM6TC3mcKsRzWa8hdi3uCAlHxxSS--SdDoL3AfNIJU60k_idN-t7A5yjBNuXVqQOJXvu6qG7cLE27PxDcDC6rnSUxcY74WnHgoVbURvb6XGUYYZYkC2ZuzOmNJMky1MsBxKw-g-xfFdWHWmfYHQhLyUtRJbP35zxk9USOZGGW685SuLw7TgZZ3xMQLIafBK4ynsCeyXIqIzlv2vIBfXE6a4l90xOKkKHtIMxfpGD3wYilozBeoeufyMU4z61sdYJmlolQCz5-vWDS9L0ouX0mbEWK2HWUOn-Ovaijfi79g"
+)
+    print("✅ User is authenticated!")
+    print("Email:", decoded_token.get("email"))
+    print("UID:", decoded_token.get("uid"))
+except Exception as e:
+    print("❌ User is NOT logged in / Token invalid:", e)

@@ -1,0 +1,75 @@
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.side-panel-header h1 {
+  margin: 0;
+  font-size: 22px;
+  color: white;
+}
+
+.side-panel-header p {
+  margin: 6px 0 24px 0;
+  font-size: 12px;
+  color: #aaaaaa;
+}
+
+.side-panel-login,
+.side-panel-user {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.side-panel-login h2,
+.side-panel-user h2 {
+  margin: 0;
+  color: white;
+  font-size: 18px;
+}
+
+.side-panel-login p,
+.side-panel-user p {
+  margin: 0;
+  color: #aaaaaa;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.side-panel-login button,
+.side-panel-user button {
+  background: white;
+  color: black;
+  border-radius: 8px;
+  padding: 12px;
+  width: 100%;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+}
+
+.side-panel-login button:disabled {
+  opacity: 0.7;
+}
+
+.side-panel-user button {
+  background: transparent;
+  color: #ff4444;
+  border: 1px solid #ff4444;
+}
+
+.side-panel-error {
+  color: #ff4444;
+  font-size: 12px;
+}

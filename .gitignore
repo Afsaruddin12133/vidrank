@@ -1,0 +1,45 @@
+# Python & Virtual Environments
+.venv/
+.venv-*/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# Secret & Credential Keys (Firebase, Service Accounts, Env Vars)
+auth.json
+serviceAccount.json
+*firebase-adminsdk*.json
+.env
+.env.*
+.dev.vars
+
+# Local Databases & SQLite
+*.sqlite
+*.sqlite3
+*.db
+devlocal.db
+.wrangler/
+
+# Build Outputs & Dependencies (Extension & Web)
+node_modules/
+dist/
+build/
+api-routing-anim/
+repo/
+# Server Logs & Runtime Data
+*.log
+dev_server.log
+.system_generated/
+
+# OS & Editor Specific Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.codex/
+.omo/

@@ -1,0 +1,64 @@
+# VIDRANK backend — Cloudflare Python Worker (plan/PLAN.md, plan/DATABASE.md)
+name = "vidrank-backend"
+main = "entry.py"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["python_workers"]
+
+# Worker entrypoint class (FastAPI via asgi.fetch)
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vidrank"
+database_id = "5e90f237-c454-4d4c-b9d9-fd5593477418"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "92138042412040a9b2829249165a534d"
+
+[[durable_objects.bindings]]
+name = "QUOTA"
+class_name = "QuotaDO"
+
+[[durable_objects.bindings]]
+name = "RATESTATE"
+class_name = "RateStateDO"
+
+[[durable_objects.migrations]]
+tag = "v1"
+new_sqlite_classes = ["QuotaDO", "RateStateDO"]
+
+[exports]
+QuotaDO = { type = "durable-object", storage = "sqlite" }
+RateStateDO = { type = "durable-object", storage = "sqlite" }
+
+[[queues.producers]]
+binding = "FREE_QUEUE"
+queue = "free-jobs"
+
+[[queues.producers]]
+binding = "PRO_QUEUE"
+queue = "pro-jobs"
+
+[[queues.consumers]]
+queue = "free-jobs"
+max_batch_size = 5
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 10
+
+[[queues.consumers]]
+queue = "pro-jobs"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 5
+max_concurrency = 50  # Higher concurrency for pro users
+
+[vars]
+GROQ_MODEL = "llama-3.1-8b-instant"
+AUTH_PROJECT_ID = "vidrank-5e540"  # Firebase project id (aud/iss check in app/firebase.py)
+
+# Secrets (Cloudflare Secrets, not in this file):
+#   ENCRYPTION_KEY  (32B, AES-GCM of provider keys)
+#   JWT_SECRET

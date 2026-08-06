@@ -1,0 +1,8 @@
+.venv/
+.venv-workers/
+.wrangler/
+frontend/
+tests/
+plan/
+__pycache__/
+*.pyc
