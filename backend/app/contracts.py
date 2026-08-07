@@ -49,7 +49,7 @@ DEFAULT_FREE_DAILY_LIMIT = 10  # plan says 10/day free ("extension business plan
 
 # /v1/generate throttle curve (EXTENSION-INTEGRATION.md §3): retry_after =
 # GENERATE_DELAYS[min(used, last)]s after a free generation; pro always 0.
-GENERATE_DELAYS: list[int] = [0, 0, 0, 0, 10, 20, 30, 40, 50, 60]
+GENERATE_DELAYS: list[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 # Request validation caps (abuse / cost control) ---------------------------------- #
 MAX_MESSAGES = 64       # max chat messages per request
@@ -70,8 +70,8 @@ FANOUT_DEADLINE_S = 25   # per-request fan-out deadline
 SHORT_ANSWER_CLUE = None # reserved
 
 # Caching -------------------------------------------------------------------
-RESP_CACHE_TTL_S = 60 * 60        # resp: 1h
-SEM_CACHE_TTL_S  = 24 * 60 * 60   # sem: 24h
+RESP_CACHE_TTL_S = 7 * 24 * 60 * 60   # resp: 7 days
+SEM_CACHE_TTL_S  = 7 * 24 * 60 * 60   # sem: 7 days
 SEM_COSINE_THRESHOLD = 0.97
 EMBEDDING_MODEL = "@cf/baai/bge-small-en-v1.5"
 

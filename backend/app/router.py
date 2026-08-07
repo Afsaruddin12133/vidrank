@@ -151,17 +151,19 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
     used_id: str = account["id"]
     cache_hit: bool = False
     error_msg: str = ""
+    tried: set[str] = {account["id"]}
 
     for attempt in range(max(1, C.FALLBACK_TRIES)):
         acc = account if attempt == 0 else None
         if acc is None:
             acc = await pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
                                      int(time.time()),
-                                     exclude={used_id} if used_id else None)
+                                     exclude=tried if tried else None)
             if not acc:
                 break
 
         used_id = acc["id"]
+        tried.add(acc["id"])
         url = ENDPOINTS.get(acc.get("provider", ""))
         if not url:
             continue
@@ -183,7 +185,14 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             if status >= 400:
                 error_msg = raw[:500]
             await _observe(env, acc, status, hdrs, latency_ms)
-            if status == 429:
+            if status == 401 or status == 403:
+                # Auth rejection = dead key. Disable permanently in D1 so the
+                # pool stops burning retry budget on a key that never works.
+                try:
+                    await db.set_account_enabled(env, used_id, False)
+                except Exception:
+                    pass
+            elif status == 429:
                 try:
                     ra = hdrs.get("retry-after") or hdrs.get("x-ratelimit-reset")
                     if ra:

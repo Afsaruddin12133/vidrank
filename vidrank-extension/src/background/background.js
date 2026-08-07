@@ -38,19 +38,19 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Listener for runtime messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[VidRank] Received message:', request.action);
-  
+
   if (request.action === "generateTags") {
     callBackendGenerate(request.title, request.description)
       .then(res => sendResponse(res))
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;
-    
+
   } else if (request.action === "generateDescription") {
     callBackendGenerate(request.title, "")
       .then(res => sendResponse(res))
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;
-    
+
   } else if (request.action === "login") {
     // Native Chrome OAuth (chrome.identity) + Firebase credential exchange.
     // signInWithPopup is blocked by MV3 CSP, so no offscreen document is needed.
@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     return true;
 
-    
+
   } else if (request.action === "logout") {
     console.log('[VidRank] Logout action triggered');
     signOut(auth)
@@ -76,13 +76,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       })
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;
-    
+
   } else if (request.action === "getAuthState") {
     chrome.storage.local.get({ isLoggedIn: false }, (data) => {
       sendResponse({ isLoggedIn: data.isLoggedIn });
     });
     return true;
-    
+
   } else if (request.action === "syncUsage") {
     refreshUsage()
       .then(stats => sendResponse({ success: true, stats }))
@@ -276,7 +276,7 @@ async function getIdToken() {
 async function callBackendGenerate(title, description) {
   try {
     const token = await getIdToken();
-    
+
     const res = await fetch(`${BACKEND_URL}/generate`, {
       method: "POST",
       headers: {
@@ -287,8 +287,8 @@ async function callBackendGenerate(title, description) {
     });
 
     let body = {};
-    try { 
-      body = await res.json(); 
+    try {
+      body = await res.json();
     } catch (e) {
       console.error('[VidRank] Failed to parse response');
       return { success: false, error: "INVALID_RESPONSE" };
@@ -307,7 +307,7 @@ async function callBackendGenerate(title, description) {
 
     const error = body.error || `HTTP ${res.status}`;
     persistUsage(body.usage, body.retry_after);
-    
+
     return {
       success: false,
       error,
@@ -316,8 +316,8 @@ async function callBackendGenerate(title, description) {
     };
   } catch (err) {
     console.error("[VidRank] Backend error:", err);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: err.message || "Network error"
     };
   }
@@ -326,8 +326,8 @@ async function callBackendGenerate(title, description) {
 // Refresh usage stats from backend
 async function refreshUsage() {
   let token;
-  try { 
-    token = await getIdToken(); 
+  try {
+    token = await getIdToken();
   } catch (_) {
     return { usageCount: 0, plan: "free", usageLimit: 10, retry_after: 0 };
   }

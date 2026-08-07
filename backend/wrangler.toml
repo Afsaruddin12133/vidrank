@@ -17,6 +17,9 @@ database_id = "5e90f237-c454-4d4c-b9d9-fd5593477418"
 binding = "KV"
 id = "92138042412040a9b2829249165a534d"
 
+[ai]
+binding = "AI"
+
 [[durable_objects.bindings]]
 name = "QUOTA"
 class_name = "QuotaDO"

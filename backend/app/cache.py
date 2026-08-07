@@ -48,11 +48,42 @@ async def store_exact(env, key: str, content: str) -> None:
 # --------------------------------------------------------------------------- #
 # Layer 1 — semantic cache (per free user)
 # --------------------------------------------------------------------------- #
-def _embedding_from_model(resp: dict) -> list[float]:
-    data = resp.get("data") or []
-    if data:
-        return data[0].get("embedding") or []
-    return resp.get("embedding") or []
+def _embedding_from_model(resp) -> list[float] | None:
+    # Workers AI returns a JsDict wrapper: {"data": [[...]]}. Handle that plus
+    # other plausible shapes without guessing per-model.
+    vec = _embedding_from_any(resp)
+    return vec
+
+
+def _embedding_from_any(resp):
+    # Workers AI embedding responses vary by model/runtime:
+    #   bare list [[...]], {"data": [[...]]}, {"data": [{"embedding": [...]}]},
+    #   {"embedding": [...]}, {"result": [...]}
+    if isinstance(resp, list):
+        if resp and isinstance(resp[0], (int, float)):
+            return resp
+        if resp and isinstance(resp[0], list):
+            return resp[0]
+        if resp and isinstance(resp[0], dict):
+            return resp[0].get("embedding")
+        return None
+    if isinstance(resp, dict):
+        for key in ("data", "result", "embedding", "vectors"):
+            val = resp.get(key)
+            if not val:
+                continue
+            if isinstance(val, dict):
+                inner = val.get("embedding") or val.get("result")
+                if isinstance(inner, list):
+                    return inner[0] if inner and isinstance(inner[0], list) else inner
+            elif isinstance(val, list):
+                if val and isinstance(val[0], dict):
+                    return val[0].get("embedding")
+                if val and isinstance(val[0], list):
+                    return val[0]
+                return val
+        return None
+    return None
 
 
 async def _embed(env, text: str) -> list[float] | None:
@@ -64,7 +95,8 @@ async def _embed(env, text: str) -> list[float] | None:
         )
         vec = _embedding_from_model(resp)
         return vec if vec else None
-    except Exception:
+    except Exception as e:
+        print(f"[cache] _embed failed: {type(e).__name__}: {e}", flush=True)
         return None
 
 
@@ -114,5 +146,5 @@ async def store_semantic(env, user_id: str, model: str, text: str, content: str)
         # ponytail: O(n) scan, capped at 500; upgrade to vector index if exceeded
         entries = entries[-500:]
         await env.KV.put(key, json.dumps(entries), expiration_ttl=C.SEM_CACHE_TTL_S)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[cache] store_semantic failed: {type(e).__name__}: {e}", flush=True)

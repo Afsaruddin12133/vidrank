@@ -769,8 +769,6 @@ async def _generate_impl(request: Request):
         except (ValueError, TypeError):
             tags, desc = [], ""
         if tags and desc:
-            # ponytail: log cache-hits too so telemetry reflects real served
-            # volume (no provider credit consumed, but visible in /v1/history).
             flusher = getattr(request.app.state, "flusher", None)
             if flusher is not None:
                 flusher.log_usage(
@@ -784,7 +782,31 @@ async def _generate_impl(request: Request):
                 headers={"X-Cache": "HIT"},
             )
 
-    # 2) quota check (free: dailyLimit; pro: unlimited)
+    # 2) semantic cache (near-repeat titles) — hit skips quota + provider,
+    #    so repeat-y usage stays within the free daily cap and costs $0.
+    if C.TIER_FREE == tier:
+        sem = await cache.get_semantic(env, uid, prompts.GENERATE_MODEL, title)
+        if sem:
+            try:
+                data = json.loads(sem)
+                tags, desc = data.get("tags") or [], data.get("description") or ""
+            except (ValueError, TypeError):
+                tags, desc = [], ""
+            if tags and desc:
+                flusher = getattr(request.app.state, "flusher", None)
+                if flusher is not None:
+                    flusher.log_usage(
+                        user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
+                        cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
+                    )
+                usage, retry_after = await _usage_for(env, uid, tier)
+                return JSONResponse(
+                    {"success": True, "tags": tags, "description": desc,
+                     "usage": usage, "retry_after": retry_after},
+                    headers={"X-Cache": "SEM"},
+                )
+
+    # 3) quota check (free: dailyLimit; pro: unlimited)
     verdict = await quotas.get_quota(env, uid) or {"ok": True, "remaining": 10, "limit": 10, "resets_in_seconds": 0}
     if not verdict.get("ok"):
         return JSONResponse(
@@ -794,7 +816,7 @@ async def _generate_impl(request: Request):
             status_code=429,
         )
 
-    # 3) route to the pool (with fallback inside router)
+    # 4) route to the pool (with fallback inside router)
     account = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
                                         int(time.time()), sticky_key=title)
     if not account:
@@ -807,7 +829,7 @@ async def _generate_impl(request: Request):
                  "temperature": 0.0, "max_tokens": 1024},
     )
 
-    # 4) log usage (batched flusher)
+    # 5) log usage (batched flusher)
     flusher = getattr(request.app.state, "flusher", None)
     if flusher is not None:
         flusher.log_usage(
@@ -830,11 +852,14 @@ async def _generate_impl(request: Request):
     if not parsed:
         return JSONResponse({"error": "generation_failed"}, status_code=502)
 
-    # 5) consume quota only after a successful generation
+    # 6) consume quota only after a successful generation
     await _consume_quota(env, uid)
 
     tags, desc = parsed["tags"], parsed["description"]
     await cache.store_exact(env, key, json.dumps({"tags": tags, "description": desc}))
+    if C.TIER_FREE == tier:
+        await cache.store_semantic(env, uid, prompts.GENERATE_MODEL, title,
+                                   json.dumps({"tags": tags, "description": desc}))
 
     usage, retry_after = await _usage_for(env, uid, tier)
     return JSONResponse(

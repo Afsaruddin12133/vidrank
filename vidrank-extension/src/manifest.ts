@@ -6,6 +6,7 @@ export default defineManifest({
   name: 'VidRank',
   version: packageData.version,
   description: packageData.description,
+  key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAipqFG5q165s5p4lRvBWnyo59a4GBOG/W7eZtaUgCzcImnnkEv/DWt4aUstIfRj5zTHcO64W07hsQvjMba/ufENRnd2b+iFpO+qbaYMrWpOhESRKvqyPBc0Vnkcq7efl/ugA0+qBQFMxs/PV/KOUqZSjVgbOszTOXsgfap6/3t+AzH7A6EVLRnvf0lY/hu3Y0QdaklpFE6pCp02t8CdMdR8YTBpa2GRCbdN7OdBYZ4s6HOyFIvLeCfM1mNMCBmOIYHBrTpDOL+OGssLUUYLR3ZutoJ4ChG9ElH1iTfdXTQfx9KbA/eAGHUGCGs5sheWQRwosenDl1EJvgq4/TE0/FfQIDAQAB',
   permissions: ['storage', 'identity', 'sidePanel'],
   side_panel: {
     default_path: 'sidepanel.html',
