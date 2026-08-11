@@ -1584,6 +1584,43 @@ async def admin_list_sub_admins(request: Request):
     return {"sub_admins": await db.list_sub_admins(env)}
 
 
+@app.get("/admin/sub-admins/activity/paged")
+async def admin_list_sub_admin_activity_paged(
+    request: Request,
+    q: str | None = None,
+    sub_admin: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+):
+    """Server-side paginated audit activity log of actions taken by sub-admins."""
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    total = await db.count_sub_admin_activity(env, q, sub_admin)
+    items = await db.list_sub_admin_activity_paged(env, q, sub_admin, page, page_size)
+    return {
+        "activity": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
+
+
+@app.get("/admin/sub-admins/activity")
+async def admin_list_sub_admin_activity(request: Request, limit: int = 100):
+    """List recent sub-admin audit activity logs."""
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    limit = min(max(1, limit), 500)
+    items = await db.list_sub_admin_activity(env, limit)
+    return {"activity": items}
+
+
+
 @app.post("/admin/sub-admins")
 async def admin_add_sub_admin(request: Request):
     env = _bindings(request)

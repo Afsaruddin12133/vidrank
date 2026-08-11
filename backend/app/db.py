@@ -215,6 +215,38 @@ async def list_sub_admin_activity(env, limit: int = 100) -> list[dict[str, Any]]
     )
 
 
+def _activity_filter(q: str | None, sub_admin: str | None) -> tuple[str, list[Any]]:
+    conds, params = [], []
+    if sub_admin and sub_admin.strip() and sub_admin.strip().lower() != "all":
+        conds.append("LOWER(sub_admin_username) = ?")
+        params.append(sub_admin.strip().lower())
+    if q and q.strip():
+        conds.append("(LOWER(sub_admin_username) LIKE ? OR LOWER(action) LIKE ? OR LOWER(target_uid) LIKE ? OR LOWER(COALESCE(target_email, '')) LIKE ?)")
+        like = f"%{q.strip().lower()}%"
+        params += [like, like, like, like]
+    return (f"WHERE {' AND '.join(conds)}" if conds else ""), params
+
+
+async def count_sub_admin_activity(env, q: str | None = None, sub_admin: str | None = None) -> int:
+    where, params = _activity_filter(q, sub_admin)
+    row = await _fetch_one(env, f"SELECT COUNT(*) AS n FROM sub_admin_activity {where}", *params)
+    return int((row or {}).get("n") or 0)
+
+
+async def list_sub_admin_activity_paged(env, q: str | None = None, sub_admin: str | None = None,
+                                       page: int = 1, page_size: int = 25) -> list[dict[str, Any]]:
+    where, filter_params = _activity_filter(q, sub_admin)
+    offset = max(0, (page - 1) * page_size)
+    params = filter_params + [page_size, offset]
+    return await _fetch_all(
+        env,
+        "SELECT id, sub_admin_id, sub_admin_username, action, target_uid, target_email, details, created_at "
+        f"FROM sub_admin_activity {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        *params,
+    )
+
+
+
 async def list_enabled_accounts(env) -> list[dict[str, Any]]:
     return await _fetch_all(
         env,

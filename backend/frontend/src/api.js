@@ -120,6 +120,16 @@ export const listSubAdmins = () => _get('/admin/sub-admins')
 export const addSubAdmin = (username, password) => _json('/admin/sub-admins', 'POST', { username, password })
 export const updateSubAdmin = (id, payload) => _json(`/admin/sub-admins/${id}`, 'PUT', payload)
 export const deleteSubAdmin = (id) => _req(`/admin/sub-admins/${id}`, { method: 'DELETE' })
+export const listSubAdminActivity = (limit = 100) => _get(`/admin/sub-admins/activity?limit=${limit}`)
+export const listSubAdminActivityPaged = ({ q = '', subAdmin = '', page = 1, pageSize = 25 } = {}) => {
+  const p = new URLSearchParams()
+  if (q) p.set('q', q)
+  if (subAdmin && subAdmin !== 'all') p.set('sub_admin', subAdmin)
+  p.set('page', page)
+  p.set('page_size', pageSize)
+  return _get(`/admin/sub-admins/activity/paged?${p}`)
+}
+
 
 // ---- /admin stats ----
 export const statsOverview = () => _get('/admin/stats/overview')

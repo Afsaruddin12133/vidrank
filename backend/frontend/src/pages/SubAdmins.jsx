@@ -1,8 +1,68 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   listSubAdmins, addSubAdmin, updateSubAdmin, deleteSubAdmin,
+  listSubAdminActivityPaged, listSubAdminActivity,
   fmtInt, fmtClock,
 } from '../api.js'
+
+function PaginationControls({ page, totalPages, totalCount, startIndex, endIndex, onPageChange }) {
+  if (totalCount === 0) return null
+
+  const pagesToShow = []
+  const maxButtons = 5
+  let startP = Math.max(1, page - Math.floor(maxButtons / 2))
+  let endP = Math.min(totalPages, startP + maxButtons - 1)
+  if (endP - startP + 1 < maxButtons) {
+    startP = Math.max(1, endP - maxButtons + 1)
+  }
+  for (let p = startP; p <= endP; p++) {
+    pagesToShow.push(p)
+  }
+
+  return (
+    <div className="pagination-bar">
+      <div className="pagination-info">
+        Showing <span className="mono">{startIndex + 1}</span>–<span className="mono">{endIndex}</span> of <span className="mono">{fmtInt(totalCount)}</span> activity logs
+      </div>
+      
+      {totalPages > 1 && (
+        <div className="pagination-buttons">
+          <button className="btn sm ghost" disabled={page <= 1} onClick={() => onPageChange(1)} title="First page">«</button>
+          <button className="btn sm ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)} title="Previous page">Prev</button>
+          
+          {startP > 1 && <span className="pagination-ellipsis">…</span>}
+          {pagesToShow.map((p) => (
+            <button
+              key={p}
+              className={`btn sm ${p === page ? 'primary' : 'ghost'}`}
+              onClick={() => onPageChange(p)}
+              style={{ minWidth: 28, padding: '4px 8px' }}
+            >
+              {p}
+            </button>
+          ))}
+          {endP < totalPages && <span className="pagination-ellipsis">…</span>}
+          
+          <button className="btn sm ghost" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} title="Next page">Next</button>
+          <button className="btn sm ghost" disabled={page >= totalPages} onClick={() => onPageChange(totalPages)} title="Last page">»</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatDetails(detailsJson) {
+  if (!detailsJson) return '—'
+  try {
+    const obj = typeof detailsJson === 'string' ? JSON.parse(detailsJson) : detailsJson
+    if (!obj || typeof obj !== 'object') return String(detailsJson)
+    return Object.entries(obj)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ')
+  } catch {
+    return String(detailsJson)
+  }
+}
 
 export default function SubAdmins() {
   const [rows, setRows] = useState([])
@@ -18,7 +78,27 @@ export default function SubAdmins() {
   const [editPassword, setEditPassword] = useState('')
   const [editActive, setEditActive] = useState(true)
 
-  const load = useCallback(async () => {
+  // Sub Admin Activity state
+  const [activityQ, setActivityQ] = useState('')
+  const [debouncedActivityQ, setDebouncedActivityQ] = useState('')
+  const [subAdminFilter, setSubAdminFilter] = useState('all')
+  const [activityPage, setActivityPage] = useState(1)
+  const [activityPageSize, setActivityPageSize] = useState(10)
+  const [activityData, setActivityData] = useState(null)
+  const [activityBusy, setActivityBusy] = useState(false)
+
+  // Debounce activity search
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedActivityQ(activityQ), 300)
+    return () => clearTimeout(id)
+  }, [activityQ])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setActivityPage(1)
+  }, [debouncedActivityQ, subAdminFilter, activityPageSize])
+
+  const loadSubAdmins = useCallback(async () => {
     setBusy(true)
     setError('')
     try {
@@ -31,7 +111,35 @@ export default function SubAdmins() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadActivity = useCallback(async () => {
+    setActivityBusy(true)
+    try {
+      // Try paged server API first
+      const res = await listSubAdminActivityPaged({
+        q: debouncedActivityQ,
+        subAdmin: subAdminFilter,
+        page: activityPage,
+        pageSize: activityPageSize,
+      })
+      if (res && Array.isArray(res.activity)) {
+        setActivityData({ isPagedServer: true, ...res })
+        return
+      }
+    } catch {
+      /* Fall back to standard endpoint */
+    }
+    try {
+      const fallbackRes = await listSubAdminActivity(200)
+      setActivityData({ isPagedServer: false, ...fallbackRes })
+    } catch {
+      setActivityData({ isPagedServer: false, activity: [] })
+    } finally {
+      setActivityBusy(false)
+    }
+  }, [debouncedActivityQ, subAdminFilter, activityPage, activityPageSize])
+
+  useEffect(() => { loadSubAdmins() }, [loadSubAdmins])
+  useEffect(() => { loadActivity() }, [loadActivity])
 
   const onCreate = async (e) => {
     e.preventDefault()
@@ -41,7 +149,7 @@ export default function SubAdmins() {
       await addSubAdmin(username.trim(), password)
       setUsername(''); setPassword('')
       setMsg(`Created ${username.trim()}`)
-      await load()
+      await loadSubAdmins()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -65,7 +173,7 @@ export default function SubAdmins() {
       await updateSubAdmin(id, payload)
       setEditingId(null)
       setMsg('Saved')
-      await load()
+      await loadSubAdmins()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -80,13 +188,45 @@ export default function SubAdmins() {
     try {
       await deleteSubAdmin(r.id)
       setMsg(`Deleted ${r.username}`)
-      await load()
+      await loadSubAdmins()
     } catch (err) {
       setError(err.message)
     } finally {
       setActing(null)
     }
   }
+
+  // Calculate paginated activity logs
+  const rawActivityList = activityData?.activity || []
+  const isPagedServer = !!activityData?.isPagedServer
+
+  const { pagedActivity, totalActivityCount, totalActivityPages, curtActivityPage, activityStartIdx, activityEndIdx } = useMemo(() => {
+    if (isPagedServer) {
+      const tc = activityData?.total ?? rawActivityList.length
+      const tp = activityData?.pages ?? Math.max(1, Math.ceil(tc / activityPageSize))
+      const cp = activityData?.page ?? activityPage
+      const sIdx = (cp - 1) * activityPageSize
+      const eIdx = Math.min(sIdx + rawActivityList.length, tc)
+      return { pagedActivity: rawActivityList, totalActivityCount: tc, totalActivityPages: tp, curtActivityPage: cp, activityStartIdx: sIdx, activityEndIdx: eIdx }
+    } else {
+      const filtered = rawActivityList.filter((item) => {
+        const ql = debouncedActivityQ.trim().toLowerCase()
+        const matchesQ = !ql ||
+          (item.sub_admin_username || '').toLowerCase().includes(ql) ||
+          (item.action || '').toLowerCase().includes(ql) ||
+          (item.target_uid || '').toLowerCase().includes(ql) ||
+          (item.target_email || '').toLowerCase().includes(ql)
+        const matchesSub = subAdminFilter === 'all' || item.sub_admin_username === subAdminFilter
+        return matchesQ && matchesSub
+      })
+      const tc = filtered.length
+      const tp = Math.max(1, Math.ceil(tc / activityPageSize))
+      const cp = Math.min(activityPage, tp)
+      const sIdx = (cp - 1) * activityPageSize
+      const eIdx = Math.min(sIdx + activityPageSize, tc)
+      return { pagedActivity: filtered.slice(sIdx, eIdx), totalActivityCount: tc, totalActivityPages: tp, curtActivityPage: cp, activityStartIdx: sIdx, activityEndIdx: eIdx }
+    }
+  }, [rawActivityList, isPagedServer, activityData, activityPage, activityPageSize, debouncedActivityQ, subAdminFilter])
 
   return (
     <div className="stack">
@@ -211,6 +351,92 @@ export default function SubAdmins() {
             </tbody>
           </table>
         )}
+      </section>
+
+      {/* Sub-Admin Audit Activity Log */}
+      <section className="card">
+        <div className="card-label">
+          Sub-Admin Activity Audit Log {totalActivityCount > 0 ? `(${fmtInt(totalActivityCount)} total)` : ''}
+        </div>
+        <p className="login-sub" style={{ marginTop: 4 }}>
+          Audit trail of every user-management action taken by sub-admins (tier changes, status toggles, quota resets).
+        </p>
+
+        <div className="card-filter-toolbar">
+          <div className="toolbar-left">
+            <input
+              className="in"
+              style={{ maxWidth: 260 }}
+              placeholder="Search sub-admin, action, or target UID…"
+              value={activityQ}
+              onChange={(e) => setActivityQ(e.target.value)}
+            />
+            {rows.length > 0 && (
+              <select className="in" style={{ width: 140 }} value={subAdminFilter} onChange={(e) => setSubAdminFilter(e.target.value)}>
+                <option value="all">All sub-admins</option>
+                {rows.map((r) => (
+                  <option key={r.id} value={r.username}>{r.username}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="toolbar-right">
+            <label className="field inline">
+              <span>per page</span>
+              <select className="in" style={{ width: 85 }} value={activityPageSize} onChange={(e) => setActivityPageSize(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {pagedActivity.length === 0 ? (
+          <div className="empty">{activityBusy ? 'Loading activity logs…' : 'No sub-admin activity recorded yet.'}</div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Sub-Admin</th>
+                <th>Action</th>
+                <th>Target User</th>
+                <th>Details</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedActivity.map((item, idx) => (
+                <tr key={item.id || `act-${idx}`}>
+                  <td><span className="badge cool">{item.sub_admin_username}</span></td>
+                  <td>
+                    <span className="badge ok" style={{ textTransform: 'uppercase' }}>
+                      {item.action}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span className="mono" style={{ fontSize: 12 }}>{item.target_email || item.target_uid}</span>
+                      {item.target_email && <span className="card-sub" style={{ margin: 0, fontSize: 11 }}>UID: {item.target_uid}</span>}
+                    </div>
+                  </td>
+                  <td>{formatDetails(item.details)}</td>
+                  <td>{fmtClock(item.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <PaginationControls
+          page={curtActivityPage}
+          totalPages={totalActivityPages}
+          totalCount={totalActivityCount}
+          startIndex={activityStartIdx}
+          endIndex={activityEndIdx}
+          onPageChange={setActivityPage}
+        />
       </section>
     </div>
   )
