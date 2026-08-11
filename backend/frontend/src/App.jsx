@@ -198,11 +198,11 @@ export default function App() {
                 flexShrink: 0,
               }}
             >
-              {(getAdminUser().trim()[0] || (isSub ? 'S' : 'A')).toUpperCase()}
+              {isSub ? 'S' : 'A'}
             </div>
             <div className="sidebar-user-info">
-              <span className="sidebar-user-name">{getAdminUser()}</span>
-              <span className="sidebar-user-role">{isSub ? 'Sub Admin' : 'Super Admin'}</span>
+              <span className="sidebar-user-name">{isSub ? (getAdminUser() !== 'Super Admin' ? getAdminUser() : 'Sub Admin') : 'Super Admin'}</span>
+              <span className="sidebar-user-role">{isSub ? 'Sub Admin' : 'Firebase Admin'}</span>
             </div>
             <button className="sidebar-logout-btn" onClick={logout} title="Sign Out">
               <IconLogout />
