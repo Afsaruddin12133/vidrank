@@ -28,6 +28,25 @@ function Avatar({ u }) {
   )
 }
 
+function getProDaysRemaining(expiresAt) {
+  if (!expiresAt) return 0
+  let expTimeMs = 0
+  if (typeof expiresAt === 'number') {
+    expTimeMs = expiresAt > 1e11 ? expiresAt : expiresAt * 1000
+  } else if (typeof expiresAt === 'string') {
+    if (!isNaN(expiresAt)) {
+      const num = Number(expiresAt)
+      expTimeMs = num > 1e11 ? num : num * 1000
+    } else {
+      expTimeMs = new Date(expiresAt).getTime()
+    }
+  }
+  if (!expTimeMs || isNaN(expTimeMs)) return 0
+  const diffMs = expTimeMs - Date.now()
+  if (diffMs <= 0) return 0
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
 function ProModal({ user, onClose, onConfirm }) {
   const [duration, setDuration] = useState('30') // default 1 month (30 days)
   const [customDays, setCustomDays] = useState('30')
@@ -182,7 +201,14 @@ export default function Users() {
     const email = u.email || u.name || uid
     if (selectedTier === 'pro') {
       setProModalUser({ uid, email, name: u.name, raw: u })
-    } else {
+    } else if (selectedTier === 'free') {
+      const daysLeft = getProDaysRemaining(u.expires_at)
+      if (u.tier === 'pro' && daysLeft > 0) {
+        alert(
+          `⚠️ Cannot downgrade to Free!\n\nUser "${email}" has an active Pro package running for another ${daysLeft} days.\n\nYou can only downgrade this account to Free after the Pro package time expires.`
+        )
+        return
+      }
       onDowngradeToFree(uid, email)
     }
   }
@@ -332,6 +358,7 @@ export default function Users() {
                 const usageVal = u.usage_count ?? u.usageCount ?? 0
                 const syncTs = u.synced_at || u.updatedAt
                 const email = u.email || u.name || uid
+                const daysRemaining = getProDaysRemaining(u.expires_at)
 
                 return (
                   <tr key={uid}>
@@ -345,6 +372,9 @@ export default function Users() {
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>{userTier}</span>
+                        {userTier === 'pro' && daysRemaining > 0 && (
+                          <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
+                        )}
                         {u.balance > 0 && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{u.balance} paid</span>}
                       </div>
                     </td>

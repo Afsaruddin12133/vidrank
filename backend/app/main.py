@@ -1421,6 +1421,19 @@ async def admin_set_user(request: Request, uid: str):
     tier = body.get("tier")
     if tier and str(tier).strip().lower() in ("free", "pro"):
         t_val = str(tier).strip().lower()
+        if t_val == "free" and before.get("tier") == "pro":
+            exp_raw = before.get("expires_at")
+            if exp_raw:
+                try:
+                    exp_ts = int(exp_raw) if str(exp_raw).isdigit() else 0
+                    if exp_ts > int(time.time()):
+                        days_left = max(1, (exp_ts - int(time.time())) // 86400)
+                        return JSONResponse(
+                            {"error": f"Cannot downgrade to Free! User has an active Pro package running ({days_left} days remaining)."},
+                            status_code=400
+                        ),
+                except Exception:
+                    pass
         try:
             await sync.set_user_tier(env, uid, t_val)
         except Exception:
