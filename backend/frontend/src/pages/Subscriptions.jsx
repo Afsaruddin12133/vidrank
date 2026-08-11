@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listSubscriptions, approveSubscription, rejectSubscription, setUserTier, fmtInt } from '../api.js'
+import { listSubscriptions, approveSubscription, rejectSubscription, setUserTier } from '../api.js'
 
 const AVATAR_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#059669', '#d97706', '#dc2626', '#0891b2']
 
@@ -7,7 +7,7 @@ function UserAvatar({ name = '', email = '' }) {
   const label = name || email || '?'
   const initial = (label.trim()[0] || '?').toUpperCase()
   const hash = [...label].reduce((a, c) => a + c.charCodeAt(0), 0)
-  const color = AVATAR_COLORS[hash % AVATAR_COLORS.length]
+  const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
   return (
     <span
       aria-hidden="true"
@@ -86,7 +86,7 @@ export default function Subscriptions() {
     }
   }
 
-  const pendingCount = data.filter((s) => (s.status || '').toLowerCase() === 'pending').length
+  const pendingCount = (data || []).filter((s) => (s.status || '').toLowerCase() === 'pending').length
 
   return (
     <div className="stack">
@@ -135,16 +135,17 @@ export default function Subscriptions() {
             </thead>
             <tbody>
               {data.map((sub) => {
-                const statusLower = (sub.status || 'pending').toLowerCase()
+                const statusLower = String(sub.status || 'pending').toLowerCase()
                 const isApproved = statusLower === 'approved' || statusLower === 'succeeded'
                 const isRejected = statusLower === 'rejected'
                 const isPending = statusLower === 'pending'
                 const userName = sub.user_name || 'Unknown'
-                const userEmail = sub.user_email || (sub.user_id !== 'Unknown' ? sub.user_id : 'New Subscriber')
-                const amountUsdText = sub.amount_usd ? `$${sub.amount_usd.toFixed(2)} USD` : ''
+                const userEmail = sub.user_email || (sub.user_id && sub.user_id !== 'Unknown' ? sub.user_id : 'New Subscriber')
+                const amountUsdNum = Number(sub.amount_usd)
+                const amountUsdText = !isNaN(amountUsdNum) && amountUsdNum > 0 ? `$${amountUsdNum.toFixed(2)} USD` : ''
 
                 return (
-                  <tr key={sub.id}>
+                  <tr key={sub.id || Math.random()}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <UserAvatar name={userName} email={userEmail} />
@@ -219,7 +220,7 @@ export default function Subscriptions() {
                           </button>
                         </div>
                       ) : (
-                        <span style={{ fontSize: 12, color: '#6b7280', italic: 'true' }}>Processed</span>
+                        <span style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>Processed</span>
                       )}
                     </td>
                   </tr>
