@@ -330,126 +330,128 @@ export default function Users() {
         {pageUsers.length === 0 ? (
           <div className="empty" style={{ marginTop: 20 }}>{busy ? 'Loading user directory…' : 'No users found.'}</div>
         ) : (
-          <table className="table" style={{ marginTop: 20 }}>
-            <thead>
-              <tr>
-                <th>USER</th>
-                <th>PLAN TIER</th>
-                <th>USAGE (TODAY)</th>
-                <th>STATUS</th>
-                <th>LAST SYNC</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageUsers.map((u, idx) => {
-                const uid = u.firebase_uid || u.uid || u.id || `user-${idx}`
-                const email = u.email || '—'
-                const name = u.name || u.displayName || '—'
-                const userTier = u.tier || 'free'
-                const isActive = u.is_active ?? u.isActive ?? true
-                const usageVal = u.usage_count ?? u.usageCount ?? 0
-                const syncTs = u.synced_at || u.updatedAt
-                const daysRemaining = getProDaysRemaining(u.expires_at)
-                const uBal = Number(u.balance || 0)
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>USER</th>
+                  <th>PLAN TIER</th>
+                  <th>USAGE (TODAY)</th>
+                  <th>STATUS</th>
+                  <th>LAST SYNC</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageUsers.map((u, idx) => {
+                  const uid = u.firebase_uid || u.uid || u.id || `user-${idx}`
+                  const email = u.email || '—'
+                  const name = u.name || u.displayName || '—'
+                  const userTier = u.tier || 'free'
+                  const isActive = u.is_active ?? u.isActive ?? true
+                  const usageVal = u.usage_count ?? u.usageCount ?? 0
+                  const syncTs = u.synced_at || u.updatedAt
+                  const daysRemaining = getProDaysRemaining(u.expires_at)
+                  const uBal = Number(u.balance || 0)
 
-                return (
-                  <tr key={uid}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Avatar u={u} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{name !== '—' ? name : email}</span>
-                          {name !== '—' && <span style={{ fontSize: 12, color: '#9ca3af' }}>{email}</span>}
+                  return (
+                    <tr key={uid}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Avatar u={u} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{name !== '—' ? name : email}</span>
+                            {name !== '—' && <span style={{ fontSize: 12, color: '#9ca3af' }}>{email}</span>}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-                        <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>
-                          {userTier}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                          <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>
+                            {userTier}
+                          </span>
+                          {userTier === 'pro' && daysRemaining > 0 && (
+                            <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
+                          )}
+                          {uBal > 0 && (
+                            <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{uBal} balance</span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>
+                          {fmtInt(usageVal)}
                         </span>
-                        {userTier === 'pro' && daysRemaining > 0 && (
-                          <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
-                        )}
-                        {uBal > 0 && (
-                          <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{uBal} balance</span>
-                        )}
-                      </div>
-                    </td>
+                      </td>
 
-                    <td>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>
-                        {fmtInt(usageVal)}
-                      </span>
-                    </td>
-
-                    <td>
-                      <button
-                        className={`status ${isActive ? 'status-ok' : 'status-err'}`}
-                        style={{ border: 'none', cursor: 'pointer', background: 'transparent', padding: 0, fontWeight: 600 }}
-                        disabled={acting === uid}
-                        onClick={() => onToggleStatus(uid, isActive, email)}
-                        title={isActive ? "Click to suspend account" : "Click to activate account"}
-                      >
-                        {isActive ? 'active 🟢' : 'suspended 🔴'}
-                      </button>
-                    </td>
-
-                    <td>
-                      <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                        {syncTs ? fmtClock(syncTs) : '—'}
-                      </span>
-                    </td>
-
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <td>
                         <button
-                          className="btn sm primary"
-                          style={{
-                            height: 30,
-                            padding: '0 12px',
-                            fontSize: 12,
-                            background: userTier === 'pro' ? '#059669' : '#2563eb',
-                            border: 'none',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
+                          className={`status ${isActive ? 'status-ok' : 'status-err'}`}
+                          style={{ border: 'none', cursor: 'pointer', background: 'transparent', padding: 0, fontWeight: 600 }}
                           disabled={acting === uid}
-                          onClick={() => setProModalUser({ uid, email, name: u.name, raw: u })}
-                          title={userTier === 'pro' ? "Add +৳499 Balance Credit" : "Upgrade account to PRO"}
+                          onClick={() => onToggleStatus(uid, isActive, email)}
+                          title={isActive ? "Click to suspend account" : "Click to activate account"}
                         >
-                          {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Upgrade PRO'}
+                          {isActive ? 'active 🟢' : 'suspended 🔴'}
                         </button>
-                        <button
-                          className="btn sm ghost"
-                          style={{ height: 30, padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
-                          disabled={acting === uid}
-                          onClick={() => onEditQuota(uid, usageVal, email)}
-                          title="Edit Quota Usage"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          className="btn sm ghost"
-                          style={{ height: 30, padding: '0 10px', fontSize: 12, color: '#10b981', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
-                          disabled={acting === uid}
-                          onClick={() => onResetQuota(uid, email)}
-                          title="Reset Quota Usage to 0"
-                        >
-                          🔄 Reset
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+
+                      <td>
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                          {syncTs ? fmtClock(syncTs) : '—'}
+                        </span>
+                      </td>
+
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            className="btn sm primary"
+                            style={{
+                              height: 30,
+                              padding: '0 12px',
+                              fontSize: 12,
+                              background: userTier === 'pro' ? '#059669' : '#2563eb',
+                              border: 'none',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            disabled={acting === uid}
+                            onClick={() => setProModalUser({ uid, email, name: u.name, raw: u })}
+                            title={userTier === 'pro' ? "Add +৳499 Balance Credit" : "Upgrade account to PRO"}
+                          >
+                            {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Upgrade PRO'}
+                          </button>
+                          <button
+                            className="btn sm ghost"
+                            style={{ height: 30, padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
+                            disabled={acting === uid}
+                            onClick={() => onEditQuota(uid, usageVal, email)}
+                            title="Edit Quota Usage"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            className="btn sm ghost"
+                            style={{ height: 30, padding: '0 10px', fontSize: 12, color: '#10b981', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
+                            disabled={acting === uid}
+                            onClick={() => onResetQuota(uid, email)}
+                            title="Reset Quota Usage to 0"
+                          >
+                            🔄 Reset
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {data && pages > 1 && (

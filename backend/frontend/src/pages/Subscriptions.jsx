@@ -210,115 +210,117 @@ export default function Subscriptions() {
         {data.length === 0 ? (
           <div className="empty" style={{ marginTop: 20 }}>{busy ? 'Loading subscription requests…' : 'No subscription requests found.'}</div>
         ) : (
-          <table className="table" style={{ marginTop: 20 }}>
-            <thead>
-              <tr>
-                <th>USER</th>
-                <th>PLAN</th>
-                <th>BKASH NUMBER</th>
-                <th>TRANSACTION ID</th>
-                <th>AMOUNT</th>
-                <th>REQUESTED AT</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((sub) => {
-                const statusLower = String(sub.status || 'pending').toLowerCase()
-                const isApproved = statusLower === 'approved' || statusLower === 'succeeded'
-                const isRejected = statusLower === 'rejected'
-                const isPending = statusLower === 'pending'
-                const userName = sub.user_name || 'Unknown'
-                const userEmail = sub.user_email || (sub.user_id && sub.user_id !== 'Unknown' ? sub.user_id : 'New Subscriber')
-                const photoUrl = sub.photo_url || sub.photoUrl || ''
-                const amountUsdNum = Number(sub.amount_usd)
-                const amountUsdText = !isNaN(amountUsdNum) && amountUsdNum > 0 ? `$${amountUsdNum.toFixed(2)} USD` : ''
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>USER</th>
+                  <th>PLAN</th>
+                  <th>BKASH NUMBER</th>
+                  <th>TRANSACTION ID</th>
+                  <th>AMOUNT</th>
+                  <th>REQUESTED AT</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((sub) => {
+                  const statusLower = String(sub.status || 'pending').toLowerCase()
+                  const isApproved = statusLower === 'approved' || statusLower === 'succeeded'
+                  const isRejected = statusLower === 'rejected'
+                  const isPending = statusLower === 'pending'
+                  const userName = sub.user_name || 'Unknown'
+                  const userEmail = sub.user_email || (sub.user_id && sub.user_id !== 'Unknown' ? sub.user_id : 'New Subscriber')
+                  const photoUrl = sub.photo_url || sub.photoUrl || ''
+                  const amountUsdNum = Number(sub.amount_usd)
+                  const amountUsdText = !isNaN(amountUsdNum) && amountUsdNum > 0 ? `$${amountUsdNum.toFixed(2)} USD` : ''
 
-                return (
-                  <tr key={sub.id || Math.random()}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <UserAvatar name={userName} email={userEmail} photo={photoUrl} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{userName}</span>
-                          <span style={{ fontSize: 12, color: '#9ca3af' }}>{userEmail}</span>
+                  return (
+                    <tr key={sub.id || Math.random()}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <UserAvatar name={userName} email={userEmail} photo={photoUrl} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{userName}</span>
+                            <span style={{ fontSize: 12, color: '#9ca3af' }}>{userEmail}</span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ textTransform: 'capitalize', fontWeight: 500, fontSize: 13, color: '#e5e7eb' }}>
-                        {sub.plan || 'Monthly'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#d1d5db' }}>
-                        {sub.bkash_number || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#38bdf8', fontSize: 13 }}>
-                        {sub.transaction_id || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 700, color: '#10b981', fontSize: 13 }}>
-                          {sub.amount_bdt ? `${sub.amount_bdt} BDT` : '245 BDT'}
+                      </td>
+                      <td>
+                        <span style={{ textTransform: 'capitalize', fontWeight: 500, fontSize: 13, color: '#e5e7eb' }}>
+                          {sub.plan || 'Monthly'}
                         </span>
-                        {amountUsdText && <span style={{ fontSize: 11, color: '#6b7280' }}>{amountUsdText}</span>}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                        {sub.requested_at || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      {isApproved && (
+                      </td>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#d1d5db' }}>
+                          {sub.bkash_number || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#38bdf8', fontSize: 13 }}>
+                          {sub.transaction_id || '—'}
+                        </span>
+                      </td>
+                      <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ color: '#10b981', fontWeight: 700, fontSize: 13 }}>Approved</span>
-                          {sub.subscription_id && (
-                            <span style={{ fontSize: 11, color: '#6b7280' }}>ID: {sub.subscription_id}</span>
-                          )}
+                          <span style={{ fontWeight: 700, color: '#10b981', fontSize: 13 }}>
+                            {sub.amount_bdt ? `${sub.amount_bdt} BDT` : '245 BDT'}
+                          </span>
+                          {amountUsdText && <span style={{ fontSize: 11, color: '#6b7280' }}>{amountUsdText}</span>}
                         </div>
-                      )}
-                      {isRejected && (
-                        <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 13 }}>Rejected</span>
-                      )}
-                      {isPending && (
-                        <span style={{ color: '#f59e0b', fontWeight: 600, fontSize: 13 }}>Pending</span>
-                      )}
-                    </td>
-                    <td>
-                      {isPending ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            className="btn sm primary"
-                            disabled={actingId === sub.id}
-                            onClick={() => handleApprove(sub)}
-                            style={{ padding: '4px 10px', fontSize: 12, background: '#10b981', border: 'none' }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="btn sm ghost"
-                            disabled={actingId === sub.id}
-                            onClick={() => handleReject(sub)}
-                            style={{ padding: '4px 10px', fontSize: 12, color: '#ef4444' }}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>Processed</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                          {sub.requested_at || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        {isApproved && (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ color: '#10b981', fontWeight: 700, fontSize: 13 }}>Approved</span>
+                            {sub.subscription_id && (
+                              <span style={{ fontSize: 11, color: '#6b7280' }}>ID: {sub.subscription_id}</span>
+                            )}
+                          </div>
+                        )}
+                        {isRejected && (
+                          <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 13 }}>Rejected</span>
+                        )}
+                        {isPending && (
+                          <span style={{ color: '#f59e0b', fontWeight: 600, fontSize: 13 }}>Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        {isPending ? (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              className="btn sm primary"
+                              disabled={actingId === sub.id}
+                              onClick={() => handleApprove(sub)}
+                              style={{ padding: '4px 10px', fontSize: 12, background: '#10b981', border: 'none' }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="btn sm ghost"
+                              disabled={actingId === sub.id}
+                              onClick={() => handleReject(sub)}
+                              style={{ padding: '4px 10px', fontSize: 12, color: '#ef4444' }}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>Processed</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
