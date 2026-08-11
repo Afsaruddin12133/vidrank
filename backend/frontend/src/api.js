@@ -137,23 +137,6 @@ export const setUserTier = (uid, tier, targetEmail = '', options = {}) => {
   }
   recordLocalSubActivity('set_user', uid, targetEmail, details)
 
-  if (tier === 'pro') {
-    try {
-      const expMap = JSON.parse(localStorage.getItem('vidrank_user_expirations') || '{}')
-      expMap[uid] = Math.floor(Date.now() / 1000) + (Number(durationDays) * 86400)
-      localStorage.setItem('vidrank_user_expirations', JSON.stringify(expMap))
-    } catch {}
-
-    if (addBalance) {
-      try {
-        const balMap = JSON.parse(localStorage.getItem('vidrank_user_balances') || '{}')
-        const curBal = Number(balMap[uid] || 0)
-        balMap[uid] = curBal + Number(amount)
-        localStorage.setItem('vidrank_user_balances', JSON.stringify(balMap))
-      } catch {}
-    }
-  }
-
   return _json(`/admin/users/${uid}`, 'PATCH', {
     tier,
     duration_days: durationDays,
