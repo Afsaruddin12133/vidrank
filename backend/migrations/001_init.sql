@@ -82,3 +82,11 @@ CREATE TABLE IF NOT EXISTS memory_graph (        -- see plan/MEMORY-GRAPH.md
   ts            INTEGER NOT NULL,
   PRIMARY KEY (user_id, node_type, node_id)
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (        -- admin-config key-value store
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+INSERT OR REPLACE INTO app_settings (key, value)
+VALUES ('free_quota', '{"limit":10,"cadence":"daily","window_days":0}');

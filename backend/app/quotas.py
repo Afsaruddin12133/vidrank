@@ -21,6 +21,21 @@ except Exception:
 DAY_S = 86400
 
 
+def _self_uid(state) -> str:
+    """Best-effort uid from a name-based DO id (state.id)."""
+    try:
+        did = getattr(state, "id", None)
+        if did is None:
+            return "unknown"
+        name = did.name() if hasattr(did, "name") else None
+        if isinstance(name, str) and name:
+            return name
+        s = str(did)
+        return s if s and s != "unknown" else "unknown"
+    except Exception:
+        return "unknown"
+
+
 class QuotaError(Exception):
     """Raised by QuotaDO.inc when the user is out of quota."""
 
@@ -42,14 +57,24 @@ class QuotaDO(DurableObject):
 
     # -- storage helpers ----------------------------------------------------- #
     async def _load(self) -> None:
+        now = time.time()
+        today_utc_start = (int(now) // DAY_S) * DAY_S
         if self._day_started is not None:
+            if self._day_started < today_utc_start:
+                self._day_started = today_utc_start
+                self._used = 0
             return
         try:
             data = await self.state.storage.get("q") or {}
-            self._day_started = data.get("day_started", time.time())
-            self._used = data.get("used", 0)
+            stored_start = data.get("day_started", 0)
+            if stored_start < today_utc_start:
+                self._day_started = today_utc_start
+                self._used = 0
+            else:
+                self._day_started = stored_start
+                self._used = data.get("used", 0)
         except Exception:
-            self._day_started = time.time()
+            self._day_started = today_utc_start
             self._used = 0
 
     async def _save(self) -> None:
@@ -62,63 +87,105 @@ class QuotaDO(DurableObject):
 
     # -- tier / limit -------------------------------------------------------- #
     async def _limit(self) -> int | None:
-        """None => unlimited (pro). Reads plan doc daily_limit via D1."""
+        """None => unlimited (pro, or free cadence=unlimited).
+        Reads admin-configurable free limit (DEFAULT fallback if unset)."""
         try:
-            uid = getattr(self.state, "id", None) or "unknown"
+            uid = _self_uid(self.state)
             user = await db.get_user(self.env, uid) if uid != "unknown" else None
         except Exception:
             user = None
-        tier = (user or {}).get("tier") or C.TIER_FREE
+        tier = db.get_effective_tier(user) if user else C.TIER_FREE
         if tier == C.TIER_PRO:
             return None
         try:
-            plan = await db.get_plan(self.env, C.TIER_FREE)
-            limit = (plan or {}).get("daily_limit")
-            return int(limit) if limit else C.DEFAULT_FREE_DAILY_LIMIT
+            cfg = await db.get_free_quota(self.env)
+        except Exception:
+            cfg = {}
+        if cfg.get("cadence") == C.CADENCE_UNLIMITED:
+            return None
+        try:
+            return int(cfg.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT)
         except Exception:
             return C.DEFAULT_FREE_DAILY_LIMIT
 
     # -- public RPC ---------------------------------------------------------- #
     async def _rollover(self) -> None:
         now = time.time()
-        if now - (self._day_started or 0) >= DAY_S:
-            self._day_started = now
+        today_utc_start = (int(now) // DAY_S) * DAY_S
+        if (self._day_started or 0) < today_utc_start:
+            self._day_started = today_utc_start
             self._used = 0
             await self._save()
+
+    async def _window_expired(self) -> bool:
+        """daily cadence with a non-zero window: deny after `window_days` from signup."""
+        try:
+            cfg = await db.get_free_quota(self.env)
+            days = int(cfg.get("window_days") or 0)
+            if cfg.get("cadence") != C.CADENCE_DAILY or days <= 0:
+                return False
+            uid = _self_uid(self.state)
+            user = await db.get_user(self.env, uid) if uid != "unknown" else None
+            tier = db.get_effective_tier(user) if user else C.TIER_FREE
+            if tier == C.TIER_PRO:
+                return False
+            synced_at = (user or {}).get("synced_at") or 0
+            return bool(synced_at) and time.time() - synced_at > days * DAY_S
+        except Exception:
+            return False
+
+    async def _cadence_never(self) -> bool:
+        try:
+            cfg = await db.get_free_quota(self.env)
+        except Exception:
+            cfg = {}
+        return cfg.get("cadence") == C.CADENCE_NEVER
 
     async def inc(self) -> dict:
         """Increment usage. Returns verdict; raises QuotaError when over."""
         await self._load()
-        await self._rollover()
+        if not await self._cadence_never():
+            await self._rollover()
         limit = await self._limit()
-        if limit is not None and self._used >= limit:
+        if await self._window_expired() or (limit is not None and self._used >= limit):
             raise QuotaError()
         self._used += 1
         await self._save()
         remaining = limit - self._used if limit is not None else -1
+        now = time.time()
+        next_utc_day = ((int(now) // DAY_S) + 1) * DAY_S
         return {
             "ok": True,
             "remaining": remaining,
-            "resets_in_seconds": max(0, int(DAY_S - (time.time() - self._day_started))),
+            "resets_in_seconds": max(0, int(next_utc_day - now)),
             "limit": limit,
         }
 
     async def remaining(self) -> dict:
         await self._load()
-        await self._rollover()
+        if not await self._cadence_never():
+            await self._rollover()
         limit = await self._limit()
         remaining = limit - self._used if limit is not None else -1
+        now = time.time()
+        next_utc_day = ((int(now) // DAY_S) + 1) * DAY_S
+        resets = max(0, int(next_utc_day - now))
+        if await self._window_expired():
+            return {"ok": False, "remaining": 0, "resets_in_seconds": resets, "limit": limit}
         return {
             "ok": limit is None or remaining > 0,
             "remaining": remaining,
-            "resets_in_seconds": max(0, int(DAY_S - (time.time() - self._day_started))),
+            "resets_in_seconds": resets,
             "limit": limit,
         }
 
     async def resets_in_seconds(self) -> int:
         await self._load()
-        await self._rollover()
-        return max(0, int(DAY_S - (time.time() - self._day_started)))
+        if not await self._cadence_never():
+            await self._rollover()
+        now = time.time()
+        next_utc_day = ((int(now) // DAY_S) + 1) * DAY_S
+        return max(0, int(next_utc_day - now))
 
     async def checkpoint(self) -> None:
         """Durable daily rollup write (scheduled, not per-request)."""
@@ -135,7 +202,7 @@ async def get_quota(env, uid: str) -> dict:
     Pro users pass always; free users pass while remaining > 0.
     """
     try:
-        do = env.QUOTA.get(uid)
+        do = env.QUOTA.get(env.QUOTA.idFromName(uid))
         return await do.remaining()
     except Exception:
         # DO unavailable => permissive fallback (defense-in-depth layer 4).

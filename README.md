@@ -34,7 +34,7 @@ npm run dev
 
 - **Admin Dashboard:** http://localhost:5173
   - Username: (not required)
-  - Password: `admin123`
+  - Password: `#admin23CHECK`
   
 - **Backend API:** http://localhost:8787
   - Health check: http://localhost:8787/healthz
@@ -185,7 +185,7 @@ wrangler d1 execute vidrank --local --file=migrations/001_init.sql
 # Get admin token
 TOKEN=$(curl -s -X POST http://localhost:8787/admin/login \
   -H "Content-Type: application/json" \
-  -d '{"password": "admin123"}' | jq -r '.token')
+  -d '{"password": "#admin23CHECK"}' | jq -r '.token')
 
 # Add Groq account
 curl -X POST http://localhost:8787/admin/accounts \
@@ -205,7 +205,7 @@ curl -X POST http://localhost:8787/admin/accounts \
 ### Backend to Cloudflare Workers
 ```bash
 cd backend
-wrangler deploy
+pywrangler deploy   # NOT `wrangler deploy` — see backend/DEPLOY_NOTE.md (mandatory)
 ```
 
 ### Frontend to Cloudflare Pages
@@ -225,7 +225,7 @@ wrangler pages deploy dist
 ## 🔒 Security Notes
 
 ### Development
-- Default admin password: `admin123`
+- Default admin password: `#admin23CHECK`
 - Change in production via environment variable
 
 ### Production

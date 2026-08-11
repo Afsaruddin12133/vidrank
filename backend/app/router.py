@@ -41,7 +41,7 @@ async def _account_weight(env, account: dict, now: int) -> float:
     """Ask the account's RateState DO for its routing weight (0 = skip)."""
     day = time.strftime("%Y-%m-%d", time.gmtime(now))
     try:
-        do = env.RATESTATE.get(account["id"])
+        do = env.RATESTATE.get(env.RATESTATE.idFromName(account["id"]))
         res = await do.select_weight(day, now, rpm_limit=account.get("rpm_limit"))
         return float(res) if res is not None else 1.0
     except Exception:
@@ -130,7 +130,7 @@ def _rate_headers(headers: dict) -> dict:
 
 async def _observe(env, account: dict, status: int, headers: dict, latency_ms: int) -> None:
     try:
-        do = env.RATESTATE.get(account["id"])
+        do = env.RATESTATE.get(env.RATESTATE.idFromName(account["id"]))
         await do.observe_response(
             account["id"], status=status,
             rate_headers=_rate_headers(headers), latency_ms=latency_ms,
@@ -196,9 +196,9 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
                 try:
                     ra = hdrs.get("retry-after") or hdrs.get("x-ratelimit-reset")
                     if ra:
-                        await env.RATESTATE.get(used_id).note_cooldown(int(float(ra)))
+                        await env.RATESTATE.get(env.RATESTATE.idFromName(used_id)).note_cooldown(int(float(ra)))
                     else:
-                        await env.RATESTATE.get(used_id).note_cooldown(30)
+                        await env.RATESTATE.get(env.RATESTATE.idFromName(used_id)).note_cooldown(30)
                 except Exception:
                     pass
             if status < 400:
@@ -215,7 +215,7 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             error_msg = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"[:1500]
             print(f"[router] provider call failed for {acc.get('id')}: {error_msg}", flush=True)
             try:
-                await env.RATESTATE.get(used_id).note_cooldown(10)
+                await env.RATESTATE.get(env.RATESTATE.idFromName(used_id)).note_cooldown(10)
             except Exception:
                 pass
         if status < 400:

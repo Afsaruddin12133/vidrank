@@ -48,7 +48,7 @@ async def test_all_apis():
         try:
             response = await client.post(
                 f"{backend_url}/admin/login",
-                json={"password": "admin123"},
+                json={"password": "#admin23CHECK"},
                 timeout=5.0
             )
             if response.status_code == 200:
@@ -112,7 +112,7 @@ async def test_all_apis():
         try:
             response = await client.post(
                 f"{frontend_url}/admin/login",
-                json={"password": "admin123"},
+                json={"password": "#admin23CHECK"},
                 timeout=5.0
             )
             if response.status_code == 200:
@@ -172,7 +172,7 @@ async def test_all_apis():
     print(f"{GREEN}✓ CORS is properly configured{RESET}")
     print(f"\n{YELLOW}Next steps:{RESET}")
     print(f"  1. Open http://localhost:5173")
-    print(f"  2. Login with password: admin123")
+    print(f"  2. Login with password: #admin23CHECK")
     print(f"  3. Add a provider account (Groq or OpenRouter)")
     print(f"  4. Test the /v1/chat endpoint with a real API key")
     print(f"{BLUE}{'='*70}{RESET}\n")

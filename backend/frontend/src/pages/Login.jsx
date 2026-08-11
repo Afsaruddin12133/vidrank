@@ -20,8 +20,8 @@ export default function Login({ onAuthed }) {
       setToken(res.token)
       onAuthed()
     } catch (a) {
-      if (a instanceof ApiError && a.status === 401) {
-        setErr('Wrong password.')
+      if (a instanceof ApiError && (a.status === 401 || a.status === 406)) {
+        setErr('Invalid password. ')
         setPassword('')
       } else if (a instanceof ApiError && a.status === 0) {
         setErr('Backend unreachable. Is the worker / dev proxy running?')

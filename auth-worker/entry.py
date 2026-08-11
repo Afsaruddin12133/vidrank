@@ -50,6 +50,9 @@ def _claims_payload(claims: dict) -> dict:
     return {k: claims.get(k) for k in keys if k in claims}
 
 
+_AUTH_CACHE = {}  # token -> {"claims": dict, "exp": int}
+
+
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
         _get_app(self.env)
@@ -62,11 +65,30 @@ class Default(WorkerEntrypoint):
         if not token:
             return self._reject("unauthorized", "missing token")
 
+        import time
+        now = int(time.time())
+
+        # Check fast in-memory cache first to avoid heavy RSA verification CPU limit
+        cached = _AUTH_CACHE.get(token)
+        if cached and cached.get("exp", 0) > now:
+            return Response(
+                json.dumps({"ok": True, "claims": cached["claims"]}),
+                headers={"Content-Type": "application/json"},
+            )
+
         try:
             claims = auth.verify_id_token(token)
+            exp = int(claims.get("exp", now + 3600))
+            payload_claims = _claims_payload(claims)
+            _AUTH_CACHE[token] = {"claims": payload_claims, "exp": exp}
+
+            # Keep cache size bounded
+            if len(_AUTH_CACHE) > 2000:
+                _AUTH_CACHE.clear()
+
             print(f"[auth] verified uid={claims.get('uid')} email={claims.get('email')}", flush=True)
             return Response(
-                json.dumps({"ok": True, "claims": _claims_payload(claims)}),
+                json.dumps({"ok": True, "claims": payload_claims}),
                 headers={"Content-Type": "application/json"},
             )
         except ValueError as e:

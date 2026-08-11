@@ -47,10 +47,61 @@ export const Popup = () => {
   })
   const [loginStage, setLoginStage] = useState<LoginStage>(null)
   const [loginError, setLoginError] = useState('')
+  const [profile, setProfile] = useState<{ displayName: string; email: string; photoURL: string }>({
+    displayName: '',
+    email: '',
+    photoURL: '',
+  })
+  const [plan, setPlan] = useState('')
+  const [usage, setUsage] = useState('')
+
+  const [isQuotaLoading, setIsQuotaLoading] = useState(true)
+
+  const updateQuotaDisplay = (s: any) => {
+    if (!s) return
+    console.log('✅ [POPUP] Updating quota display:', s)
+    if (s.is_suspended || s.is_active === 0) {
+      setPlan('suspended')
+      setUsage('Suspended')
+      setIsQuotaLoading(false)
+      return
+    }
+    const currentPlan = s.plan || 'free'
+    setPlan(currentPlan)
+    if (currentPlan === 'pro' || s.usageLimit === -1 || (s.usageLimit != null && s.usageLimit < 0)) {
+      setUsage('Unlimited')
+    } else {
+      const limit = s.usageLimit != null && s.usageLimit > 0 ? s.usageLimit : 10
+      const remaining = s.remaining != null && s.remaining >= 0 ? s.remaining : Math.max(0, limit - (s.usageCount || 0))
+      const displayText = `${remaining} / ${limit}`
+      setUsage(displayText)
+    }
+    setIsQuotaLoading(false)
+  }
+
+  const refreshPlan = () => {
+    console.log('🔄 [POPUP] Refreshing quota from background...')
+    chrome.runtime.sendMessage({ action: 'getQuota' }, (res) => {
+      if (!res || !res.success) {
+        console.log('❌ [POPUP] Failed to get quota:', res)
+        return
+      }
+      updateQuotaDisplay(res.stats)
+    })
+  }
 
   useEffect(() => {
-    chrome.storage.local.get({ isLoggedIn: false }, (data) => {
+    chrome.storage.local.get({ isLoggedIn: false, quotaStats: null }, (data) => {
       setIsLoggedIn(data.isLoggedIn)
+      if (data.isLoggedIn) {
+        if (data.quotaStats) {
+          updateQuotaDisplay(data.quotaStats)
+        }
+        chrome.storage.local.get({ displayName: '', email: '', photoURL: '' }, (p) => {
+          setProfile({ displayName: p.displayName || '', email: p.email || '', photoURL: p.photoURL || '' })
+        })
+        refreshPlan()
+      }
     })
 
     chrome.storage.sync.get(
@@ -70,6 +121,48 @@ export const Popup = () => {
         })
       },
     )
+
+    // Listen for real-time quota updates from background service worker
+    const handleMessage = (message: any) => {
+      if (message && message.action === 'quotaUpdated' && message.stats) {
+        console.log('⚡ [POPUP] Received real-time quota update:', message.stats)
+        updateQuotaDisplay(message.stats)
+      }
+    }
+
+    const handleStorageChange = (changes: any, area: string) => {
+      if (area === 'local' && changes.quotaStats && changes.quotaStats.newValue) {
+        console.log('⚡ [POPUP] Storage quotaStats changed:', changes.quotaStats.newValue)
+        updateQuotaDisplay(changes.quotaStats.newValue)
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
+  }, [])
+
+  // Refresh quota whenever popup is opened (visibility change)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('👁️ [POPUP] Popup became visible, refreshing quota...');
+        // Popup became visible, refresh quota
+        chrome.storage.local.get({ isLoggedIn: false }, (data) => {
+          if (data.isLoggedIn) {
+            refreshPlan()
+          } else {
+            console.log('ℹ️ [POPUP] User not logged in, skipping quota refresh');
+          }
+        })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   // ─── Handle Login ───────────────────────────────────────────────────────────
@@ -81,6 +174,10 @@ export const Popup = () => {
       setLoginStage(null)
       if (response && response.success) {
         setIsLoggedIn(true)
+        chrome.storage.local.get({ displayName: '', email: '', photoURL: '' }, (p) => {
+          setProfile({ displayName: p.displayName || '', email: p.email || '', photoURL: p.photoURL || '' })
+        })
+        refreshPlan()
       } else {
         setLoginError((response && response.error) || 'Sign-in failed.')
       }
@@ -112,15 +209,22 @@ export const Popup = () => {
             Optimize Every Video. Unlock Better YouTube Rankings.
           </p>
         </div>
-        <a
-          href="https://studio.youtube.com"
-          target="_blank"
-          rel="noreferrer"
-          className="studio-link"
-          title="Open YouTube Studio"
-        >
-          Studio ↗
-        </a>
+        {isLoggedIn && (
+          <div className="popup-profile" title={profile.displayName || profile.email || 'VidRank User'}>
+            <div className="popup-avatar">
+              {profile.photoURL ? (
+                <img src={profile.photoURL} alt="" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="avatar-letter">
+                  {(profile.displayName || profile.email || 'V').trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <span className={`tier-pill ${plan === 'pro' ? 'tier-pill-pro' : 'tier-pill-free'}`}>
+              {plan === 'pro' ? 'PRO' : 'FREE'}
+            </span>
+          </div>
+        )}
       </header>
 
       {/* Login View */}
@@ -162,6 +266,16 @@ export const Popup = () => {
         <main className="popup-main">
           <section className="settings-section">
             <h2>Global Settings</h2>
+
+            <div className="setting-item">
+              <div className="setting-details">
+                <span className="setting-title">Daily Usage</span>
+                <span className="setting-desc">AI tag generations remaining today</span>
+              </div>
+              <span className={`usage-pill ${usage === 'Unlimited' ? 'usage-pill-unlimited' : ''}`}>
+                {isQuotaLoading && !usage ? '...' : (usage || '...')}
+              </span>
+            </div>
 
             <div className="setting-item">
               <div className="setting-details">
@@ -236,16 +350,27 @@ export const Popup = () => {
       {/* Footer */}
       <footer className="popup-footer">
         <span>Powered by VidRank</span>
-        {isLoggedIn && (
+        <div className="footer-actions">
           <a
-            id="btn-logout"
-            href="#"
-            onClick={handleLogout}
-            style={{ color: '#ff4444', textDecoration: 'none', fontSize: 12 }}
+            href="https://studio.youtube.com"
+            target="_blank"
+            rel="noreferrer"
+            className="studio-link"
+            title="Open YouTube Studio"
           >
-            Sign Out
+            Studio ↗
           </a>
-        )}
+          {isLoggedIn && (
+            <a
+              id="btn-logout"
+              href="#"
+              onClick={handleLogout}
+              className="logout-link"
+            >
+              Sign Out
+            </a>
+          )}
+        </div>
       </footer>
     </div>
   )

@@ -4,21 +4,23 @@ import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Accounts from './pages/Accounts.jsx'
 import Tracing from './pages/Tracing.jsx'
+import Users from './pages/Users.jsx'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'tracing', label: 'Tracing / Analytics' },
+  { id: 'users', label: 'Users' },
 ]
 
 export default function App() {
   const [token, setTokenState] = useState(getToken())
-  const [tab, setTab] = useState('accounts')
+  const [tab, setTab] = useState('dashboard')
 
   const logout = () => {
     clearToken()
     setTokenState('')
-    setTab('accounts')
+    setTab('dashboard')
   }
 
   if (!token) {
@@ -53,6 +55,7 @@ export default function App() {
         {tab === 'dashboard' && <Dashboard />}
         {tab === 'accounts' && <Accounts />}
         {tab === 'tracing' && <Tracing />}
+        {tab === 'users' && <Users />}
       </main>
     </div>
   )

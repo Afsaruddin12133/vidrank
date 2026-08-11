@@ -1,0 +1,11 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: ▣
+    - text: vidrank — router dashboard
+  - paragraph [ref=e7]: Admin sign in. Enter the admin password to unlock the control panel.
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: Admin password
+      - textbox "Admin password" [ref=e11]:
+        - /placeholder: ••••••••
+    - button "Sign in" [ref=e12] [cursor=pointer]

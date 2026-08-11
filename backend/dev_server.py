@@ -172,7 +172,7 @@ def _load_vars() -> dict:
             # Also set in os.environ so contracts.py can read it
             os.environ[key] = val
     for k in ("ENCRYPTION_KEY", "JWT_SECRET", "ADMIN_PASS"):
-        out.setdefault(k, "dev-secret" if k != "ADMIN_PASS" else "admin123")
+        out.setdefault(k, "dev-secret" if k != "ADMIN_PASS" else "#admin23CHECK")
     return out
 
 

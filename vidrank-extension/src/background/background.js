@@ -7,7 +7,7 @@ import { GoogleAuthProvider, signInWithCredential, signOut } from 'firebase/auth
 
 // Backend base URL - Environment-based configuration
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-  || 'http://localhost:8787/v1';
+  || 'https://vidrank-backend.fahad288ali.workers.dev/v1';
 
 console.log('[VidRank] Background script loaded. Backend URL:', BACKEND_URL);
 
@@ -83,6 +83,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
 
+  } else if (request.action === "getQuota") {
+    console.log('📊 [QUOTA] Popup requested quota, refreshing from backend...');
+    refreshUsage()
+      .then(stats => {
+        console.log('📊 [QUOTA] Sending to popup:', stats);
+        sendResponse({ success: true, stats });
+      })
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+
+  } else if (request.action === "getStats") {
+    sendResponse({ success: true, stats: quotaCache });
+    return true;
+
   } else if (request.action === "syncUsage") {
     refreshUsage()
       .then(stats => sendResponse({ success: true, stats }))
@@ -143,13 +157,21 @@ async function syncLoginWithBackend(user) {
     const data = await res.json();
     console.log("[VidRank] Backend /v1/auth/login response:", data);
 
-    // Save ONLY non-sensitive quota metrics (NO tokens stored in storage)
+    // Keep quota in sync
     if (data.user) {
-      await chrome.storage.local.set({
+      const limit = (data.quota && typeof data.quota.limit === 'number' && data.quota.limit >= 0)
+        ? data.quota.limit : -1;  // -1 = unlimited (pro)
+      const remaining = (data.quota && typeof data.quota.remaining === 'number' && data.quota.remaining >= 0)
+        ? data.quota.remaining : (limit >= 0 ? limit : -1);
+      const used = limit >= 0 && remaining >= 0 ? Math.max(0, limit - remaining) : 0;
+      quotaCache = {
         plan: data.user?.tier || "free",
-        usageLimit: data.quota?.limit || 10,
-        quotaRemaining: data.quota?.remaining || 0
-      });
+        usageLimit: limit,
+        usageCount: used,
+        quotaRemaining: remaining,
+        remaining: remaining
+      };
+      broadcastQuotaUpdate(quotaCache);
     }
 
     return data;
@@ -274,8 +296,37 @@ async function getIdToken() {
 
 // Call backend to generate tags
 async function callBackendGenerate(title, description) {
+  console.log('🔵 [QUOTA] BEFORE API CALL:', {
+    used: quotaCache.usageCount,
+    remaining: quotaCache.remaining,
+    limit: quotaCache.usageLimit,
+    plan: quotaCache.plan
+  });
+  
+  // OPTIMISTIC UPDATE: Increment locally immediately for instant UI feedback
+  const originalCache = { ...quotaCache };
+  if (quotaCache.usageLimit >= 0 && quotaCache.plan === 'free') {
+    quotaCache = {
+      ...quotaCache,
+      usageCount: quotaCache.usageCount + 1,
+      remaining: Math.max(0, quotaCache.remaining - 1)
+    };
+    console.log('⚡ [QUOTA] OPTIMISTIC INCREMENT:', {
+      from: { used: originalCache.usageCount, remaining: originalCache.remaining },
+      to: { used: quotaCache.usageCount, remaining: quotaCache.remaining }
+    });
+    broadcastQuotaUpdate(quotaCache);
+  }
+  
+  console.log('📤 [REQUEST] Sending to backend:', {
+    url: `${BACKEND_URL}/generate`,
+    title: title.substring(0, 50) + '...',
+    descriptionLength: description.length
+  });
+  
   try {
     const token = await getIdToken();
+    console.log('🔑 [AUTH] Got ID token, length:', token.length);
 
     const res = await fetch(`${BACKEND_URL}/generate`, {
       method: "POST",
@@ -286,28 +337,58 @@ async function callBackendGenerate(title, description) {
       body: JSON.stringify({ title: title || "", description: description || "" })
     });
 
+    console.log('📬 [RESPONSE] Status:', res.status, 'OK:', res.ok);
+
     let body = {};
     try {
       body = await res.json();
+      console.log('📬 [RESPONSE] Full body:', JSON.stringify(body, null, 2));
     } catch (e) {
       console.error('[VidRank] Failed to parse response');
+      // Keep optimistic update on parse error
       return { success: false, error: "INVALID_RESPONSE" };
     }
 
     if (res.status === 200 && body.success) {
-      persistUsage(body.usage, body.retry_after);
+      console.log('📥 [QUOTA] SERVER RESPONSE:', body.usage);
+      
+      // SYNC WITH SERVER: If backend has actual count, use it; otherwise keep optimistic
+      if (body.usage && typeof body.usage.used === 'number' && body.usage.used > 0) {
+        console.log('✅ [QUOTA] Backend confirmed usage, syncing...');
+        persistUsage(body.usage, body.retry_after);
+      } else {
+        console.log('⚠️ [QUOTA] Backend returned used=0, keeping optimistic update');
+        // Backend didn't increment (DO issue), but we already did optimistically
+        broadcastQuotaUpdate(quotaCache);
+      }
+      
+      console.log('🟢 [QUOTA] AFTER UPDATE:', {
+        used: quotaCache.usageCount,
+        remaining: quotaCache.remaining,
+        limit: quotaCache.usageLimit,
+        plan: quotaCache.plan
+      });
+      
       return {
         success: true,
         tags: body.tags || [],
         description: body.description || "",
-        usage: body.usage,
+        usage: {
+          used: quotaCache.usageCount,  // Return our optimistic count
+          limit: quotaCache.usageLimit,
+          plan: quotaCache.plan
+        },
         retry_after: body.retry_after || 0
       };
     }
 
     const error = body.error || `HTTP ${res.status}`;
-    persistUsage(body.usage, body.retry_after);
-
+    console.log('🔴 [QUOTA] ERROR:', error, 'Reverting optimistic update');
+    
+    // REVERT: On error, restore original quota
+    quotaCache = originalCache;
+    broadcastQuotaUpdate(quotaCache);
+    
     return {
       success: false,
       error,
@@ -315,7 +396,10 @@ async function callBackendGenerate(title, description) {
       usage: body.usage
     };
   } catch (err) {
-    console.error("[VidRank] Backend error:", err);
+    console.error("🔴 [QUOTA] Backend error:", err, 'Reverting optimistic update');
+    // REVERT: On network error, restore original quota
+    quotaCache = originalCache;
+    broadcastQuotaUpdate(quotaCache);
     return {
       success: false,
       error: err.message || "Network error"
@@ -324,12 +408,19 @@ async function callBackendGenerate(title, description) {
 }
 
 // Refresh usage stats from backend
-async function refreshUsage() {
+let lastQuotaFetch = 0;
+
+async function refreshUsage(force = false) {
+  const now = Date.now();
+  if (!force && quotaCache && quotaCache.usageLimit !== undefined && (now - lastQuotaFetch < 1500)) {
+    return quotaCache;
+  }
+
   let token;
   try {
     token = await getIdToken();
   } catch (_) {
-    return { usageCount: 0, plan: "free", usageLimit: 10, retry_after: 0 };
+    return { usageCount: 0, remaining: 10, plan: "free", usageLimit: 10, retry_after: 0 };
   }
 
   try {
@@ -339,34 +430,74 @@ async function refreshUsage() {
 
     if (!res.ok) {
       console.error("[VidRank] /me endpoint failed:", res.status);
-      return { usageCount: 0, plan: "free", usageLimit: 10, retry_after: 0 };
+      return { usageCount: 0, remaining: 10, plan: "free", usageLimit: 10, retry_after: 0 };
     }
 
     const body = await res.json();
+    const rawLimit = body.quota_limit;
+    const limit = (typeof rawLimit === 'number')
+      ? (rawLimit >= 0 ? rawLimit : -1)
+      : 10;
+    const remaining = typeof body.quota_remaining === 'number' && body.quota_remaining >= 0
+      ? body.quota_remaining
+      : limit;
     const stats = {
-      usageCount: body.usageCount || 0,
-      plan: body.plan || "free",
-      usageLimit: body.usageLimit || 10,
-      retry_after: body.retry_after || 0
+      usageCount: limit >= 0 && remaining >= 0 ? Math.max(0, limit - remaining) : 0,
+      remaining: (body.is_suspended || body.is_active === 0) ? 0 : remaining,
+      plan: body.tier || "free",
+      is_active: body.is_active !== undefined ? body.is_active : 1,
+      is_suspended: Boolean(body.is_suspended || body.is_active === 0),
+      usageLimit: limit,
+      retry_after: 0,
+      resets_in_seconds: body.resets_in_seconds || 0
     };
 
-    await chrome.storage.local.set(stats);
+    lastQuotaFetch = Date.now();
+    quotaCache = stats;
+    broadcastQuotaUpdate(stats);
     return stats;
   } catch (err) {
     console.error("[VidRank] /me network error:", err);
-    return { usageCount: 0, plan: "free", usageLimit: 10, retry_after: 0 };
+    return { usageCount: 0, remaining: 10, plan: "free", usageLimit: 10, retry_after: 0 };
   }
 }
 
-// Store usage locally
-function persistUsage(usage, retry_after) {
-  if (usage) {
-    chrome.storage.local.set({
-      usageCount: usage.usageCount || 0,
-      usageLimit: usage.usageLimit || 10,
-      retry_after: retry_after || 0
-    });
-  }
+function broadcastQuotaUpdate(stats) {
+  if (!stats) return;
+  try {
+    chrome.storage.local.set({ quotaStats: stats });
+    chrome.runtime.sendMessage({ action: 'quotaUpdated', stats }).catch(() => {});
+  } catch (e) {}
 }
+
+// Keep latest usage in memory (never persisted to chrome.storage.local)
+function persistUsage(usage, retry_after) {
+  if (!usage) {
+    console.log('⚠️ [QUOTA] persistUsage called with no usage data');
+    return;
+  }
+  
+  const limit = (typeof usage.limit === 'number' && usage.limit >= 0) ? usage.limit : -1;
+  const used = usage.used || 0;
+  
+  const oldCache = { ...quotaCache };
+  
+  quotaCache = {
+    usageCount: used,
+    remaining: limit >= 0 ? Math.max(0, limit - used) : limit,
+    usageLimit: limit,
+    plan: usage.plan || 'free',
+    retry_after: retry_after || 0
+  };
+  
+  console.log('💾 [QUOTA] persistUsage UPDATE:', {
+    from: { used: oldCache.usageCount, remaining: oldCache.remaining },
+    to: { used: quotaCache.usageCount, remaining: quotaCache.remaining },
+    serverData: usage
+  });
+  broadcastQuotaUpdate(quotaCache);
+}
+
+let quotaCache = { plan: 'free', usageCount: 0, usageLimit: 10, retry_after: 0 };
 
 console.log('[VidRank] Background script ready');

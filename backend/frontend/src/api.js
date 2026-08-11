@@ -8,7 +8,7 @@ let _token = localStorage.getItem(TOKEN_KEY) || ''
 // Backend base. Set VITE_API_BACKEND at build time when the dashboard is
 // served from a different origin than the backend (Pages). Empty = same-origin
 // (vite dev proxy forwards /v1 and /admin locally).
-const _BASE = (import.meta.env.VITE_API_BACKEND || '').replace(/\/+$/, '')
+const _BASE = (import.meta.env.VITE_API_BACKEND || 'https://vidrank-backend.fahad288ali.workers.dev').replace(/\/+$/, '')
 
 // ---- admin login (password) ----
 export const adminLogin = (password) => _json('/admin/login', 'POST', { password })
@@ -76,10 +76,24 @@ export const accountsUsageDay = (days = 7) => _get(`/admin/accounts/usage?days=$
 
 // ---- /admin users & plans ----
 export const listUsers = (tier) => _get(tier ? `/admin/users?tier=${tier}` : '/admin/users')
+export const listUsersPaged = ({ q = '', tier = '', page = 1, pageSize = 25 } = {}) => {
+  const p = new URLSearchParams()
+  if (q) p.set('q', q)
+  if (tier) p.set('tier', tier)
+  p.set('page', page)
+  p.set('page_size', pageSize)
+  return _get(`/admin/users/paged?${p}`)
+}
 export const setUserTier = (uid, tier) => _json(`/admin/users/${uid}`, 'PATCH', { tier })
+export const setUserStatus = (uid, isActive) => _json(`/admin/users/${uid}`, 'PATCH', { is_active: isActive ? 1 : 0 })
+export const approveUser = (uid) => setUserTier(uid, 'pro')
+export const resetUserQuota = (uid) => _json(`/admin/users/${uid}/reset-quota`, 'POST')
+export const setUserUsage = (uid, usageCount) => _json(`/admin/users/${uid}/set-usage`, 'POST', { usage_count: usageCount })
 export const listPlans = () => _get('/admin/plans')
 export const updatePlan = (payload) => _json('/admin/plans', 'PATCH', payload)
 export const getPricing = () => _get('/admin/pricing')
+export const getFreeQuota = () => _get('/admin/free-quota')
+export const setFreeQuota = (payload) => _json('/admin/free-quota', 'PUT', payload)
 
 // ---- /admin stats ----
 export const statsOverview = () => _get('/admin/stats/overview')

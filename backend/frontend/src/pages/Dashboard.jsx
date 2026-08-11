@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { usePolled } from '../hooks.js'
-import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, fmtInt } from '../api.js'
+import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, getFreeQuota, setFreeQuota, fmtInt } from '../api.js'
+
+const CADENC_LABEL = { daily: 'Daily (resets each day)', never: 'Never (one-time total)', unlimited: 'Unlimited (no cap)' }
 
 export default function Dashboard() {
   const { data: overview } = usePolled(() => statsOverview(), 5000)
@@ -45,14 +48,34 @@ export default function Dashboard() {
   const potentialMonthlyRevenue = proUsers * proPrice
   const profitMargin = potentialMonthlyRevenue - projectedMonthlyCost
   
-  // Payment status check
-  const paidUsers = users.filter(u => 
-    u.tier === 'pro' && 
-    (u.subscription_id || u.subscriptionId) && 
-    (u.subscription_status === 'active' || u.subscriptionStatus === 'active')
-  ).length
-  const actualMonthlyRevenue = paidUsers * proPrice
-  const actualProfitMargin = actualMonthlyRevenue - projectedMonthlyCost
+  const { data: quota } = usePolled(() => getFreeQuota(), 10000)
+  const [limit, setLimit] = useState(10)
+  const [cadence, setCadence] = useState('daily')
+  const [windowDays, setWindowDays] = useState(0)
+  const [saved, setSaved] = useState('')
+  const [saveErr, setSaveErr] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // guarded setState-on-render so re-polls never clobber in-progress edits; populates the form once on first load
+  const [synced, setSynced] = useState(false)
+  if (quota && !synced) {
+    setLimit(quota.limit)
+    setCadence(quota.cadence)
+    setWindowDays(quota.window_days)
+    setSynced(true)
+  }
+
+  const saveFreeQuota = async () => {
+    setSaving(true); setSaved(''); setSaveErr('')
+    try {
+      await setFreeQuota({ limit: Number(limit), cadence, window_days: Number(windowDays) })
+      setSaved('Saved — free users now see the updated quota.')
+    } catch (e) {
+      setSaveErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="stack">
@@ -245,6 +268,45 @@ export default function Dashboard() {
             )}
           </ul>
         </div>
+      </section>
+      )}
+
+      {/* Free Quota Settings */}
+      <section className="card">
+        <div className="card-label">Free Tier Quota</div>
+        <div className="card-sub" style={{ marginBottom: 14 }}>
+          How many requests a free user gets. Saved to the backend and reflected live in the extension.
+          {quota && (
+            <span className="note"> Current: {quota.cadence === 'unlimited' ? 'unlimited' : `${quota.limit} / ${quota.cadence === 'never' ? 'ever' : 'day'}`}{quota.window_days > 0 ? ` for ${quota.window_days} days` : ''}</span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <label>
+            <div className="card-sub">Limit</div>
+            <input className="in" type="number" min="1" value={limit}
+              onChange={(e) => setLimit(e.target.value)} style={{ width: 90 }} />
+          </label>
+          <label>
+            <div className="card-sub">Reset cadence</div>
+            <select className="in" value={cadence} onChange={(e) => setCadence(e.target.value)} style={{ width: 210 }}>
+              <option value="daily">Daily</option>
+              <option value="never">Never</option>
+              <option value="unlimited">Unlimited</option>
+            </select>
+          </label>
+          {cadence === 'daily' && (
+            <label>
+              <div className="card-sub">Days (0 = forever)</div>
+              <input className="in" type="number" min="0" value={windowDays}
+                onChange={(e) => setWindowDays(e.target.value)} style={{ width: 90 }} />
+            </label>
+          )}
+          <button className="btn primary" onClick={saveFreeQuota} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        {saved && <div className="status status-ok" style={{ marginTop: 10 }}>{saved}</div>}
+        {saveErr && <div className="status status-err" style={{ marginTop: 10 }}>{saveErr}</div>}
       </section>
 
       {/* 7-day history table */}

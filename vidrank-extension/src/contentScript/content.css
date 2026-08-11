@@ -150,6 +150,96 @@
   letter-spacing: 0.3px;
 }
 
+/* Account chip (avatar + tier) */
+.yt-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.yt-sidebar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vr-accent-gradient);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.14), 0 4px 14px rgba(0, 229, 255, 0.18);
+}
+
+.yt-sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.yt-avatar-letter {
+  color: #09090b;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.yt-sidebar-profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.yt-sidebar-profile-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vr-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+.yt-tier-pill {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  line-height: 1;
+  display: inline-block;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.yt-tier-pill-pro {
+  background: linear-gradient(135deg, #ffd76a, #f5a524);
+  color: #1a1100;
+  box-shadow: 0 2px 12px rgba(245, 165, 36, 0.55);
+}
+
+.yt-tier-pill-free {
+  background: rgba(255, 255, 255, 0.07);
+  color: #c3c8d0;
+  border: 1px solid var(--vr-border);
+}
+
+.yt-sidebar-profile-subrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.yt-usage-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vr-text-secondary);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
 /* Content Area */
 .yt-sidebar-content {
   flex-grow: 1;
@@ -560,3 +650,22 @@
     flex-direction: column;
   }
 }
+
+/* Loading Spinner Keyframes & Style */
+@keyframes vrSpinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.yt-btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: vrSpinner 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+

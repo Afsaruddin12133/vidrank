@@ -178,7 +178,7 @@ class SystemTester:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.backend_url}/admin/login",
-                    json={"password": "admin123"},
+                    json={"password": "#admin23CHECK"},
                     timeout=5.0
                 )
                 

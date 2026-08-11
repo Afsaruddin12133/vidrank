@@ -350,6 +350,24 @@
 
   /* ─── Initialisation ─────────────────────────────────────────────── */
 
+  // Ask background for a FRESH quota snapshot straight from the backend API
+  function getQuota() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: "getQuota" }, (res) => {
+        resolve(res && res.success ? res.stats : null);
+      });
+    });
+  }
+
+  // Returns cached quota (updated by generate response) — zero network call
+  function getStats() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: "getStats" }, (res) => {
+        resolve(res && res.success ? res.stats : null);
+      });
+    });
+  }
+
   function initExtension() {
     if (!chrome.runtime?.id) return;
     if (sidebarUI) return;           // already initialised
@@ -374,33 +392,105 @@
       setInterval(scanLoop, 800);
     });
 
-    // Listen for Auth or Plan changes
+    // Listen for Auth & Quota changes
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'local') {
         if (changes.isLoggedIn !== undefined) {
           // Reload YouTube Studio silently to apply new Auth state
           window.location.reload();
         }
-        
-        // Dynamically update the confirm button if plan or usage limit changes (e.g. from Admin Panel)
-        if (changes.plan !== undefined || changes.usageCount !== undefined || changes.usageLimit !== undefined) {
-          chrome.storage.local.get(["usageCount", "plan", "usageLimit", "isLoggedIn"], (data) => {
-            const btn = document.getElementById('yt-btn-confirm-title');
-            const limit = data.usageLimit != null ? data.usageLimit : 10;
-            if (btn && data.isLoggedIn) {
-              if ((data.plan || "free") === "free" && limit >= 0 && (data.usageCount || 0) >= limit) {
-                btn.innerHTML = '⭐ Upgrade to Unlimited';
-                btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)';
-                btn.style.color = '#000';
-              } else {
-                btn.innerHTML = '✨ Confirm Title & Generate';
-                btn.style.background = 'linear-gradient(135deg, #FF0055 0%, #FF0000 100%)';
-                btn.style.color = '#ffffff';
-                btn.disabled = false;
-              }
-            }
-          });
+        if (changes.quotaStats && changes.quotaStats.newValue) {
+          const s = changes.quotaStats.newValue;
+          const usageEl = document.getElementById('yt-sidebar-usage');
+          if (usageEl && s.plan !== 'pro' && s.usageLimit >= 0) {
+            const remaining = typeof s.remaining === 'number' && s.remaining >= 0 ? s.remaining : Math.max(0, s.usageLimit - (s.usageCount || 0));
+            usageEl.textContent = `${remaining} / ${s.usageLimit}`;
+          }
+          const mainBtn = document.getElementById('yt-btn-confirm-title');
+          if (mainBtn) {
+            updateButtonState(mainBtn, s);
+          }
+          if (sidebarUI) {
+            sidebarUI.checkAndApplyPaywall();
+          }
         }
+      }
+    });
+
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message && message.action === 'quotaUpdated' && message.stats) {
+        const s = message.stats;
+        const usageEl = document.getElementById('yt-sidebar-usage');
+        if (usageEl && s.plan !== 'pro' && s.usageLimit >= 0) {
+          const remaining = typeof s.remaining === 'number' && s.remaining >= 0 ? s.remaining : Math.max(0, s.usageLimit - (s.usageCount || 0));
+          usageEl.textContent = `${remaining} / ${s.usageLimit}`;
+        }
+        const mainBtn = document.getElementById('yt-btn-confirm-title');
+        if (mainBtn) {
+          updateButtonState(mainBtn, s);
+        }
+        if (sidebarUI) {
+          sidebarUI.checkAndApplyPaywall();
+        }
+      }
+    });
+  }
+
+  function updateButtonState(btn, stats) {
+    if (!btn) btn = document.getElementById('yt-btn-confirm-title');
+    if (!btn) return;
+
+    // Prevent resetting button text/styles while API generation is in progress
+    if (btn.dataset.loading === 'true' || btn.disabled) {
+      return;
+    }
+
+    const applyStats = (q, isLoggedIn) => {
+      const limit = typeof q?.usageLimit === 'number' && q.usageLimit >= 0 ? q.usageLimit : 10;
+      const count = q?.usageCount || 0;
+      const remaining = typeof q?.remaining === 'number' && q.remaining >= 0 ? q.remaining : Math.max(0, limit - count);
+      const plan = q?.plan || 'free';
+      const isSuspended = q?.is_suspended || q?.is_active === 0;
+      const isQuotaExhausted = plan === 'free' && limit >= 0 && (remaining <= 0 || count >= limit);
+
+      const btnWrapper = document.getElementById('yt-btn-confirm-title-wrapper') || btn.parentElement;
+
+      if (!isLoggedIn) {
+        if (btnWrapper) btnWrapper.style.display = 'flex';
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = '🔒 Sign in to VidRank';
+        btn.style.background = '#4285F4';
+        btn.style.color = '#ffffff';
+        btn.style.boxShadow = '0 6px 16px rgba(66, 133, 244, 0.3)';
+      } else if (isSuspended) {
+        // Hide button completely when account is suspended
+        if (btnWrapper) btnWrapper.style.display = 'none';
+        btn.style.display = 'none';
+      } else if (isQuotaExhausted) {
+        if (btnWrapper) btnWrapper.style.display = 'flex';
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = '⭐ Upgrade to Unlimited';
+        btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)';
+        btn.style.color = '#000000';
+        btn.style.boxShadow = '0 6px 16px rgba(253, 185, 49, 0.4)';
+      } else {
+        if (btnWrapper) btnWrapper.style.display = 'flex';
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = '✨ Confirm Title & Generate';
+        btn.style.background = 'linear-gradient(135deg, #FF0055 0%, #FF0000 100%)';
+        btn.style.color = '#ffffff';
+        btn.style.boxShadow = '0 6px 16px rgba(255, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2)';
+      }
+    };
+
+    chrome.storage.local.get({ isLoggedIn: false, quotaStats: null }, (auth) => {
+      if (stats) {
+        applyStats(stats, auth.isLoggedIn);
+      } else if (auth.quotaStats) {
+        applyStats(auth.quotaStats, auth.isLoggedIn);
+        getQuota().then(q => { if (q) applyStats(q, auth.isLoggedIn); });
+      } else {
+        getQuota().then(q => { applyStats(q || {}, auth.isLoggedIn); });
       }
     });
   }
@@ -487,25 +577,13 @@
 
     const btn = document.createElement('button');
     btn.id = 'yt-btn-confirm-title';
-    btn.innerHTML = '✨ Confirm Title & Generate';
     btn.title = 'Click when title is complete to generate and insert both description & tags.';
-
-    chrome.storage.local.get(["usageCount", "plan", "usageLimit", "isLoggedIn"], (data) => {
-      const limit = data.usageLimit != null ? data.usageLimit : 10;
-      if (!data.isLoggedIn) {
-        btn.innerHTML = '🔒 Sign in to VidRank';
-        btn.style.background = '#4285F4';
-        btn.style.color = '#ffffff';
-      } else if (data.plan === "free" && limit >= 0 && (data.usageCount || 0) >= limit) {
-        btn.innerHTML = '⭐ Upgrade to Unlimited';
-        btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)';
-        btn.style.color = '#000';
-      }
-    });
-
-    // Premium inline styles (dynamic flow instead of absolute positioning)
+    btn.innerHTML = '✨ Confirm Title & Generate';
     btn.style.background = 'linear-gradient(135deg, #FF0055 0%, #FF0000 100%)';
     btn.style.color = '#ffffff';
+    btn.style.boxShadow = '0 6px 16px rgba(255, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2)';
+
+    // Base layout styles
     btn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
     btn.style.borderRadius = '24px';
     btn.style.fontSize = '13px';
@@ -513,7 +591,6 @@
     btn.style.letterSpacing = '0.3px';
     btn.style.padding = '10px 20px';
     btn.style.cursor = 'pointer';
-    btn.style.boxShadow = '0 6px 16px rgba(255, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2)';
     btn.style.display = 'inline-flex';
     btn.style.alignItems = 'center';
     btn.style.gap = '8px';
@@ -522,26 +599,35 @@
     btn.style.zIndex = '1000';
     btn.style.textTransform = 'uppercase';
 
+    // Apply reactive text & color styles based on real-time quota
+    updateButtonState(btn);
+
     // Hover & Active micro-animations
     btn.addEventListener('mouseenter', () => {
-      if (!btn.disabled && !btn.innerHTML.includes('Unlimited')) {
+      const text = (btn.innerHTML || '').toLowerCase();
+      if (!btn.disabled && !text.includes('unlimited')) {
         btn.style.background = 'linear-gradient(135deg, #FF1A66 0%, #FF1A1A 100%)';
         btn.style.boxShadow = '0 8px 24px rgba(255, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3)';
         btn.style.transform = 'translateY(-2px)';
-      } else if (!btn.disabled && btn.innerHTML.includes('Unlimited')) {
-        // Upgrade button hover state
+      } else if (!btn.disabled && text.includes('unlimited')) {
+        // Upgrade button hover state: bright gold highlight
+        btn.style.background = 'linear-gradient(135deg, #FFE033 0%, #FDC844 100%)';
+        btn.style.color = '#000000';
         btn.style.transform = 'translateY(-2px)';
-        btn.style.boxShadow = '0 8px 24px rgba(255, 215, 0, 0.5)';
+        btn.style.boxShadow = '0 8px 24px rgba(255, 215, 0, 0.6)';
       }
     });
     btn.addEventListener('mouseleave', () => {
-      if (!btn.disabled && !btn.innerHTML.includes('Unlimited')) {
+      const text = (btn.innerHTML || '').toLowerCase();
+      if (!btn.disabled && !text.includes('unlimited')) {
         btn.style.background = 'linear-gradient(135deg, #FF0055 0%, #FF0000 100%)';
         btn.style.boxShadow = '0 6px 16px rgba(255, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2)';
         btn.style.transform = 'translateY(0)';
-      } else if (!btn.disabled && btn.innerHTML.includes('Unlimited')) {
+      } else if (!btn.disabled && text.includes('unlimited')) {
+        btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)';
+        btn.style.color = '#000000';
         btn.style.transform = 'translateY(0)';
-        btn.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.35)';
+        btn.style.boxShadow = '0 6px 16px rgba(253, 185, 49, 0.4)';
       }
     });
     btn.addEventListener('mousedown', () => {
@@ -551,27 +637,30 @@
       }
     });
     btn.addEventListener('mouseup', () => {
-      if (!btn.disabled && !btn.innerHTML.includes('Unlimited')) {
+      const text = (btn.innerHTML || '').toLowerCase();
+      if (!btn.disabled && !text.includes('unlimited')) {
         btn.style.transform = 'translateY(-2px)';
         btn.style.boxShadow = '0 8px 24px rgba(255, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3)';
       }
     });
 
-    function setBtnDisabled(disabled) {
+    function setBtnDisabled(disabled, loadingText = '') {
       btn.disabled = disabled;
       if (disabled) {
-        btn.style.background = '#333333';
-        btn.style.color = '#888888';
-        btn.style.cursor = 'not-allowed';
-        btn.style.boxShadow = 'none';
-        btn.style.border = '1px solid #444444';
-        btn.style.transform = 'none';
-      } else {
-        btn.style.background = 'linear-gradient(135deg, #FF0055 0%, #FF0000 100%)';
+        btn.dataset.loading = 'true';
+        btn.style.background = 'linear-gradient(135deg, #FF7700 0%, #FF3300 100%)';
         btn.style.color = '#ffffff';
+        btn.style.cursor = 'wait';
+        btn.style.boxShadow = '0 0 20px rgba(255, 119, 0, 0.6)';
+        btn.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        btn.style.transform = 'none';
+        if (loadingText) {
+          btn.innerHTML = `<span class="yt-btn-spinner"></span> ${loadingText}`;
+        }
+      } else {
+        btn.dataset.loading = 'false';
         btn.style.cursor = 'pointer';
-        btn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-        btn.style.boxShadow = '0 6px 16px rgba(255, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2)';
+        updateButtonState(btn);
       }
     }
 
@@ -579,36 +668,40 @@
       e.preventDefault();
       e.stopPropagation();
       
+      if (btn.disabled || btn.dataset.loading === 'true') {
+        return;
+      }
+      
       if (!chrome.runtime?.id) {
         alert("Extension context invalidated. Please refresh the page.");
         return;
       }
       
-      chrome.storage.local.get(["usageCount", "plan", "uid", "isLoggedIn"], async (data) => {
-        if (chrome.runtime.lastError) return;
+      const auth = await new Promise((r) => chrome.storage.local.get({ isLoggedIn: false, uid: "" }, r));
+      const q = await getQuota();
 
-        if (!data.isLoggedIn) {
-          btn.innerHTML = 'Wait...';
-          chrome.runtime.sendMessage({ action: "login" }, (response) => {
-            if (response && response.success) {
-              window.location.reload();
-            } else {
-              btn.innerHTML = '🔒 Sign in to VidRank';
-              alert("Login failed. Please try again.");
-            }
-          });
-          return;
-        }
+      if (!auth.isLoggedIn) {
+        btn.innerHTML = 'Wait...';
+        chrome.runtime.sendMessage({ action: "login" }, (response) => {
+          if (response && response.success) {
+            window.location.reload();
+          } else {
+            btn.innerHTML = '🔒 Sign in to VidRank';
+            alert("Login failed. Please try again.");
+          }
+        });
+        return;
+      }
 
-        const count = data.usageCount || 0;
-        const plan = data.plan || "free";
-        const uid = data.uid || "";
-        const usageLimit = data.usageLimit != null ? data.usageLimit : 10;
+      const count = (q && q.usageCount) || 0;
+      const plan = (q && q.plan) || "free";
+      const uid = auth.uid || "";
+      const usageLimit = q && q.usageLimit != null ? q.usageLimit : -1;
 
-        if (plan === "free" && usageLimit >= 0 && count >= usageLimit) {
-          window.open(`https://www.vidrank.tech/?userId=${uid}`, '_blank');
-          return;
-        }
+      if (plan === "free" && usageLimit >= 0 && count >= usageLimit) {
+        window.open(`https://www.vidrank.tech/?userId=${uid}`, '_blank');
+        return;
+      }
 
         const titleText = readText(titleEl);
         if (!titleText) {
@@ -617,7 +710,15 @@
         }
 
         const executeGeneration = async () => {
-          btn.innerHTML = '✨ Generating Metadata...';
+          console.log('[VidRank] generate click — pre-decrement quota:', { count, plan, usageLimit });
+          // Optimistic: decrement sidebar immediately — before API responds
+          const usageEl = document.getElementById('yt-sidebar-usage');
+          if (usageEl && plan === 'free' && usageLimit >= 0) {
+            usageEl.textContent = `${Math.max(0, usageLimit - count - 1)} / ${usageLimit}`;
+          }
+          console.log('[VidRank] generate — sidebar set to', usageEl ? usageEl.textContent : '(no element)');
+          
+          setBtnDisabled(true, 'Generating Metadata...');
           sidebarUI.log(`Title confirmed. Generating description and tags for: "${titleText}"`, "info");
 
           try {
@@ -652,39 +753,53 @@
           } catch (err) {
             sidebarUI.log(`Metadata generation error: ${err.message}`, "error");
           } finally {
-            // Re-fetch the actual usage count to ensure we only show "Upgrade" if the backend truly updated
-            chrome.storage.local.get(["usageCount", "plan", "usageLimit"], (latestData) => {
-              const latestCount = latestData.usageCount || 0;
-              const currentPlan = latestData.plan || "free";
-              const latestLimit = latestData.usageLimit != null ? latestData.usageLimit : 10;
-              
-              if (latestLimit >= 0 && latestCount >= latestLimit && currentPlan === "free") {
+            try {
+              const latest = await getStats();
+              const latestCount = (latest && latest.usageCount) || 0;
+              const currentPlan = (latest && latest.plan) || "free";
+              const latestLimit = latest && latest.usageLimit != null ? latest.usageLimit : -1;
+
+              console.log('[VidRank] generate response — server quota cache:', { latestCount, currentPlan, latestLimit, raw: latest });
+
+              // Correct sidebar with actual values from generate response
+              const sidebarUsageEl = document.getElementById('yt-sidebar-usage');
+              if (sidebarUsageEl && currentPlan !== 'pro' && latestLimit >= 0) {
+                sidebarUsageEl.textContent = `${Math.max(0, latestLimit - latestCount)} / ${latestLimit}`;
+              }
+
+              const remaining = latest && latest.remaining != null ? latest.remaining : (latestLimit >= 0 ? Math.max(0, latestLimit - latestCount) : -1);
+              btn.dataset.loading = 'false';
+              if (latestLimit >= 0 && (latestCount >= latestLimit || remaining <= 0) && currentPlan === "free") {
+                btn.disabled = false;
                 btn.innerHTML = '⭐ Upgrade to Unlimited';
                 btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)';
-                btn.style.color = '#000';
-                setBtnDisabled(false);
+                btn.style.color = '#000000';
               } else {
                 setBtnDisabled(false);
                 btn.innerHTML = '✨ Confirm Title & Generate';
               }
-            });
+            } catch (e) {
+              btn.dataset.loading = 'false';
+              setBtnDisabled(false);
+              btn.innerHTML = '✨ Confirm Title & Generate';
+            }
           }
         };
 
-        const waitSeconds = data.retry_after || 0;
+        const rawWait = (q && q.retry_after) || 0;
+        const waitSeconds = (rawWait > 0 && rawWait <= 120) ? rawWait : 0;
 
         if (plan === "free" && waitSeconds > 0) {
           let remaining = waitSeconds;
           
-          setBtnDisabled(true);
-          btn.innerHTML = `Wait ${remaining}s...`;
+          setBtnDisabled(true, `Wait ${remaining}s...`);
           
           showBlinkingPopup(remaining, count, uid, usageLimit);
           
           const timerId = setInterval(() => {
             remaining--;
             if (remaining > 0) {
-              btn.innerHTML = `Wait ${remaining}s...`;
+              btn.innerHTML = `<span class="yt-btn-spinner"></span> Wait ${remaining}s...`;
               updateBlinkingPopupTimer(remaining);
             } else {
               clearInterval(timerId);
@@ -695,9 +810,7 @@
           return;
         }
 
-        setBtnDisabled(true);
         executeGeneration();
-      });
     });
 
     // Insert wrapper below the title container (so it flows dynamically with the UI)
@@ -772,12 +885,12 @@
     const titleEl = findTitleField();
     if (!titleEl) {
       sidebarUI.log('Title field not found. Open a video details page first.', 'error');
-      return;
+      return Promise.resolve();
     }
     const title = readText(titleEl);
     if (!title) {
       sidebarUI.log('Title is empty — nothing to generate.', 'warning');
-      return;
+      return Promise.resolve();
     }
 
     if (force) {
@@ -786,37 +899,42 @@
       const descEl = findDescriptionField();
       const descText = descEl ? readText(descEl) : '';
 
-      if (!chrome.runtime?.id) return;
-      chrome.storage.sync.get({ maxTagsCount: 35, autoInsert: true }, settings => {
-        if (chrome.runtime.lastError) return;
-        chrome.runtime.sendMessage({
-          action: 'generateTags',
-          title: title,
-          description: descText
-        }, (response) => {
-          if (chrome.runtime.lastError) {
-            sidebarUI.log(`Connection error: ${chrome.runtime.lastError.message}`, 'error');
-            return;
-          }
-
-          if (response && response.success) {
-            let tags = response.tags || [];
-            tags = tags.slice(0, settings.maxTagsCount);
-            lastGeneratedTags = tags;
-
-            sidebarUI.updateTagsList(tags);
-            sidebarUI.log(`Generated ${tags.length} tags.`, 'success');
-
-            if (settings.autoInsert) {
-              triggerTagInsertion(tags);
+      if (!chrome.runtime?.id) return Promise.resolve();
+      return new Promise((resolve) => {
+        chrome.storage.sync.get({ maxTagsCount: 35, autoInsert: true }, settings => {
+          if (chrome.runtime.lastError) { resolve(); return; }
+          chrome.runtime.sendMessage({
+            action: 'generateTags',
+            title: title,
+            description: descText
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              sidebarUI.log(`Connection error: ${chrome.runtime.lastError.message}`, 'error');
+              resolve();
+              return;
             }
-          } else {
-            sidebarUI.log(`Generation failed: ${response?.error || 'Unknown error'}`, 'error');
-          }
+
+            if (response && response.success) {
+              let tags = response.tags || [];
+              tags = tags.slice(0, settings.maxTagsCount);
+              lastGeneratedTags = tags;
+
+              sidebarUI.updateTagsList(tags);
+              sidebarUI.log(`Generated ${tags.length} tags.`, 'success');
+
+              if (settings.autoInsert) {
+                triggerTagInsertion(tags);
+              }
+            } else {
+              sidebarUI.log(`Generation failed: ${response?.error || 'Unknown error'}`, 'error');
+            }
+            resolve();
+          });
         });
       });
     } else {
       onTitleChanged(title);
+      return Promise.resolve();
     }
   }
 

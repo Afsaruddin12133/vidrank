@@ -47,6 +47,37 @@ async def _fetch_one(env, sql: str, *params) -> dict[str, Any] | None:
 # --------------------------------------------------------------------------- #
 # Reads
 # --------------------------------------------------------------------------- #
+def get_effective_tier(user: dict[str, Any] | None) -> str:
+    """Return user tier ('free' or 'pro').
+
+    If user is 'pro' but expires_at is in the past, automatically falls back to 'free'.
+    """
+    if not user:
+        return "free"
+    tier = (user.get("tier") or "free").strip().lower()
+    if tier == "pro":
+        expires_at = user.get("expires_at")
+        if expires_at:
+            try:
+                import time
+                from datetime import datetime
+                exp_ts = None
+                if isinstance(expires_at, (int, float)):
+                    exp_ts = float(expires_at)
+                elif isinstance(expires_at, str):
+                    s = expires_at.strip()
+                    if s.replace(".", "", 1).isdigit():
+                        exp_ts = float(s)
+                    else:
+                        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+                        exp_ts = dt.timestamp()
+                if exp_ts is not None and time.time() > exp_ts:
+                    return "free"
+            except Exception:
+                pass
+    return tier
+
+
 async def get_user(env, uid: str) -> dict[str, Any] | None:
     return await _fetch_one(
         env, "SELECT firebase_uid, email, tier, is_active, synced_at, balance, "
@@ -82,6 +113,38 @@ async def get_plan(env, plan_id: str) -> dict[str, Any] | None:
     return await _fetch_one(
         env, "SELECT plan_id, daily_limit, synced_at FROM plans WHERE plan_id = ?1", plan_id,
     )
+
+
+async def set_user_tier(env, uid: str, tier: str) -> None:
+    await env.DB.prepare("UPDATE users SET tier = ?1 WHERE firebase_uid = ?2").bind(tier, uid).run()
+
+
+async def set_user_status(env, uid: str, is_active: int) -> None:
+    await env.DB.prepare("UPDATE users SET is_active = ?1 WHERE firebase_uid = ?2").bind(is_active, uid).run()
+
+
+# --------------------------------------------------------------------------- #
+# Free-tier quota configuration (admin-configurable, served by /v1/me)
+# --------------------------------------------------------------------------- #
+async def get_free_quota(env) -> dict[str, Any]:
+    try:
+        row = await _fetch_one(env, "SELECT value FROM app_settings WHERE key = ?1", "free_quota")
+        cfg = json.loads((row or {}).get("value") or "{}")
+    except Exception:
+        cfg = {}
+    return {
+        "limit": int(cfg.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT),
+        "cadence": cfg.get("cadence", C.CADENCE_DAILY),
+        "window_days": int(cfg.get("window_days") or 0),
+    }
+
+
+async def set_free_quota(env, limit: int, cadence: str, window_days: int) -> None:
+    await env.DB.prepare(
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?,?)"
+    ).bind(
+        "free_quota", json.dumps({"limit": limit, "cadence": cadence, "window_days": window_days})
+    ).run()
 
 
 async def list_enabled_accounts(env) -> list[dict[str, Any]]:
@@ -137,26 +200,82 @@ async def delete_account(env, account_id: str) -> None:
     await env.DB.prepare("DELETE FROM accounts WHERE id=?").bind(account_id).run()
 
 
+def _today_utc_ts() -> int:
+    return int(time.time() // 86400) * 86400
+
+
 async def list_users(env, tier: str | None = None) -> list[dict[str, Any]]:
+    today_ts = _today_utc_ts()
     if tier:
         return await _fetch_all(
             env,
-            "SELECT firebase_uid, email, tier, is_active, synced_at, balance, "
-            "subscription_id, expires_at, usage_count, name "
-            "FROM users WHERE tier=?1 ORDER BY synced_at DESC",
-            tier,
+            "SELECT u.firebase_uid, u.email, u.tier, u.is_active, u.synced_at, u.balance, "
+            "u.subscription_id, u.expires_at, u.name, u.photo_url, "
+            "COALESCE(l.today_cnt, 0) AS usage_count "
+            "FROM users u LEFT JOIN ("
+            "  SELECT user_id, COUNT(*) AS today_cnt FROM usage_log "
+            "  WHERE ts >= ?1 AND (status < 400 OR status = 200 OR status = '200' OR status = 'ok') "
+            "  GROUP BY user_id"
+            ") l ON u.firebase_uid = l.user_id "
+            "WHERE u.tier = ?2 ORDER BY u.synced_at DESC",
+            today_ts, tier,
         )
     return await _fetch_all(
         env,
-        "SELECT firebase_uid, email, tier, is_active, synced_at, balance, "
-        "subscription_id, expires_at, usage_count, name "
-        "FROM users ORDER BY synced_at DESC",
+        "SELECT u.firebase_uid, u.email, u.tier, u.is_active, u.synced_at, u.balance, "
+        "u.subscription_id, u.expires_at, u.name, u.photo_url, "
+        "COALESCE(l.today_cnt, 0) AS usage_count "
+        "FROM users u LEFT JOIN ("
+        "  SELECT user_id, COUNT(*) AS today_cnt FROM usage_log "
+        "  WHERE ts >= ?1 AND (status < 400 OR status = 200 OR status = '200' OR status = 'ok') "
+        "  GROUP BY user_id"
+        ") l ON u.firebase_uid = l.user_id "
+        "ORDER BY u.synced_at DESC",
+        today_ts,
     )
 
 
 async def set_user_tier(env, uid: str, tier: str) -> None:
     await env.DB.prepare("UPDATE users SET tier=?1 WHERE firebase_uid=?2") \
         .bind(tier, uid).run()
+
+
+def _user_filter(q: str | None, tier: str | None) -> tuple[str, list[Any]]:
+    conds, params = [], []
+    if tier in ("free", "pro"):
+        conds.append("u.tier=?")
+        params.append(tier)
+    if q:
+        conds.append("(u.email LIKE ? OR u.name LIKE ? OR u.firebase_uid LIKE ?)")
+        like = f"%{q}%"
+        params += [like, like, like]
+    return (f"WHERE {' AND '.join(conds)}" if conds else ""), params
+
+
+async def count_users(env, q: str | None = None, tier: str | None = None) -> int:
+    where, params = _user_filter(q, tier)
+    row = await _fetch_one(env, f"SELECT COUNT(*) AS n FROM users u {where}", *params)
+    return int((row or {}).get("n") or 0)
+
+
+async def list_users_paged(env, q: str | None = None, tier: str | None = None,
+                           page: int = 1, page_size: int = 25) -> list[dict[str, Any]]:
+    today_ts = _today_utc_ts()
+    where, filter_params = _user_filter(q, tier)
+    params = [today_ts] + filter_params + [page_size, max(0, (page - 1) * page_size)]
+    return await _fetch_all(
+        env,
+        "SELECT u.firebase_uid, u.email, u.tier, u.is_active, u.synced_at, u.balance, "
+        "u.subscription_id, u.expires_at, u.name, u.photo_url, "
+        "COALESCE(l.today_cnt, 0) AS usage_count "
+        "FROM users u LEFT JOIN ("
+        "  SELECT user_id, COUNT(*) AS today_cnt FROM usage_log "
+        "  WHERE ts >= ?1 AND (status < 400 OR status = 200 OR status = '200' OR status = 'ok') "
+        "  GROUP BY user_id"
+        ") l ON u.firebase_uid = l.user_id "
+        f"{where} ORDER BY u.synced_at DESC LIMIT ? OFFSET ?",
+        *params,
+    )
 
 
 async def get_usage_days(env, days: int) -> list[dict[str, Any]]:

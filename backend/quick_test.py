@@ -66,7 +66,7 @@ async def test_all():
                 # Test admin login
                 login_response = await client.post(
                     "http://localhost:8787/admin/login",
-                    json={"password": "admin123"},
+                    json={"password": "#admin23CHECK"},
                     timeout=5.0
                 )
                 if login_response.status_code == 200:
@@ -115,7 +115,7 @@ async def test_all():
     if not issues:
         print(f"{GREEN}✓ All tests passed!{RESET}\n")
         print("Access points:")
-        print(f"  • Admin Dashboard: http://localhost:5173 (password: admin123)")
+        print(f"  • Admin Dashboard: http://localhost:5173 (password: #admin23CHECK)")
         print(f"  • Backend API: http://localhost:8787")
     else:
         print(f"{YELLOW}Found {len(issues)} issue(s):{RESET}\n")

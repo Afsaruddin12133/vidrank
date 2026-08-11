@@ -74,6 +74,16 @@ class YouTubeStudioUI {
       innerContent = `
         <!-- Header -->
         <div class="yt-sidebar-header">
+          <div class="yt-sidebar-profile">
+            <div class="yt-sidebar-avatar" id="yt-sidebar-avatar"><span class="yt-avatar-letter">V</span></div>
+            <div class="yt-sidebar-profile-meta">
+              <strong class="yt-sidebar-profile-name" id="yt-sidebar-profile-name">&mdash;</strong>
+              <span class="yt-sidebar-profile-subrow">
+                <span class="yt-tier-pill yt-tier-pill-free" id="yt-sidebar-tier">FREE</span>
+                <span class="yt-usage-text" id="yt-sidebar-usage"></span>
+              </span>
+            </div>
+          </div>
           <div class="yt-sidebar-title-row">
             <h2>VidRank</h2>
           </div>
@@ -188,6 +198,39 @@ class YouTubeStudioUI {
 
     // Attach Event Listeners
     this.attachEventListeners();
+
+    // Fill the account chip (avatar + PRO/FREE) once the sidebar renders
+    if (this.isLoggedIn) {
+      this.refreshProfile();
+    }
+  }
+
+  // Render the logged-in user's avatar + live PRO/FREE tier in the sidebar header
+  refreshProfile() {
+    chrome.storage.local.get({ displayName: "", email: "", photoURL: "", isLoggedIn: false }, async (u) => {
+      if (!u.isLoggedIn) return;
+      const avatar = document.getElementById('yt-sidebar-avatar');
+      const nameEl = document.getElementById('yt-sidebar-profile-name');
+      const tierEl = document.getElementById('yt-sidebar-tier');
+      const usageEl = document.getElementById('yt-sidebar-usage');
+      if (!avatar || !nameEl || !tierEl || !usageEl) return;
+
+      if (u.photoURL) {
+        avatar.innerHTML = `<img src="${u.photoURL}" alt="" referrerpolicy="no-referrer" />`;
+      } else {
+        const letter = String(u.displayName || u.email || 'V').trim().charAt(0).toUpperCase();
+        avatar.innerHTML = `<span class="yt-avatar-letter">${letter}</span>`;
+      }
+      nameEl.textContent = u.displayName || u.email || 'VidRank User';
+
+      const q = await this.getQuota();
+      const pro = q && q.plan === 'pro';
+      tierEl.textContent = pro ? 'PRO' : 'FREE';
+      tierEl.className = pro ? 'yt-tier-pill yt-tier-pill-pro' : 'yt-tier-pill yt-tier-pill-free';
+      const limit = q && q.usageLimit != null && q.usageLimit > 0 ? q.usageLimit : 10;
+      const remaining = q && q.remaining != null ? q.remaining : limit;
+      usageEl.textContent = pro ? 'Unlimited' : `${remaining} / ${limit}`;
+    });
   }
 
   /**
@@ -268,53 +311,56 @@ class YouTubeStudioUI {
 
     // Action buttons
     this.checkAndApplyPaywall();
-    
-    // Listen for storage changes to instantly apply paywall if generated from another button
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace === 'local' && (changes.usageCount || changes.plan || changes.usageLimit)) {
-        this.checkAndApplyPaywall();
+
+    btnRegenerate.addEventListener('click', async () => {
+      const q = await this.getQuota();
+      const uidAuth = await new Promise((r) => chrome.storage.local.get({ uid: "" }, r));
+      const count = (q && q.usageCount) || 0;
+      const plan = (q && q.plan) || "free";
+      const limit = q && q.usageLimit != null ? q.usageLimit : -1;
+      const uid = uidAuth.uid || "";
+
+      if (plan === "free" && limit >= 0 && count >= limit) {
+        window.open(`https://www.vidrank.tech/?userId=${uid}`, '_blank');
+        return;
       }
-    });
 
-    btnRegenerate.addEventListener('click', () => {
-      chrome.storage.local.get(["usageCount", "plan", "usageLimit", "uid", "retry_after"], (data) => {
-        const count = data.usageCount || 0;
-        const plan = data.plan || "free";
-        const limit = data.usageLimit != null ? data.usageLimit : 10;
-        const uid = data.uid || "";
-        
-        if (plan === "free" && limit >= 0 && count >= limit) {
-          window.open(`https://www.vidrank.tech/?userId=${uid}`, '_blank');
-          return;
-        }
+      const rawWait = (q && q.retry_after) || 0;
+      const waitSeconds = (rawWait > 0 && rawWait <= 120) ? rawWait : 0;
 
-        const waitSeconds = data.retry_after || 0;
+      if (plan === "free" && waitSeconds > 0) {
+        let remaining = waitSeconds;
 
-        if (plan === "free" && waitSeconds > 0) {
-          let remaining = waitSeconds;
-          
-          btnRegenerate.disabled = true;
-          const originalHTML = btnRegenerate.innerHTML;
-          btnRegenerate.innerHTML = `<span>Wait ${remaining}s...</span>`;
-          
-          const timerId = setInterval(() => {
-            remaining--;
-            if (remaining > 0) {
-              btnRegenerate.innerHTML = `<span>Wait ${remaining}s...</span>`;
-            } else {
-              clearInterval(timerId);
-              btnRegenerate.innerHTML = originalHTML;
-              btnRegenerate.disabled = false;
-              this.log("Regenerate tags manually requested.", "info");
-              this.onRegenerate();
-            }
-          }, 1000);
-          return;
-        }
+        btnRegenerate.disabled = true;
+        const originalHTML = btnRegenerate.innerHTML;
+        btnRegenerate.innerHTML = `<span>Wait ${remaining}s...</span>`;
 
+        const timerId = setInterval(() => {
+          remaining--;
+          if (remaining > 0) {
+            btnRegenerate.innerHTML = `<span>Wait ${remaining}s...</span>`;
+          } else {
+            clearInterval(timerId);
+            btnRegenerate.innerHTML = originalHTML;
+            btnRegenerate.disabled = false;
+            this.log("Regenerate tags manually requested.", "info");
+            this.onRegenerate();
+          }
+        }, 1000);
+        return;
+      }
+
+      btnRegenerate.disabled = true;
+      const originalHTML = btnRegenerate.innerHTML;
+      btnRegenerate.innerHTML = `<span class="yt-btn-spinner"></span> Regenerating...`;
+
+      try {
         this.log("Regenerate tags manually requested.", "info");
-        this.onRegenerate();
-      });
+        await this.onRegenerate();
+      } finally {
+        btnRegenerate.disabled = false;
+        btnRegenerate.innerHTML = originalHTML;
+      }
     });
 
     btnInsert.addEventListener('click', () => {
@@ -360,6 +406,15 @@ class YouTubeStudioUI {
     });
   }
 
+  // Fetch the user's plan + quota fresh from the backend via the background script
+  getQuota() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: "getQuota" }, (res) => {
+        resolve(res && res.success ? res.stats : null);
+      });
+    });
+  }
+
   /**
    * Log action updates to sidebar UI console panel.
    */
@@ -383,15 +438,33 @@ class YouTubeStudioUI {
    * Check usage limits and apply a premium blurred paywall overlay if maxed out.
    */
   checkAndApplyPaywall() {
-    chrome.storage.local.get(["usageCount", "plan", "usageLimit"], (data) => {
-      const isFree = (data.plan || "free") === "free";
-      const limit = data.usageLimit != null ? data.usageLimit : 10;
-      const limitReached = limit >= 0 && (data.usageCount || 0) >= limit;
-      
-      if (isFree && limitReached) {
+    this.getQuota().then((q) => {
+      const isFree = ((q && q.plan) || "free") === "free";
+      const limit = q && q.usageLimit != null ? q.usageLimit : -1;
+      const count = (q && q.usageCount) || 0;
+      const remaining = typeof q?.remaining === 'number' && q.remaining >= 0 ? q.remaining : Math.max(0, limit - count);
+      const limitReached = isFree && limit >= 0 && (remaining <= 0 || count >= limit);
+
+      if (limitReached) {
         this.applyPaywallOverlay();
+      } else {
+        this.removePaywallOverlay();
       }
     });
+  }
+
+  removePaywallOverlay() {
+    if (!this.element) return;
+    const wrapper = this.element.querySelector('.yt-sidebar-wrapper');
+    if (wrapper) {
+      wrapper.style.filter = 'none';
+      wrapper.style.pointerEvents = 'auto';
+      wrapper.style.userSelect = 'auto';
+    }
+    const overlay = this.element.querySelector('.yt-paywall-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
   }
 
   applyPaywallOverlay() {

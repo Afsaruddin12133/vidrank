@@ -21,7 +21,7 @@ export default defineManifest({
   ],
   content_security_policy: {
     extension_pages:
-      "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://*.googleapis.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com http://localhost:8787",
+      "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://*.googleapis.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com http://localhost:8787 http://localhost:5173 ws://localhost:5173",
   },
   oauth2: {
     client_id: '5551217356-j4e9fsaadk4davrd08h6cqnh532km7bk.apps.googleusercontent.com',

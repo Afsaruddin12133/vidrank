@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 import uuid
 
@@ -344,8 +345,8 @@ async def auth_login(request: Request):
             "tier": user.get("tier", C.TIER_FREE),
         },
         "quota": {
-            "remaining": verdict.get("remaining", 0) if isinstance(verdict, dict) else 0,
-            "limit": verdict.get("limit", C.DEFAULT_FREE_DAILY_LIMIT) if isinstance(verdict, dict) else C.DEFAULT_FREE_DAILY_LIMIT,
+            "remaining": (verdict.get("remaining") if isinstance(verdict, dict) and isinstance(verdict.get("remaining"), int) and verdict.get("remaining") >= 0 else (C.DEFAULT_FREE_DAILY_LIMIT if user.get("tier", C.TIER_FREE) != C.TIER_PRO else -1)),
+            "limit": (verdict.get("limit") if isinstance(verdict, dict) and isinstance(verdict.get("limit"), int) and verdict.get("limit") >= 0 else (C.DEFAULT_FREE_DAILY_LIMIT if user.get("tier", C.TIER_FREE) != C.TIER_PRO else -1)),
             "resets_in_seconds": verdict.get("resets_in_seconds", 0) if isinstance(verdict, dict) else 0
         }
     }
@@ -752,7 +753,12 @@ async def _generate_impl(request: Request):
     title, description = title.strip(), description.strip()
 
     user = await db.get_user(env, uid)
-    tier = (user or {}).get("tier") or C.TIER_FREE
+    if user and user.get("is_active") == 0:
+        return JSONResponse(
+            {"error": "account_suspended", "message": "Account suspended by administrator"},
+            status_code=403,
+        )
+    tier = db.get_effective_tier(user) if user else C.TIER_FREE
 
     messages = [
         {"role": "system", "content": prompts.GENERATE_SYSTEM_PROMPT},
@@ -768,24 +774,26 @@ async def _generate_impl(request: Request):
             tags, desc = data.get("tags") or [], data.get("description") or ""
         except (ValueError, TypeError):
             tags, desc = [], ""
-        if tags and desc:
-            flusher = getattr(request.app.state, "flusher", None)
-            if flusher is not None:
-                flusher.log_usage(
-                    user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
-                    cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
+            if tags and desc:
+                flusher = getattr(request.app.state, "flusher", None)
+                if flusher is not None:
+                    flusher.log_usage(
+                        user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
+                        cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
+                    )
+                await _consume_quota(env, uid)
+                usage, retry_after = await _usage_for(env, uid, tier)
+                return JSONResponse(
+                    {"success": True, "tags": tags, "description": desc,
+                     "usage": usage, "retry_after": retry_after},
+                    headers={"X-Cache": "HIT"},
                 )
-            usage, retry_after = await _usage_for(env, uid, tier)
-            return JSONResponse(
-                {"success": True, "tags": tags, "description": desc,
-                 "usage": usage, "retry_after": retry_after},
-                headers={"X-Cache": "HIT"},
-            )
 
     # 2) semantic cache (near-repeat titles) — hit skips quota + provider,
     #    so repeat-y usage stays within the free daily cap and costs $0.
     if C.TIER_FREE == tier:
-        sem = await cache.get_semantic(env, uid, prompts.GENERATE_MODEL, title)
+        sem_key_text = f"{title}\n{description or 'None'}"
+        sem = await cache.get_semantic(env, uid, prompts.GENERATE_MODEL, sem_key_text)
         if sem:
             try:
                 data = json.loads(sem)
@@ -799,6 +807,7 @@ async def _generate_impl(request: Request):
                         user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
                         cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
                     )
+                await _consume_quota(env, uid)
                 usage, retry_after = await _usage_for(env, uid, tier)
                 return JSONResponse(
                     {"success": True, "tags": tags, "description": desc,
@@ -807,14 +816,16 @@ async def _generate_impl(request: Request):
                 )
 
     # 3) quota check (free: dailyLimit; pro: unlimited)
-    verdict = await quotas.get_quota(env, uid) or {"ok": True, "remaining": 10, "limit": 10, "resets_in_seconds": 0}
-    if not verdict.get("ok"):
-        return JSONResponse(
-            {"error": "quota_exceeded",
-             "quota_remaining": verdict.get("remaining", 0),
-             "resets_in_seconds": verdict.get("resets_in_seconds", 0)},
-            status_code=429,
-        )
+    if tier != C.TIER_PRO:
+        u_dict, _ = await _usage_for(env, uid, tier)
+        if u_dict.get("remaining", 1) <= 0:
+            resets = max(0, int(((int(time.time()) // 86400) + 1) * 86400 - time.time()))
+            return JSONResponse(
+                {"error": "quota_exceeded",
+                 "quota_remaining": 0,
+                 "resets_in_seconds": resets},
+                status_code=429,
+            )
 
     # 4) route to the pool (with fallback inside router)
     account = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
@@ -839,6 +850,7 @@ async def _generate_impl(request: Request):
             error_msg=result.get("error_msg"),
             ts=int(time.time()),
         )
+        await flusher.flush_now()
 
     if result.get("status", 0) >= 400 or not result.get("content"):
         status = result.get("status", 503)
@@ -858,7 +870,7 @@ async def _generate_impl(request: Request):
     tags, desc = parsed["tags"], parsed["description"]
     await cache.store_exact(env, key, json.dumps({"tags": tags, "description": desc}))
     if C.TIER_FREE == tier:
-        await cache.store_semantic(env, uid, prompts.GENERATE_MODEL, title,
+        await cache.store_semantic(env, uid, prompts.GENERATE_MODEL, sem_key_text,
                                    json.dumps({"tags": tags, "description": desc}))
 
     usage, retry_after = await _usage_for(env, uid, tier)
@@ -916,28 +928,40 @@ def _clean_tags(tags: list) -> list[str]:
 async def _consume_quota(env, uid: str) -> None:
     """Inc the user's QuotaDO after a successful generation (pro: no-op)."""
     try:
-        do = env.QUOTA.get(uid)
+        do = env.QUOTA.get(env.QUOTA.idFromName(uid))
         if do is not None:
             await do.inc()
     except Exception:
-        pass  # race over limit or DO unavailable: usage read stays authoritative
+        pass  # Silently fail - optimistic frontend will handle it
+
+
+async def _d1_used_today(env, uid: str) -> int:
+    """Count today's successful generates from usage_log (D1 fallback when DO is down)."""
+    try:
+        import time
+        today_ts = int(time.time() // 86400) * 86400  # start of UTC day
+        result = await env.DB.prepare(
+            "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id=?1 AND (status=200 OR status='200' OR status='ok' OR status<400) AND ts>=?2"
+        ).bind(uid, today_ts).first()
+        return int(result["cnt"]) if result and result.get("cnt") is not None else 0
+    except Exception:
+        return 0
 
 
 async def _usage_for(env, uid: str, tier: str) -> tuple[dict, int]:
-    """(usage, retry_after) from live DO verdict; retry_after per DELAYS curve."""
-    verdict = {}
-    try:
-        verdict = await quotas.get_quota(env, uid) or {}
-    except Exception:
-        verdict = {}
-    limit, remaining = (verdict.get("limit") if isinstance(verdict, dict) else None), (verdict.get("remaining") if isinstance(verdict, dict) else None)
-    if limit is None or remaining is None or remaining < 0:
-        return {"used": -1, "limit": -1, "plan": tier}, 0  # pro / DO down
-    used = max(0, limit - remaining)
+    """(usage, retry_after) calculated using D1 usage_log as source of truth for free tier."""
     if tier == C.TIER_PRO:
-        return {"used": used, "limit": -1, "plan": tier}, 0
+        return {"used": -1, "remaining": -1, "limit": -1, "plan": tier}, 0
+
+    cfg = await db.get_free_quota(env)
+    limit = -1 if cfg.get("cadence") == C.CADENCE_UNLIMITED else int(cfg.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT)
+
+    used = await _d1_used_today(env, uid)
+    remaining = max(0, limit - used) if limit >= 0 else -1
+
     idx = min(max(used - 1, 0), len(C.GENERATE_DELAYS) - 1)
-    return {"used": used, "limit": limit, "plan": tier}, C.GENERATE_DELAYS[idx]
+    result = {"used": used, "remaining": remaining, "limit": limit, "plan": tier}
+    return result, C.GENERATE_DELAYS[idx]
 
 
 @app.get("/v1/me")
@@ -948,20 +972,46 @@ async def me(request: Request):
         claims = await firebase.verify_token(auth.removeprefix("Bearer ").strip(), env)
     except firebase.AuthError as e:
         return _auth_reject(e)
-    uid = claims.get("uid", "")
-    user = await db.get_user(env, uid)
-    tier = (user or {}).get("tier") or C.TIER_FREE
-    verdict = await quotas.get_quota(env, uid) or {}
-    cf = (request.scope or {}).get("cf") or {}
-    return {
-        "uid": uid,
-        "email": claims.get("email") or (user or {}).get("email"),
-        "tier": tier,
-        "quota_remaining": verdict.get("remaining", -1) if isinstance(verdict, dict) else -1,
-        "quota_limit": verdict.get("limit") if isinstance(verdict, dict) else C.DEFAULT_FREE_DAILY_LIMIT,
-        "resets_in_seconds": verdict.get("resets_in_seconds", 0),
-        "geo": {"country": cf.get("country"), "region": cf.get("region"), "city": cf.get("city")},
-    }
+    except Exception as e:
+        return JSONResponse({"error": "unauthorized", "detail": str(e)}, status_code=401)
+
+    try:
+        uid = claims.get("uid", "")
+        user = await db.get_user(env, uid) if uid else None
+        tier = db.get_effective_tier(user) if user else C.TIER_FREE
+        cf = (request.scope or {}).get("cf") or {}
+
+        try:
+            cfg = (await db.get_free_quota(env)) or {}
+        except Exception:
+            cfg = {}
+
+        v_limit = (-1 if tier == C.TIER_PRO or cfg.get("cadence") == C.CADENCE_UNLIMITED
+                   else int(cfg.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT))
+
+        if tier == C.TIER_PRO or v_limit == -1:
+            v_remaining = -1
+        else:
+            used_today = await _d1_used_today(env, uid)
+            v_remaining = max(0, v_limit - (used_today or 0))
+
+        import time
+        resets_in_seconds = max(0, int(86400 - (time.time() % 86400)))
+        is_active = (user or {}).get("is_active", 1)
+        return {
+            "uid": uid,
+            "email": claims.get("email") or (user or {}).get("email"),
+            "tier": tier,
+            "is_active": is_active,
+            "is_suspended": is_active == 0,
+            "quota_remaining": 0 if is_active == 0 else v_remaining,
+            "quota_limit": v_limit,
+            "resets_in_seconds": resets_in_seconds,
+            "geo": {"country": cf.get("country"), "region": cf.get("region"), "city": cf.get("city")},
+        }
+    except Exception as e:
+        import sys; print(f"[error] /v1/me exception: {e}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "internal", "detail": str(e)}, status_code=500)
 
 
 @app.get("/v1/history")
@@ -1014,10 +1064,12 @@ async def auth_sync(request: Request):
 # --------------------------------------------------------------------------- #
 # admin API
 # --------------------------------------------------------------------------- #
-@app.post("/admin/login")
+@app.api_route("/admin/login", methods=["POST", "GET", "PUT", "PATCH"])
 async def admin_login(request: Request):
     """Password login. Returns an admin session token (expires 8h)."""
     env = _bindings(request)
+    if request.method == "GET":
+        return JSONResponse({"status": "login_endpoint_active"})
     body = await _read_json(request)
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
@@ -1162,7 +1214,7 @@ async def admin_accounts_health(request: Request):
     out = {}
     for a in await db.list_enabled_accounts(env):
         try:
-            out[a["id"]] = await env.RATESTATE.get(a["id"]).get_health()
+            out[a["id"]] = await env.RATESTATE.get(env.RATESTATE.idFromName(a["id"])).get_health()
         except Exception:
             out[a["id"]] = {"health": None}
     return {"health": out}
@@ -1178,7 +1230,7 @@ async def admin_account_usage(request: Request, account_id: str):
     except Exception:
         acc = None
     try:
-        live = await env.RATESTATE.get(account_id).get_live()
+        live = await env.RATESTATE.get(env.RATESTATE.idFromName(account_id)).get_live()
     except Exception:
         live = None
     return {"live": live, "limit": (acc or {}).get("daily_limit"),
@@ -1247,24 +1299,53 @@ async def admin_list_users(request: Request, tier: str | None = None):
     return {"users": await db.list_users(env, tier)}
 
 
-@app.patch("/admin/users/{uid}")
-async def admin_set_user_tier(request: Request, uid: str):
-    """Set a user's tier (e.g. upgrade to pro). Writes Firestore, then D1."""
+@app.get("/admin/users/paged")
+async def admin_list_users_paged(request: Request, q: str | None = None,
+                                 tier: str | None = None, page: int = 1,
+                                 page_size: int = 25):
+    """Server-side paginated + searchable user list for the dashboard."""
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    total = await db.count_users(env, q, tier)
+    users = await db.list_users_paged(env, q, tier, page, page_size)
+    return {
+        "users": users,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": (total + page_size - 1) // page_size,
+    }
+
+
+@app.api_route("/admin/users/{uid}", methods=["PATCH", "POST", "PUT"])
+async def admin_set_user(request: Request, uid: str):
+    """Set a user's tier or active status. Writes D1 and Firestore."""
     env = _bindings(request)
     if not await _admin(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request)
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
-    tier = (body.get("tier") or "").strip().lower()
-    if tier not in ("free", "pro"):
-        return JSONResponse({"error": "tier must be free|pro"}, status_code=400)
-    try:
-        await sync.set_user_tier(env, uid, tier)
-    except Exception:
-        pass  # Firestore unreachable in local dev; D1 write below still applies
-    await db.set_user_tier(env, uid, tier)
-    return {"uid": uid, "tier": tier}
+    
+    tier = body.get("tier")
+    if tier and str(tier).strip().lower() in ("free", "pro"):
+        t_val = str(tier).strip().lower()
+        try:
+            await sync.set_user_tier(env, uid, t_val)
+        except Exception:
+            pass
+        await db.set_user_tier(env, uid, t_val)
+
+    if "is_active" in body or "isActive" in body:
+        val = body.get("is_active") if "is_active" in body else body.get("isActive")
+        act_int = 1 if bool(val) else 0
+        await db.set_user_status(env, uid, act_int)
+
+    user = await db.get_user(env, uid)
+    return {"uid": uid, "tier": (user or {}).get("tier", "free"), "is_active": (user or {}).get("is_active", 1)}
 
 
 @app.get("/admin/plans")
@@ -1365,3 +1446,104 @@ except Exception:
     async def _startup():
         pass
     VRRouterEntrypoint = None
+
+
+@app.get("/admin/free-quota")
+async def admin_get_free_quota(request: Request):
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    return await db.get_free_quota(env)
+
+
+@app.put("/admin/free-quota")
+async def admin_set_free_quota(request: Request):
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await _read_json(request)
+    if body is None:
+        return JSONResponse({"error": "bad_request"}, status_code=400)
+    try:
+        limit = int(body.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT)
+    except (TypeError, ValueError):
+        limit = C.DEFAULT_FREE_DAILY_LIMIT
+    if limit < 1:
+        return JSONResponse({"error": "limit_must_be_positive"}, status_code=400)
+    cadence = str(body.get("cadence") or C.CADENCE_DEFAULT)
+    if cadence not in (C.CADENCE_DAILY, C.CADENCE_NEVER, C.CADENCE_UNLIMITED):
+        return JSONResponse({"error": "invalid_cadence"}, status_code=400)
+    try:
+        window_days = max(0, int(body.get("window_days") or 0))
+    except (TypeError, ValueError):
+        window_days = 0
+    if cadence != C.CADENCE_DAILY:
+        window_days = 0
+    await db.set_free_quota(env, limit, cadence, window_days)
+    return {"limit": limit, "cadence": cadence, "window_days": window_days}
+
+
+@app.post("/admin/users/{uid}/quota/consume")
+async def admin_consume_quota(request: Request, uid: str):
+    """Admin-only: consume 1 quota for a user (same path as /v1/generate)."""
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        do = env.QUOTA.get(env.QUOTA.idFromName(uid))
+        if do is None:
+            return JSONResponse({"error": "QUOTA binding returned None"}, status_code=500)
+        try:
+            inc_res = await do.inc()
+        except Exception as e:
+            return JSONResponse({"error": f"do.inc failed: {type(e).__name__}: {e}"[:400]}, status_code=500)
+        try:
+            rem_res = await do.remaining()
+        except Exception as e:
+            return JSONResponse({"error": f"do.remaining failed: {type(e).__name__}: {e}"[:400]}, status_code=500)
+        return {"uid": uid, "inc": inc_res, "remaining_rpc": rem_res}
+    except Exception as e:
+        return JSONResponse({"error": f"{type(e).__name__}: {e}"[:400]}, status_code=500)
+
+
+@app.api_route("/admin/users/{uid}/reset-quota", methods=["POST", "PUT", "PATCH"])
+async def admin_reset_user_quota(request: Request, uid: str):
+    """Admin endpoint to reset a user's daily usage count to 0."""
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    import time
+    today_ts = int(time.time() // 86400) * 86400
+    try:
+        await env.DB.prepare("DELETE FROM usage_log WHERE user_id = ?1 AND ts >= ?2").bind(uid, today_ts).run()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    try:
+        if hasattr(env, "QUOTA") and env.QUOTA:
+            do = env.QUOTA.get(env.QUOTA.idFromName(uid))
+            if do and hasattr(do, "reset"):
+                await do.reset()
+    except Exception:
+        pass
+    return {"ok": True, "uid": uid, "reset_at": today_ts}
+
+
+@app.api_route("/admin/users/{uid}/set-usage", methods=["POST", "PUT", "PATCH"])
+async def admin_set_user_usage(request: Request, uid: str):
+    """Admin endpoint to set today's usage count for a user."""
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await _read_json(request) or {}
+    usage_count = max(0, int(body.get("usage_count") or 0))
+    import time
+    today_ts = int(time.time() // 86400) * 86400
+    try:
+        await env.DB.prepare("DELETE FROM usage_log WHERE user_id = ?1 AND ts >= ?2").bind(uid, today_ts).run()
+        for i in range(usage_count):
+            await env.DB.prepare(
+                "INSERT INTO usage_log (user_id, account_id, model, prompt_tokens, completion_tokens, cache_hit, latency_ms, status, ts) VALUES (?1, 'admin', 'admin', 0, 0, 0, 0, 200, ?2)"
+            ).bind(uid, today_ts + i).run()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return {"ok": True, "uid": uid, "usage_count": usage_count}
