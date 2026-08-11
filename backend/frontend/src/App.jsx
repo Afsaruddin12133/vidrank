@@ -148,21 +148,6 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Mobile Top Navigation */}
-      <div className="mobile-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="sidebar-brand-logo">▷</div>
-          <span className="sidebar-brand-text">VidRank</span>
-        </div>
-        <button
-          className="icon-btn"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-label="Toggle Navigation"
-        >
-          <IconMenu />
-        </button>
-      </div>
-
       {/* Mobile Drawer Overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -228,6 +213,22 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="main-wrapper">
+        {/* Mobile Top Navigation Bar */}
+        <div className="mobile-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="sidebar-brand-logo" style={{ width: 28, height: 28, fontSize: 14 }}>▷</div>
+            <span className="sidebar-brand-text" style={{ fontSize: 16 }}>VidRank</span>
+          </div>
+          <button
+            className="icon-btn"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Navigation Menu"
+          >
+            <IconMenu />
+          </button>
+        </div>
+
+        {/* Desktop Header */}
         <header className="top-header">
           <div className="top-header-title-group">
             <h1 className="top-header-title">{activeTabInfo.label}</h1>
