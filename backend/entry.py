@@ -1,4 +1,4 @@
-"""Wrangler worker entrypoint — thin FastAPI → Cloudflare bridge.
+"""Wrangler worker entrypoint — thin FastAPI → Cloudflare bridge. (v2.0.1 - Subscriptions active)
 
 Cloudflare executes the `main` file as a top-level module (no parent package),
 so app/main.py's relative imports (`from . import cache`) cannot resolve when

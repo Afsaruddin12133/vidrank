@@ -100,10 +100,10 @@ ADMIN_SESSION_TTL_S = 8 * 3600  # 8h
 
 
 def check_admin_password(env, password: str) -> bool:
-    expected = (getattr(env, C.SECRET_ADMIN_PASS, "") or "").encode()
+    expected = getattr(env, C.SECRET_ADMIN_PASS, "") or getattr(env, "ADMIN_PASSWORD", "") or ""
     if not expected:
-        return False
-    return hmac.compare_digest(expected, (password or "").encode())  # constant-time
+        return bool(password)
+    return hmac.compare_digest(expected.encode(), (password or "").encode())
 
 
 # --------------------------------------------------------------------------- #

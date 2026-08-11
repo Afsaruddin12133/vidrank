@@ -1431,7 +1431,7 @@ async def admin_set_user(request: Request, uid: str):
                         return JSONResponse(
                             {"error": f"Cannot downgrade to Free! User has an active Pro package running ({days_left} days remaining)."},
                             status_code=400
-                        ),
+                        )
                 except Exception:
                     pass
         try:
