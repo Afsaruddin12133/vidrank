@@ -128,29 +128,50 @@ export default function SubAdmins() {
 
   const loadActivity = useCallback(async () => {
     setActivityBusy(true)
+    let serverLogs = []
+    let pagedData = null
+
     try {
-      // Try paged server API first
       const res = await listSubAdminActivityPaged({
         q: debouncedActivityQ,
         subAdmin: subAdminFilter,
         page: activityPage,
         pageSize: activityPageSize,
       })
-      if (res && Array.isArray(res.activity)) {
-        setActivityData({ isPagedServer: true, ...res })
-        return
+      if (res && Array.isArray(res.activity) && res.activity.length > 0) {
+        pagedData = res
       }
     } catch {
-      /* Fall back to standard endpoint */
+      /* worker free plan fallback */
     }
-    try {
-      const fallbackRes = await listSubAdminActivity(200)
-      setActivityData({ isPagedServer: false, ...fallbackRes })
-    } catch {
-      setActivityData({ isPagedServer: false, activity: [] })
-    } finally {
-      setActivityBusy(false)
+
+    if (!pagedData) {
+      try {
+        const fallbackRes = await listSubAdminActivity(200)
+        if (fallbackRes && Array.isArray(fallbackRes.activity)) {
+          serverLogs = fallbackRes.activity
+        }
+      } catch {
+        /* worker free plan fallback */
+      }
     }
+
+    const localLogs = JSON.parse(localStorage.getItem('vidrank_sub_activity_logs') || '[]')
+    const combined = [...localLogs, ...(pagedData?.activity || serverLogs)]
+    const uniqueMap = new Map()
+    for (const item of combined) {
+      if (item && item.id && !uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item)
+      }
+    }
+    const allLogs = Array.from(uniqueMap.values()).sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+
+    if (pagedData && localLogs.length === 0) {
+      setActivityData({ isPagedServer: true, ...pagedData })
+    } else {
+      setActivityData({ isPagedServer: false, activity: allLogs })
+    }
+    setActivityBusy(false)
   }, [debouncedActivityQ, subAdminFilter, activityPage, activityPageSize])
 
   useEffect(() => { loadSubAdmins() }, [loadSubAdmins])

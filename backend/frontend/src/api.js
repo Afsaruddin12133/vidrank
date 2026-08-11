@@ -104,11 +104,45 @@ export const listUsersPaged = ({ q = '', tier = '', page = 1, pageSize = 25 } = 
   p.set('page_size', pageSize)
   return _get(`/admin/users/paged?${p}`)
 }
-export const setUserTier = (uid, tier) => _json(`/admin/users/${uid}`, 'PATCH', { tier })
-export const setUserStatus = (uid, isActive) => _json(`/admin/users/${uid}`, 'PATCH', { is_active: isActive ? 1 : 0 })
-export const approveUser = (uid) => setUserTier(uid, 'pro')
-export const resetUserQuota = (uid) => _json(`/admin/users/${uid}/reset-quota`, 'POST')
-export const setUserUsage = (uid, usageCount) => _json(`/admin/users/${uid}/set-usage`, 'POST', { usage_count: usageCount })
+export function recordLocalSubActivity(action, targetUid, targetEmail, details) {
+  try {
+    const role = getRole()
+    if (role !== 'sub') return
+    const subUsername = localStorage.getItem('vidrank_sub_username') || 'Sub-Admin'
+    const item = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      sub_admin_username: subUsername,
+      action,
+      target_uid: targetUid,
+      target_email: targetEmail || targetUid,
+      details: details ? JSON.stringify(details) : null,
+      created_at: Math.floor(Date.now() / 1000),
+    }
+    const current = JSON.parse(localStorage.getItem('vidrank_sub_activity_logs') || '[]')
+    current.unshift(item)
+    localStorage.setItem('vidrank_sub_activity_logs', JSON.stringify(current.slice(0, 500)))
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+export const setUserTier = (uid, tier, targetEmail = '') => {
+  recordLocalSubActivity('set_user', uid, targetEmail, { tier: { from: 'free/pro', to: tier } })
+  return _json(`/admin/users/${uid}`, 'PATCH', { tier })
+}
+export const setUserStatus = (uid, isActive, targetEmail = '') => {
+  recordLocalSubActivity('set_user', uid, targetEmail, { is_active: { to: isActive ? 1 : 0 } })
+  return _json(`/admin/users/${uid}`, 'PATCH', { is_active: isActive ? 1 : 0 })
+}
+export const approveUser = (uid, targetEmail = '') => setUserTier(uid, 'pro', targetEmail)
+export const resetUserQuota = (uid, targetEmail = '') => {
+  recordLocalSubActivity('reset_quota', uid, targetEmail)
+  return _json(`/admin/users/${uid}/reset-quota`, 'POST')
+}
+export const setUserUsage = (uid, usageCount, targetEmail = '') => {
+  recordLocalSubActivity('set_usage', uid, targetEmail, { usage_count: usageCount })
+  return _json(`/admin/users/${uid}/set-usage`, 'POST', { usage_count: usageCount })
+}
 export const listPlans = () => _get('/admin/plans')
 export const updatePlan = (payload) => _json('/admin/plans', 'PATCH', payload)
 export const getPricing = () => _get('/admin/pricing')

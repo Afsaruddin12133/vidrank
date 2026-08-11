@@ -69,10 +69,10 @@ export default function Users() {
 
   useEffect(() => { load(debouncedQ, tier) }, [debouncedQ, tier, load])
 
-  const onApprove = async (uid, newTier) => {
+  const onApprove = async (uid, newTier, email = '') => {
     setActing(uid); setError('')
     try {
-      await setUserTier(uid, newTier)
+      await setUserTier(uid, newTier, email)
       await load(debouncedQ, tier)
     } catch (e) {
       setError(e.message)
@@ -81,11 +81,11 @@ export default function Users() {
     }
   }
 
-  const onResetQuota = async (uid) => {
+  const onResetQuota = async (uid, email = '') => {
     if (!window.confirm("Reset this user's quota usage to 0 for today?")) return
     setActing(uid); setError('')
     try {
-      await resetUserQuota(uid)
+      await resetUserQuota(uid, email)
       await load(debouncedQ, tier)
     } catch (e) {
       setError(e.message)
@@ -94,7 +94,7 @@ export default function Users() {
     }
   }
 
-  const onEditQuota = async (uid, currentUsage) => {
+  const onEditQuota = async (uid, currentUsage, email = '') => {
     const input = window.prompt("Enter new usage count for today (0 = full 10 quota available):", currentUsage || 0)
     if (input === null) return
     const val = parseInt(input, 10)
@@ -104,7 +104,7 @@ export default function Users() {
     }
     setActing(uid); setError('')
     try {
-      await setUserUsage(uid, val)
+      await setUserUsage(uid, val, email)
       await load(debouncedQ, tier)
     } catch (e) {
       setError(e.message)
@@ -113,13 +113,13 @@ export default function Users() {
     }
   }
 
-  const onToggleStatus = async (uid, currentActive) => {
+  const onToggleStatus = async (uid, currentActive, email = '') => {
     const newStatus = !currentActive
     const actionName = newStatus ? "activate" : "suspend / set offline"
     if (!window.confirm(`Are you sure you want to ${actionName} this user account?`)) return
     setActing(uid); setError('')
     try {
-      await setUserStatus(uid, newStatus)
+      await setUserStatus(uid, newStatus, email)
       await load(debouncedQ, tier)
     } catch (e) {
       setError(e.message)

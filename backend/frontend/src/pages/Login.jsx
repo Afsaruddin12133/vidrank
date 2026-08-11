@@ -19,7 +19,7 @@ export default function Login({ onAuthed }) {
     try {
       const res = await adminLogin(password, username.trim())
       setToken(res.token)
-      setRole(res.role)
+      setRole(res.role, res.username || username.trim())
       onAuthed()
     } catch (a) {
       if (a instanceof ApiError && (a.status === 401 || a.status === 406)) {
