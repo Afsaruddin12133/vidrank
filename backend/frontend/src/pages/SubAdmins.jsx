@@ -286,90 +286,92 @@ export default function SubAdmins() {
         {rows.length === 0 ? (
           <div className="empty">{busy ? 'Loading…' : 'No sub-admins yet.'}</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Updated</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  {editingId === r.id ? (
-                    <>
-                      <td>
-                        <input
-                          className="in"
-                          value={editUsername}
-                          onChange={(e) => setEditUsername(e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={editActive}
-                            onChange={(e) => setEditActive(e.target.checked)}
-                          />
-                          active
-                        </label>
-                      </td>
-                      <td colSpan={2}>
-                        <input
-                          className="in"
-                          style={{ maxWidth: 200 }}
-                          type="password"
-                          placeholder="New password (blank = keep)"
-                          value={editPassword}
-                          onChange={(e) => setEditPassword(e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn sm primary" disabled={acting === r.id} onClick={() => onSaveEdit(r.id)}>
-                            Save
-                          </button>
-                          <button className="btn sm ghost" onClick={() => setEditingId(null)}>
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td>{r.username}</td>
-                      <td>
-                        <span className={`status ${r.is_active ? 'status-ok' : 'status-err'}`}>
-                          {r.is_active ? 'active' : 'suspended'}
-                        </span>
-                      </td>
-                      <td>{fmtClock(r.created_at)}</td>
-                      <td>{fmtClock(r.updated_at)}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn sm ghost" disabled={acting === r.id} onClick={() => startEdit(r)}>
-                            ✏️ Edit
-                          </button>
-                          <button
-                            className="btn sm ghost"
-                            style={{ color: '#dc2626' }}
-                            disabled={acting === r.id}
-                            onClick={() => onDelete(r)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  )}
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Updated</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    {editingId === r.id ? (
+                      <>
+                        <td>
+                          <input
+                            className="in"
+                            value={editUsername}
+                            onChange={(e) => setEditUsername(e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={editActive}
+                              onChange={(e) => setEditActive(e.target.checked)}
+                            />
+                            active
+                          </label>
+                        </td>
+                        <td colSpan={2}>
+                          <input
+                            className="in"
+                            style={{ maxWidth: 200 }}
+                            type="password"
+                            placeholder="New password (blank = keep)"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn sm primary" disabled={acting === r.id} onClick={() => onSaveEdit(r.id)}>
+                              Save
+                            </button>
+                            <button className="btn sm ghost" onClick={() => setEditingId(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{r.username}</td>
+                        <td>
+                          <span className={`status ${r.is_active ? 'status-ok' : 'status-err'}`}>
+                            {r.is_active ? 'active' : 'suspended'}
+                          </span>
+                        </td>
+                        <td>{fmtClock(r.created_at)}</td>
+                        <td>{fmtClock(r.updated_at)}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn sm ghost" disabled={acting === r.id} onClick={() => startEdit(r)}>
+                              ✏️ Edit
+                            </button>
+                            <button
+                              className="btn sm ghost"
+                              style={{ color: '#dc2626' }}
+                              disabled={acting === r.id}
+                              onClick={() => onDelete(r)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -416,39 +418,41 @@ export default function SubAdmins() {
         {pagedActivity.length === 0 ? (
           <div className="empty">No sub-admin activity recorded yet.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Sub-Admin</th>
-                <th>Action</th>
-                <th>Target User</th>
-                <th>Details</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedActivity.map((item, idx) => (
-                <tr key={item.id || `act-${idx}`}>
-                  <td><span className="badge cool">{item.sub_admin_username}</span></td>
-                  <td>
-                    <span className="badge ok" style={{ textTransform: 'uppercase' }}>
-                      {item.action}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span className="mono" style={{ fontSize: 12 }}>{item.target_email || item.target_uid}</span>
-                      {item.target_email && item.target_email !== item.target_uid && (
-                        <span className="card-sub" style={{ margin: 0, fontSize: 11 }}>UID: {item.target_uid}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>{formatDetails(item.details, item.action)}</td>
-                  <td>{fmtClock(item.created_at)}</td>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Sub-Admin</th>
+                  <th>Action</th>
+                  <th>Target User</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pagedActivity.map((item, idx) => (
+                  <tr key={item.id || `act-${idx}`}>
+                    <td><span className="badge cool">{item.sub_admin_username}</span></td>
+                    <td>
+                      <span className="badge ok" style={{ textTransform: 'uppercase' }}>
+                        {item.action}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="mono" style={{ fontSize: 12 }}>{item.target_email || item.target_uid}</span>
+                        {item.target_email && item.target_email !== item.target_uid && (
+                          <span className="card-sub" style={{ margin: 0, fontSize: 11 }}>UID: {item.target_uid}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>{formatDetails(item.details, item.action)}</td>
+                    <td>{fmtClock(item.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <PaginationControls

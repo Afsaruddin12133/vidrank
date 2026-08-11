@@ -357,44 +357,46 @@ export default function Tracing() {
         {pagedAccts.length === 0 ? (
           <div className="empty">No data yet — add accounts or wait for usage.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Account</th>
-                <th>Success rate</th>
-                <th>p50/p95 ms</th>
-                <th>Failures</th>
-                <th>Used / limit</th>
-                <th>Est. exhaustion</th>
-                <th>State</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedAccts.map((a) => {
-                const d = (a.days || []).slice(-1)[0]
-                const last = (a.days || []).slice(-1)[0]
-                const requests = last?.requests || 0
-                const errors = last?.errors || 0
-                const success = requests ? 1 - errors / requests : null
-                const p50 = last?.avg_latency_ms
-                const p95 = last?.avg_latency_ms != null ? last.avg_latency_ms * 1.8 : null
-                const limit = a.daily_limit
-                const used = (a.days || []).reduce((s, x) => s + (x.requests || 0), 0)
-                const exhaustion = exhaustionEst(used, d?.day, limit)
-                return (
-                  <tr key={a.id}>
-                    <td><span className={`provider provider-${a.provider}`}>{a.provider}</span> {a.label || a.id}</td>
-                    <td>{fmtPct(success)}</td>
-                    <td>{p50 == null ? '—' : `${p50.toFixed(0)} / ${p95.toFixed(0)}`}</td>
-                    <td>{fmtInt(errors)}</td>
-                    <td className="mono">{fmtInt(used)} / {fmtInt(limit)}</td>
-                    <td>{exhaustion}</td>
-                    <td>{enabledIds.has(a.id) ? <span className="badge ok">enabled</span> : <span className="badge cool">disabled</span>}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Success rate</th>
+                  <th>p50/p95 ms</th>
+                  <th>Failures</th>
+                  <th>Used / limit</th>
+                  <th>Est. exhaustion</th>
+                  <th>State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedAccts.map((a) => {
+                  const d = (a.days || []).slice(-1)[0]
+                  const last = (a.days || []).slice(-1)[0]
+                  const requests = last?.requests || 0
+                  const errors = last?.errors || 0
+                  const success = requests ? 1 - errors / requests : null
+                  const p50 = last?.avg_latency_ms
+                  const p95 = last?.avg_latency_ms != null ? last.avg_latency_ms * 1.8 : null
+                  const limit = a.daily_limit
+                  const used = (a.days || []).reduce((s, x) => s + (x.requests || 0), 0)
+                  const exhaustion = exhaustionEst(used, d?.day, limit)
+                  return (
+                    <tr key={a.id}>
+                      <td><span className={`provider provider-${a.provider}`}>{a.provider}</span> {a.label || a.id}</td>
+                      <td>{fmtPct(success)}</td>
+                      <td>{p50 == null ? '—' : `${p50.toFixed(0)} / ${p95.toFixed(0)}`}</td>
+                      <td>{fmtInt(errors)}</td>
+                      <td className="mono">{fmtInt(used)} / {fmtInt(limit)}</td>
+                      <td>{exhaustion}</td>
+                      <td>{enabledIds.has(a.id) ? <span className="badge ok">enabled</span> : <span className="badge cool">disabled</span>}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
         <PaginationControls
           page={curtPage}

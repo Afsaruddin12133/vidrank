@@ -50,43 +50,45 @@ export default function Accounts() {
         {accounts.length === 0 ? (
           <div className="empty">No accounts yet. Add a Groq or OpenRouter key above.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Provider</th>
-                <th>API key</th>
-                <th>Label</th>
-                <th>Health</th>
-                <th>Used / limit (today)</th>
-                <th>RPM</th>
-                <th>State</th>
-                <th>Cooldown / reset</th>
-                <th>Enabled</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map((a) => {
-                const lv = live[a.id]?.live
-                const limit = live[a.id]?.limit ?? a.daily_limit
-                const used = lv?.used_today ?? 0
-                const usedPct = limit ? Math.min(100, (used / limit) * 100) : 0
-                const inCooldown = !!(lv?.cooldown_until && now / 1000 < lv.cooldown_until)
-                const h = (health?.health || {})[a.id]?.health
-                return (
-                  <AccountRow key={a.id} a={a} h={h} used={used} usedPct={usedPct}
-                    limit={limit} live={lv} inCooldown={inCooldown} now={now}
-                    onToggle={(enabled) =>
-                      updateAccount(a.id, { enabled: enabled ? 1 : 0 }).then(() => setReload((r) => r + 1))}
-                    onRemove={() => {
-                      if (window.confirm(`Remove account ${a.label || a.id}?`)) {
-                        deleteAccount(a.id).then(() => setReload((r) => r + 1))
-                      }
-                    }} />
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>API key</th>
+                  <th>Label</th>
+                  <th>Health</th>
+                  <th>Used / limit (today)</th>
+                  <th>RPM</th>
+                  <th>State</th>
+                  <th>Cooldown / reset</th>
+                  <th>Enabled</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((a) => {
+                  const lv = live[a.id]?.live
+                  const limit = live[a.id]?.limit ?? a.daily_limit
+                  const used = lv?.used_today ?? 0
+                  const usedPct = limit ? Math.min(100, (used / limit) * 100) : 0
+                  const inCooldown = !!(lv?.cooldown_until && now / 1000 < lv.cooldown_until)
+                  const h = (health?.health || {})[a.id]?.health
+                  return (
+                    <AccountRow key={a.id} a={a} h={h} used={used} usedPct={usedPct}
+                      limit={limit} live={lv} inCooldown={inCooldown} now={now}
+                      onToggle={(enabled) =>
+                        updateAccount(a.id, { enabled: enabled ? 1 : 0 }).then(() => setReload((r) => r + 1))}
+                      onRemove={() => {
+                        if (window.confirm(`Remove account ${a.label || a.id}?`)) {
+                          deleteAccount(a.id).then(() => setReload((r) => r + 1))
+                        }
+                      }} />
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
         <div className="card-sub note">
           Adding an account adds its full limit to the pool automatically — the router reads the dynamic list.
