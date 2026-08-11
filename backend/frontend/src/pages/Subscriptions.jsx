@@ -9,6 +9,7 @@ const FALLBACK_SUBSCRIPTIONS = [
     user_id: 'eHX5OtPHquS31x3wHIIwrZm4uVi2',
     user_name: 'Afsar Uddin',
     user_email: 'afsaruddin00253056@gmail.com',
+    photo_url: 'https://lh3.googleusercontent.com/a/ACg8ocJsdAy6qFIc2nPXdkVXrDVfwqdWBBvmT3xGCL-eGpwmhdapH7JZ=s96-c',
     plan: 'monthly',
     bkash_number: '01835487029',
     transaction_id: 'sfdafsfdasf121',
@@ -23,6 +24,7 @@ const FALLBACK_SUBSCRIPTIONS = [
     user_id: 'fi36T93rRtMW8qRwZJ4nLWPA6aQ2',
     user_name: 'Afsar Uddin',
     user_email: 'afsaruddin12133@gmail.com',
+    photo_url: 'https://lh3.googleusercontent.com/a/ACg8ocK8NLWfSJc2Lx6ugt9phlB1kfIo_aTtA4NqNxIBQA8q3ZV1sPHx=s96-c',
     plan: 'monthly',
     bkash_number: '0196354857485',
     transaction_id: 'asdfsafdaf',
@@ -37,6 +39,7 @@ const FALLBACK_SUBSCRIPTIONS = [
     user_id: 'Unknown',
     user_name: 'Unknown',
     user_email: 'New Subscriber',
+    photo_url: '',
     plan: 'monthly',
     bkash_number: '01744463419',
     transaction_id: '15785121',
@@ -51,6 +54,7 @@ const FALLBACK_SUBSCRIPTIONS = [
     user_id: 'Unknown',
     user_name: 'Unknown',
     user_email: 'New Subscriber',
+    photo_url: '',
     plan: 'monthly',
     bkash_number: '0 1795916659',
     transaction_id: 'DGD1CIYH5Z',
@@ -65,6 +69,7 @@ const FALLBACK_SUBSCRIPTIONS = [
     user_id: 'Unknown',
     user_name: 'Unknown',
     user_email: 'New Subscriber',
+    photo_url: '',
     plan: 'monthly',
     bkash_number: '01835487029',
     transaction_id: 'Jsjsjsjw',
@@ -76,7 +81,16 @@ const FALLBACK_SUBSCRIPTIONS = [
   }
 ]
 
-function UserAvatar({ name = '', email = '' }) {
+function UserAvatar({ name = '', email = '', photo = '' }) {
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        alt={name || email || 'Avatar'}
+        style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
   const label = name || email || '?'
   const initial = (label.trim()[0] || '?').toUpperCase()
   const hash = [...label].reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -217,6 +231,7 @@ export default function Subscriptions() {
                 const isPending = statusLower === 'pending'
                 const userName = sub.user_name || 'Unknown'
                 const userEmail = sub.user_email || (sub.user_id && sub.user_id !== 'Unknown' ? sub.user_id : 'New Subscriber')
+                const photoUrl = sub.photo_url || sub.photoUrl || ''
                 const amountUsdNum = Number(sub.amount_usd)
                 const amountUsdText = !isNaN(amountUsdNum) && amountUsdNum > 0 ? `$${amountUsdNum.toFixed(2)} USD` : ''
 
@@ -224,7 +239,7 @@ export default function Subscriptions() {
                   <tr key={sub.id || Math.random()}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <UserAvatar name={userName} email={userEmail} />
+                        <UserAvatar name={userName} email={userEmail} photo={photoUrl} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{userName}</span>
                           <span style={{ fontSize: 12, color: '#9ca3af' }}>{userEmail}</span>
