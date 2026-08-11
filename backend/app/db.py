@@ -529,3 +529,25 @@ async def put_memory_node(env, *, user_id: str, node_type: str, node_id: str,
         "INSERT OR REPLACE INTO memory_graph "
         "(user_id, node_type, node_id, parent_id, payload, ts) VALUES (?,?,?,?,?,?)"
     ).bind(user_id, node_type, node_id, parent_id, json.dumps(payload), ts).run()
+
+
+async def list_subscriptions(env) -> list[dict]:
+    """Fetch all subscription requests ordered by created_at DESC."""
+    try:
+        return await _fetch_all(
+            env,
+            "SELECT id, user_id, user_name, user_email, plan, bkash_number, "
+            "transaction_id, amount_bdt, amount_usd, requested_at, status, "
+            "subscription_id, created_at FROM subscriptions ORDER BY created_at DESC"
+        )
+    except Exception:
+        return []
+
+
+async def update_subscription_status(env, sub_id: str, status: str) -> None:
+    """Update subscription request status."""
+    try:
+        await env.DB.prepare("UPDATE subscriptions SET status=?1 WHERE id=?2") \
+            .bind(status, sub_id).run()
+    except Exception:
+        pass

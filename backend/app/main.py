@@ -1485,6 +1485,42 @@ async def admin_set_user(request: Request, uid: str):
     }
 
 
+@app.get("/admin/subscriptions")
+async def admin_list_subscriptions(request: Request):
+    """List all subscription requests."""
+    env = _bindings(request)
+    if not await _admin(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    subs = await db.list_subscriptions(env)
+    return {"subscriptions": subs}
+
+
+@app.post("/admin/subscriptions/{sub_id}/approve")
+async def admin_approve_subscription(request: Request, sub_id: str):
+    """Approve a subscription request."""
+    env = _bindings(request)
+    auth = await _admin(request)
+    if not auth:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await db.update_subscription_status(env, sub_id, "approved")
+    await _log_sub_activity(env, auth, "approve_subscription", sub_id, {"status": "approved"})
+    return {"status": "ok", "id": sub_id}
+
+
+@app.post("/admin/subscriptions/{sub_id}/reject")
+async def admin_reject_subscription(request: Request, sub_id: str):
+    """Reject a subscription request."""
+    env = _bindings(request)
+    auth = await _admin(request)
+    if not auth:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await db.update_subscription_status(env, sub_id, "rejected")
+    await _log_sub_activity(env, auth, "reject_subscription", sub_id, {"status": "rejected"})
+    return {"status": "ok", "id": sub_id}
+
+
 
 @app.get("/admin/plans")
 async def admin_list_plans(request: Request):

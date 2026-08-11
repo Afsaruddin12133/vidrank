@@ -163,6 +163,10 @@ export const getPricing = () => _get('/admin/pricing')
 export const getFreeQuota = () => _get('/admin/free-quota')
 export const setFreeQuota = (payload) => _json('/admin/free-quota', 'PUT', payload)
 
+export const listSubscriptions = () => _get('/admin/subscriptions')
+export const approveSubscription = (subId) => _json(`/admin/subscriptions/${subId}/approve`, 'POST')
+export const rejectSubscription = (subId) => _json(`/admin/subscriptions/${subId}/reject`, 'POST')
+
 // ---- /admin sub-admins (super admin only) ----
 export const listSubAdmins = () => _get('/admin/sub-admins')
 export const addSubAdmin = (username, password) => _json('/admin/sub-admins', 'POST', { username, password })
