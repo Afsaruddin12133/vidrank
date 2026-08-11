@@ -1066,28 +1066,69 @@ async def auth_sync(request: Request):
 # --------------------------------------------------------------------------- #
 @app.api_route("/admin/login", methods=["POST", "GET", "PUT", "PATCH"])
 async def admin_login(request: Request):
-    """Password login. Returns an admin session token (expires 8h)."""
+    """Login. Super admin: {password}. Sub-admin: {username, password}."""
     env = _bindings(request)
     if request.method == "GET":
         return JSONResponse({"status": "login_endpoint_active"})
     body = await _read_json(request)
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
-    if not admin_mod.check_admin_password(env, str(body.get("password", ""))):
+    username = str(body.get("username") or "").strip()
+    password = str(body.get("password") or "")
+    if username:
+        sub = await db.get_sub_admin_by_username(env, username)
+        if not sub or not sub.get("is_active"):
+            return JSONResponse({"error": "invalid_credentials"}, status_code=401)
+        if not admin_mod.verify_sub_password(password, sub.get("pass_hash") or ""):
+            return JSONResponse({"error": "invalid_credentials"}, status_code=401)
+        return {
+            "token": admin_mod.issue_token(env, role="sub", sid=sub["id"]),
+            "expires_in_s": admin_mod.ADMIN_SESSION_TTL_S,
+            "role": "sub",
+            "username": sub["username"],
+        }
+    if not admin_mod.check_admin_password(env, password):
         return JSONResponse({"error": "invalid_credentials"}, status_code=401)
-    return {"token": admin_mod.issue_token(env), "expires_in_s": admin_mod.ADMIN_SESSION_TTL_S}
+    return {
+        "token": admin_mod.issue_token(env),
+        "expires_in_s": admin_mod.ADMIN_SESSION_TTL_S,
+        "role": "admin",
+    }
 
 
-async def _admin(request: Request) -> str | None:
+async def _admin(request: Request) -> dict | None:
     env = _bindings(request)
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    return "admin" if admin_mod.verify_token(env, token) else None
+    return admin_mod.verify_token(env, token)
+
+
+async def _super(request: Request) -> bool:
+    auth = await _admin(request)
+    return bool(auth and auth.get("role") == "admin")
+
+
+async def _log_sub_activity(env, auth: dict | None, action: str, uid: str,
+                            details: dict | None = None) -> None:
+    """Audit-log a sub-admin's user-table action. No-op for super admins."""
+    if not auth or auth.get("role") != "sub":
+        return
+    sub = await db.get_sub_admin(env, auth.get("sid")) if auth.get("sid") else None
+    user = await db.get_user(env, uid)
+    await db.add_sub_admin_activity(
+        env,
+        sub_admin_id=auth.get("sid") or "?",
+        sub_admin_username=(sub or {}).get("username") or "?",
+        action=action,
+        target_uid=uid,
+        target_email=(user or {}).get("email"),
+        details=details,
+    )
 
 
 @app.get("/admin/accounts")
 async def admin_list_accounts(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     return {"accounts": await db.list_enabled_accounts(env)}
 
@@ -1095,7 +1136,7 @@ async def admin_list_accounts(request: Request):
 @app.get("/admin/accounts/all")
 async def admin_list_all_accounts(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     accounts = await db.list_accounts(env)
     for a in accounts:
@@ -1107,7 +1148,7 @@ async def admin_list_all_accounts(request: Request):
 async def admin_accounts_usage(request: Request, days: int = 7):
     """Per-account rollup chart data: usage vs limit, up to `days` back."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     days = min(max(days, 1), 90)
     accounts = await db.list_accounts(env)
@@ -1126,10 +1167,53 @@ async def admin_accounts_usage(request: Request, days: int = 7):
     return {"accounts": out}
 
 
+@app.get("/admin/accounts/usage/paged")
+async def admin_accounts_usage_paged(
+    request: Request,
+    days: int = 7,
+    q: str | None = None,
+    provider: str | None = None,
+    page: int = 1,
+    page_size: int = 10,
+):
+    """Server-side paginated per-account usage rollup chart data."""
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    days = min(max(days, 1), 90)
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+
+    total = await db.count_accounts(env, q, provider)
+    accounts = await db.list_accounts_paged(env, q, provider, page, page_size)
+
+    out = []
+    for a in accounts:
+        rollups = await db.get_account_usage_days(env, a["id"], days)
+        out.append({
+            "id": a["id"],
+            "provider": a["provider"],
+            "label": a["label"],
+            "daily_limit": a["daily_limit"],
+            "rpm_limit": a["rpm_limit"],
+            "enabled": a["enabled"],
+            "days": rollups,
+        })
+
+    return {
+        "accounts": out,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
+
+
+
 @app.get("/admin/geo")
 async def admin_geo(request: Request, days: int = 30):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     days = min(max(days, 1), 365)
     rows = await db._fetch_all(
@@ -1145,7 +1229,7 @@ async def admin_geo(request: Request, days: int = 30):
 @app.post("/admin/accounts")
 async def admin_add_account(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request)
     if body is None:
@@ -1173,7 +1257,7 @@ async def admin_add_account(request: Request):
 @app.put("/admin/accounts/{account_id}")
 async def admin_update_account(request: Request, account_id: str):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     existing = await db.get_account(env, account_id)
     if not existing:
@@ -1197,7 +1281,7 @@ async def admin_update_account(request: Request, account_id: str):
 @app.delete("/admin/accounts/{account_id}")
 async def admin_delete_account(request: Request, account_id: str):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     existing = await db.get_account(env, account_id)
     if not existing:
@@ -1209,7 +1293,7 @@ async def admin_delete_account(request: Request, account_id: str):
 @app.get("/admin/accounts/health")
 async def admin_accounts_health(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     out = {}
     for a in await db.list_enabled_accounts(env):
@@ -1223,7 +1307,7 @@ async def admin_accounts_health(request: Request):
 @app.get("/admin/accounts/{account_id}/usage")
 async def admin_account_usage(request: Request, account_id: str):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
         acc = await db.get_account(env, account_id)
@@ -1240,7 +1324,7 @@ async def admin_account_usage(request: Request, account_id: str):
 @app.get("/admin/stats/overview")
 async def admin_stats_overview(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     
     rows = await db._fetch_all(
@@ -1284,7 +1368,7 @@ async def admin_stats_overview(request: Request):
 async def admin_stats_usage(request: Request, days: int = 7):
     """Site-wide rollup chart (usage_daily), up to `days` back."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     days = min(max(days, 1), 90)
     return {"days": await db.get_usage_days(env, days)}
@@ -1324,12 +1408,16 @@ async def admin_list_users_paged(request: Request, q: str | None = None,
 async def admin_set_user(request: Request, uid: str):
     """Set a user's tier or active status. Writes D1 and Firestore."""
     env = _bindings(request)
-    if not await _admin(request):
+    auth = await _admin(request)
+    if not auth:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request)
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
-    
+
+    before = await db.get_user(env, uid) or {}
+    details = {}
+
     tier = body.get("tier")
     if tier and str(tier).strip().lower() in ("free", "pro"):
         t_val = str(tier).strip().lower()
@@ -1338,11 +1426,16 @@ async def admin_set_user(request: Request, uid: str):
         except Exception:
             pass
         await db.set_user_tier(env, uid, t_val)
+        details["tier"] = {"from": before.get("tier", "free"), "to": t_val}
 
     if "is_active" in body or "isActive" in body:
         val = body.get("is_active") if "is_active" in body else body.get("isActive")
         act_int = 1 if bool(val) else 0
         await db.set_user_status(env, uid, act_int)
+        details["is_active"] = {"from": before.get("is_active", 1), "to": act_int}
+
+    if details:
+        await _log_sub_activity(env, auth, "set_user", uid, details)
 
     user = await db.get_user(env, uid)
     return {"uid": uid, "tier": (user or {}).get("tier", "free"), "is_active": (user or {}).get("is_active", 1)}
@@ -1352,7 +1445,7 @@ async def admin_set_user(request: Request, uid: str):
 async def admin_list_plans(request: Request):
     """List plan docs. Mirrors Firestore plan collection."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     rows = await db._fetch_all(
         env, "SELECT plan_id, daily_limit, price, plandetails FROM plans")
@@ -1363,7 +1456,7 @@ async def admin_list_plans(request: Request):
 async def admin_get_pricing(request: Request):
     """Get dynamic pricing configuration from plans."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     
     plans = await db._fetch_all(
@@ -1387,7 +1480,7 @@ async def admin_get_pricing(request: Request):
 async def admin_update_plan(request: Request):
     """Update a plan (set free plan's daily_limit). Writes Firestore, then D1."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request)
     if body is None:
@@ -1451,7 +1544,7 @@ except Exception:
 @app.get("/admin/free-quota")
 async def admin_get_free_quota(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     return await db.get_free_quota(env)
 
@@ -1459,7 +1552,7 @@ async def admin_get_free_quota(request: Request):
 @app.put("/admin/free-quota")
 async def admin_set_free_quota(request: Request):
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request)
     if body is None:
@@ -1483,11 +1576,84 @@ async def admin_set_free_quota(request: Request):
     return {"limit": limit, "cadence": cadence, "window_days": window_days}
 
 
+@app.get("/admin/sub-admins")
+async def admin_list_sub_admins(request: Request):
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    return {"sub_admins": await db.list_sub_admins(env)}
+
+
+@app.post("/admin/sub-admins")
+async def admin_add_sub_admin(request: Request):
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await _read_json(request)
+    if body is None:
+        return JSONResponse({"error": "bad_request"}, status_code=400)
+    username = str(body.get("username") or "").strip()
+    password = str(body.get("password") or "")
+    if not (3 <= len(username) <= 64):
+        return JSONResponse({"error": "invalid_username"}, status_code=400)
+    if len(password) < 8:
+        return JSONResponse({"error": "password_too_short"}, status_code=400)
+    if await db.get_sub_admin_by_username(env, username):
+        return JSONResponse({"error": "username_taken"}, status_code=409)
+    sub_id = str(uuid.uuid4())
+    await db.add_sub_admin(env, sub_id=sub_id, username=username,
+                           pass_hash=admin_mod.hash_sub_password(password))
+    return {"id": sub_id, "username": username, "is_active": 1}
+
+
+@app.put("/admin/sub-admins/{sid}")
+async def admin_update_sub_admin(request: Request, sid: str):
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await _read_json(request)
+    if body is None:
+        return JSONResponse({"error": "bad_request"}, status_code=400)
+    sub = await db.get_sub_admin(env, sid)
+    if not sub:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    fields = {}
+    if "username" in body:
+        username = str(body.get("username") or "").strip()
+        if not (3 <= len(username) <= 64):
+            return JSONResponse({"error": "invalid_username"}, status_code=400)
+        existing = await db.get_sub_admin_by_username(env, username)
+        if existing and existing["id"] != sid:
+            return JSONResponse({"error": "username_taken"}, status_code=409)
+        fields["username"] = username
+    if "password" in body and body.get("password"):
+        password = str(body["password"])
+        if len(password) < 8:
+            return JSONResponse({"error": "password_too_short"}, status_code=400)
+        fields["pass_hash"] = admin_mod.hash_sub_password(password)
+    if "is_active" in body:
+        fields["is_active"] = 1 if bool(body.get("is_active")) else 0
+    await db.update_sub_admin(env, sid, fields)
+    row = await db.get_sub_admin(env, sid)
+    return {"id": row["id"], "username": row["username"], "is_active": row["is_active"]}
+
+
+@app.delete("/admin/sub-admins/{sid}")
+async def admin_delete_sub_admin(request: Request, sid: str):
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    if not await db.get_sub_admin(env, sid):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    await db.delete_sub_admin(env, sid)
+    return {"deleted": sid}
+
+
 @app.post("/admin/users/{uid}/quota/consume")
 async def admin_consume_quota(request: Request, uid: str):
     """Admin-only: consume 1 quota for a user (same path as /v1/generate)."""
     env = _bindings(request)
-    if not await _admin(request):
+    if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
         do = env.QUOTA.get(env.QUOTA.idFromName(uid))
@@ -1510,7 +1676,8 @@ async def admin_consume_quota(request: Request, uid: str):
 async def admin_reset_user_quota(request: Request, uid: str):
     """Admin endpoint to reset a user's daily usage count to 0."""
     env = _bindings(request)
-    if not await _admin(request):
+    auth = await _admin(request)
+    if not auth:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     import time
     today_ts = int(time.time() // 86400) * 86400
@@ -1525,6 +1692,7 @@ async def admin_reset_user_quota(request: Request, uid: str):
                 await do.reset()
     except Exception:
         pass
+    await _log_sub_activity(env, auth, "reset_quota", uid)
     return {"ok": True, "uid": uid, "reset_at": today_ts}
 
 
@@ -1532,7 +1700,8 @@ async def admin_reset_user_quota(request: Request, uid: str):
 async def admin_set_user_usage(request: Request, uid: str):
     """Admin endpoint to set today's usage count for a user."""
     env = _bindings(request)
-    if not await _admin(request):
+    auth = await _admin(request)
+    if not auth:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await _read_json(request) or {}
     usage_count = max(0, int(body.get("usage_count") or 0))
@@ -1546,4 +1715,5 @@ async def admin_set_user_usage(request: Request, uid: str):
             ).bind(uid, today_ts + i).run()
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+    await _log_sub_activity(env, auth, "set_usage", uid, {"usage_count": usage_count})
     return {"ok": True, "uid": uid, "usage_count": usage_count}

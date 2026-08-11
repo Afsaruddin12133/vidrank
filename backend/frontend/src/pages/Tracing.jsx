@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePolled } from '../hooks.js'
-import { statsUsage, accountsUsageDay, listAllAccounts, fmtInt, fmtPct, fmtDur } from '../api.js'
+import { statsUsage, accountsUsagePaged, listAllAccounts, fmtInt, fmtPct, fmtDur } from '../api.js'
 
 const W = 640
 const H = 180
@@ -86,13 +86,89 @@ function StatsCard({ label, value, sub }) {
   )
 }
 
+function PaginationControls({ page, totalPages, totalCount, startIndex, endIndex, onPageChange }) {
+  if (totalCount === 0) return null
+
+  const pagesToShow = []
+  const maxButtons = 5
+  let startP = Math.max(1, page - Math.floor(maxButtons / 2))
+  let endP = Math.min(totalPages, startP + maxButtons - 1)
+  if (endP - startP + 1 < maxButtons) {
+    startP = Math.max(1, endP - maxButtons + 1)
+  }
+  for (let p = startP; p <= endP; p++) {
+    pagesToShow.push(p)
+  }
+
+  return (
+    <div className="pagination-bar">
+      <div className="pagination-info">
+        Showing <span className="mono">{startIndex + 1}</span>–<span className="mono">{endIndex}</span> of <span className="mono">{fmtInt(totalCount)}</span> accounts
+      </div>
+      
+      {totalPages > 1 && (
+        <div className="pagination-buttons">
+          <button className="btn sm ghost" disabled={page <= 1} onClick={() => onPageChange(1)} title="First page">«</button>
+          <button className="btn sm ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)} title="Previous page">Prev</button>
+          
+          {startP > 1 && <span className="pagination-ellipsis">…</span>}
+          {pagesToShow.map((p) => (
+            <button
+              key={p}
+              className={`btn sm ${p === page ? 'primary' : 'ghost'}`}
+              onClick={() => onPageChange(p)}
+              style={{ minWidth: 28, padding: '4px 8px' }}
+            >
+              {p}
+            </button>
+          ))}
+          {endP < totalPages && <span className="pagination-ellipsis">…</span>}
+          
+          <button className="btn sm ghost" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} title="Next page">Next</button>
+          <button className="btn sm ghost" disabled={page >= totalPages} onClick={() => onPageChange(totalPages)} title="Last page">»</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Tracing() {
   const [days, setDays] = useState(14)
+  const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const [providerFilter, setProviderFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(6)
+
+  // Debounce search query
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(id)
+  }, [q])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedQ, providerFilter, pageSize, days])
+
   const { data: site } = usePolled(() => statsUsage(days), 15000, [days])
-  const { data: perAccount } = usePolled(() => accountsUsageDay(days), 15000, [days])
+  
+  // Polled server-side paginated account usage data
+  const { data: perAccount } = usePolled(
+    () => accountsUsagePaged({ days, q: debouncedQ, provider: providerFilter, page, pageSize }),
+    15000,
+    [days, debouncedQ, providerFilter, page, pageSize]
+  )
 
   const sDays = site?.days || []
   const accts = perAccount?.accounts || []
+  const totalCount = perAccount?.total ?? accts.length
+  const totalPages = perAccount?.pages ?? Math.max(1, Math.ceil(totalCount / pageSize))
+  const curtPage = perAccount?.page ?? page
+
+  const startIndex = (curtPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + accts.length, totalCount)
+
   const totals = useMemo(() => {
     let total = 0, free = 0, pro = 0, cache = 0, errors = 0, latSum = 0, latN = 0
     for (const d of sDays) {
@@ -108,9 +184,19 @@ export default function Tracing() {
     return { total, free, pro, cache, errors, avgLat, success, cacheRatio: total ? cache / total : null }
   }, [sDays])
 
-  // live usage (today) for exhaustion estimates
+  // live usage for enabled status & provider options
   const { data: accList } = usePolled(() => listAllAccounts(), 15000)
-  const enabledIds = new Set((accList?.accounts || []).filter((a) => a.enabled).map((a) => a.id))
+  const allAccountsList = accList?.accounts || []
+  const enabledIds = new Set(allAccountsList.filter((a) => a.enabled).map((a) => a.id))
+  
+  const providers = useMemo(() => {
+    const pSet = new Set()
+    for (const a of allAccountsList) {
+      if (a.provider) pSet.add(a.provider)
+    }
+    return Array.from(pSet)
+  }, [allAccountsList])
+
   const nearCap = accts.filter((a) => {
     const d = (a.days || []).slice(-1)[0]
     return a.daily_limit && d && d.requests >= a.daily_limit * 0.8
@@ -169,10 +255,41 @@ export default function Tracing() {
         </section>
       </div>
 
+      <div className="card-filter-toolbar">
+        <div className="toolbar-left">
+          <input
+            className="in"
+            style={{ maxWidth: 260 }}
+            placeholder="Search account name or ID…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <select className="in" style={{ width: 140 }} value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)}>
+            <option value="all">All providers</option>
+            {providers.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <div className="toolbar-right">
+          <label className="field inline">
+            <span>per page</span>
+            <select className="in" style={{ width: 85 }} value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+              <option value={6}>6</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       <section className="card">
-        <div className="card-label">Per-account usage vs limit (with limit line)</div>
+        <div className="card-label">
+          Per-account usage vs limit (with limit line) {totalCount > 0 ? `(${fmtInt(totalCount)} accounts)` : ''}
+        </div>
         {accts.length === 0 ? (
-          <div className="empty">No accounts with usage yet — add accounts and wait for traffic.</div>
+          <div className="empty">No accounts matching filters — add accounts or clear search.</div>
         ) : (
           <div className="acc-charts">
             {accts.map((a) => (
@@ -192,6 +309,14 @@ export default function Tracing() {
             Near-cap: {nearCap.map((a) => a.label || a.id).join(', ')} are at ≥80% of daily limit.
           </div>
         )}
+        <PaginationControls
+          page={curtPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          onPageChange={setPage}
+        />
       </section>
 
       <section className="card">
@@ -238,6 +363,14 @@ export default function Tracing() {
             </tbody>
           </table>
         )}
+        <PaginationControls
+          page={curtPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          onPageChange={setPage}
+        />
       </section>
     </div>
   )

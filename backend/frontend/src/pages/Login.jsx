@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { adminLogin, setToken, ApiError } from '../api.js'
+import { adminLogin, setToken, setRole, ApiError } from '../api.js'
 
 export default function Login({ onAuthed }) {
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState(null)
   const [checking, setChecking] = useState(false)
@@ -16,12 +17,13 @@ export default function Login({ onAuthed }) {
       return
     }
     try {
-      const res = await adminLogin(password)
+      const res = await adminLogin(password, username.trim())
       setToken(res.token)
+      setRole(res.role)
       onAuthed()
     } catch (a) {
       if (a instanceof ApiError && (a.status === 401 || a.status === 406)) {
-        setErr('Invalid password. ')
+        setErr('Invalid credentials.')
         setPassword('')
       } else if (a instanceof ApiError && a.status === 0) {
         setErr('Backend unreachable. Is the worker / dev proxy running?')
@@ -43,6 +45,16 @@ export default function Login({ onAuthed }) {
           Admin sign in. Enter the admin password to unlock the control panel.
         </p>
         <form onSubmit={submit}>
+          <label className="field">
+            <span>Username (sub-admin only)</span>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="leave blank for super admin"
+              disabled={checking}
+            />
+          </label>
           <label className="field">
             <span>Admin password</span>
             <input

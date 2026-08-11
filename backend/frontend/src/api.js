@@ -3,20 +3,28 @@
 // attached as `Authorization: Bearer <token>`.
 
 const TOKEN_KEY = 'vidrank_token'
+const ROLE_KEY = 'vidrank_role'
 let _token = localStorage.getItem(TOKEN_KEY) || ''
+let _role = localStorage.getItem(ROLE_KEY) || 'admin'
 
 // Backend base. Set VITE_API_BACKEND at build time when the dashboard is
 // served from a different origin than the backend (Pages). Empty = same-origin
 // (vite dev proxy forwards /v1 and /admin locally).
 const _BASE = (import.meta.env.VITE_API_BACKEND || 'https://vidrank-backend.fahad288ali.workers.dev').replace(/\/+$/, '')
 
-// ---- admin login (password) ----
-export const adminLogin = (password) => _json('/admin/login', 'POST', { password })
+// ---- admin login (password; optional username => sub-admin login) ----
+export const adminLogin = (password, username = '') =>
+  _json('/admin/login', 'POST', username ? { username, password } : { password })
 export const setToken = (token) => {
   _token = (token || '').trim()
   if (_token) localStorage.setItem(TOKEN_KEY, _token)
   else localStorage.removeItem(TOKEN_KEY)
 }
+export const setRole = (role) => {
+  _role = role === 'sub' ? 'sub' : 'admin'
+  localStorage.setItem(ROLE_KEY, _role)
+}
+export const getRole = () => _role
 
 export function getToken() {
   return _token
@@ -24,7 +32,9 @@ export function getToken() {
 
 export function clearToken() {
   _token = ''
+  _role = 'admin'
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROLE_KEY)
 }
 
 export class ApiError extends Error {
@@ -73,6 +83,16 @@ export const deleteAccount = (id) => _req(`/admin/accounts/${id}`, { method: 'DE
 export const accountHealth = () => _get('/admin/accounts/health')
 export const accountUsage = (id) => _get(`/admin/accounts/${id}/usage`)
 export const accountsUsageDay = (days = 7) => _get(`/admin/accounts/usage?days=${days}`)
+export const accountsUsagePaged = ({ days = 7, q = '', provider = '', page = 1, pageSize = 10 } = {}) => {
+  const p = new URLSearchParams()
+  p.set('days', days)
+  if (q) p.set('q', q)
+  if (provider && provider !== 'all') p.set('provider', provider)
+  p.set('page', page)
+  p.set('page_size', pageSize)
+  return _get(`/admin/accounts/usage/paged?${p}`)
+}
+
 
 // ---- /admin users & plans ----
 export const listUsers = (tier) => _get(tier ? `/admin/users?tier=${tier}` : '/admin/users')
@@ -94,6 +114,12 @@ export const updatePlan = (payload) => _json('/admin/plans', 'PATCH', payload)
 export const getPricing = () => _get('/admin/pricing')
 export const getFreeQuota = () => _get('/admin/free-quota')
 export const setFreeQuota = (payload) => _json('/admin/free-quota', 'PUT', payload)
+
+// ---- /admin sub-admins (super admin only) ----
+export const listSubAdmins = () => _get('/admin/sub-admins')
+export const addSubAdmin = (username, password) => _json('/admin/sub-admins', 'POST', { username, password })
+export const updateSubAdmin = (id, payload) => _json(`/admin/sub-admins/${id}`, 'PUT', payload)
+export const deleteSubAdmin = (id) => _req(`/admin/sub-admins/${id}`, { method: 'DELETE' })
 
 // ---- /admin stats ----
 export const statsOverview = () => _get('/admin/stats/overview')

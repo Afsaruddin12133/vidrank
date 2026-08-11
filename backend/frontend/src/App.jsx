@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getToken, clearToken } from './api.js'
+import { getToken, getRole, clearToken } from './api.js'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Accounts from './pages/Accounts.jsx'
 import Tracing from './pages/Tracing.jsx'
 import Users from './pages/Users.jsx'
+import SubAdmins from './pages/SubAdmins.jsx'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -15,27 +16,36 @@ const TABS = [
 
 export default function App() {
   const [token, setTokenState] = useState(getToken())
+  const [role, setRoleState] = useState(getRole())
   const [tab, setTab] = useState('dashboard')
 
   const logout = () => {
     clearToken()
     setTokenState('')
+    setRoleState('admin')
     setTab('dashboard')
   }
 
   if (!token) {
-    return <Login onAuthed={() => setTokenState(getToken())} />
+    return <Login onAuthed={() => { setTokenState(getToken()); setRoleState(getRole()) }} />
   }
+
+  const isSub = role === 'sub'
+  const tabs = isSub
+    ? TABS.filter((t) => t.id === 'users')
+    : [...TABS, { id: 'subadmins', label: 'Sub Admins' }]
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
           <span className="logo">▣</span> vidrank
-          <span className="tier-pill tier-admin">admin</span>
+          <span className={`tier-pill ${isSub ? 'tier-free' : 'tier-admin'}`}>
+            {isSub ? 'sub-admin' : 'admin'}
+          </span>
         </div>
         <nav className="tabs">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               className={`tab ${tab === t.id ? 'active' : ''}`}
@@ -56,6 +66,7 @@ export default function App() {
         {tab === 'accounts' && <Accounts />}
         {tab === 'tracing' && <Tracing />}
         {tab === 'users' && <Users />}
+        {tab === 'subadmins' && <SubAdmins />}
       </main>
     </div>
   )

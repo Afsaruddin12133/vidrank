@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from typing import Any
 
 from . import contracts as C
@@ -147,6 +148,73 @@ async def set_free_quota(env, limit: int, cadence: str, window_days: int) -> Non
     ).run()
 
 
+# --------------------------------------------------------------------------- #
+# Sub-admin accounts (users-table managers, created by the super admin)
+# --------------------------------------------------------------------------- #
+async def list_sub_admins(env) -> list[dict[str, Any]]:
+    return await _fetch_all(
+        env,
+        "SELECT id, username, is_active, created_at, updated_at FROM sub_admins ORDER BY created_at ASC",
+    )
+
+
+async def get_sub_admin(env, sub_id: str) -> dict[str, Any] | None:
+    return await _fetch_one(env, "SELECT * FROM sub_admins WHERE id = ?1", sub_id)
+
+
+async def get_sub_admin_by_username(env, username: str) -> dict[str, Any] | None:
+    return await _fetch_one(env, "SELECT * FROM sub_admins WHERE username = ?1", username)
+
+
+async def add_sub_admin(env, *, sub_id: str, username: str, pass_hash: str) -> None:
+    now = int(time.time())
+    await env.DB.prepare(
+        "INSERT INTO sub_admins (id, username, pass_hash, is_active, created_at, updated_at) "
+        "VALUES (?,?,?,1,?,?)"
+    ).bind(sub_id, username, pass_hash, now, now).run()
+
+
+async def update_sub_admin(env, sub_id: str, fields: dict) -> None:
+    cols, params = [], []
+    for key in ("username", "pass_hash", "is_active"):
+        if key in fields and fields[key] is not None:
+            cols.append(f"{key}=?")
+            params.append(fields[key])
+    if not cols:
+        return
+    cols.append("updated_at=?")
+    params.append(int(time.time()))
+    params.append(sub_id)
+    await env.DB.prepare(f"UPDATE sub_admins SET {', '.join(cols)} WHERE id=?").bind(*params).run()
+
+
+async def delete_sub_admin(env, sub_id: str) -> None:
+    await env.DB.prepare("DELETE FROM sub_admins WHERE id=?").bind(sub_id).run()
+
+
+async def add_sub_admin_activity(env, *, sub_admin_id: str, sub_admin_username: str,
+                                 action: str, target_uid: str,
+                                 target_email: str | None = None,
+                                 details: dict | None = None) -> None:
+    """Append one audit entry for a sub-admin's user-table action."""
+    await env.DB.prepare(
+        "INSERT INTO sub_admin_activity "
+        "(id, sub_admin_id, sub_admin_username, action, target_uid, target_email, details, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?)"
+    ).bind(
+        str(uuid.uuid4()), sub_admin_id, sub_admin_username, action, target_uid,
+        target_email, json.dumps(details) if details else None, int(time.time()),
+    ).run()
+
+
+async def list_sub_admin_activity(env, limit: int = 100) -> list[dict[str, Any]]:
+    return await _fetch_all(
+        env,
+        "SELECT * FROM sub_admin_activity ORDER BY created_at DESC LIMIT ?1",
+        max(1, min(limit, 500)),
+    )
+
+
 async def list_enabled_accounts(env) -> list[dict[str, Any]]:
     return await _fetch_all(
         env,
@@ -161,6 +229,38 @@ async def list_accounts(env) -> list[dict[str, Any]]:
         "SELECT id, provider, label, key_enc, daily_limit, rpm_limit, enabled, created_at "
         "FROM accounts ORDER BY created_at DESC",
     )
+
+
+def _account_filter(q: str | None, provider: str | None) -> tuple[str, list[Any]]:
+    conds, params = [], []
+    if provider and provider.strip() and provider.strip().lower() != "all":
+        conds.append("LOWER(provider) = ?")
+        params.append(provider.strip().lower())
+    if q and q.strip():
+        conds.append("(LOWER(label) LIKE ? OR LOWER(id) LIKE ?)")
+        like = f"%{q.strip().lower()}%"
+        params += [like, like]
+    return (f"WHERE {' AND '.join(conds)}" if conds else ""), params
+
+
+async def count_accounts(env, q: str | None = None, provider: str | None = None) -> int:
+    where, params = _account_filter(q, provider)
+    row = await _fetch_one(env, f"SELECT COUNT(*) AS n FROM accounts {where}", *params)
+    return int((row or {}).get("n") or 0)
+
+
+async def list_accounts_paged(env, q: str | None = None, provider: str | None = None,
+                             page: int = 1, page_size: int = 10) -> list[dict[str, Any]]:
+    where, filter_params = _account_filter(q, provider)
+    offset = max(0, (page - 1) * page_size)
+    params = filter_params + [page_size, offset]
+    return await _fetch_all(
+        env,
+        "SELECT id, provider, label, key_enc, daily_limit, rpm_limit, enabled, created_at "
+        f"FROM accounts {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        *params,
+    )
+
 
 
 async def get_account(env, account_id: str) -> dict[str, Any] | None:

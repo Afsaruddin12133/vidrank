@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import os
 import time
 
@@ -105,10 +106,65 @@ def check_admin_password(env, password: str) -> bool:
     return hmac.compare_digest(expected, (password or "").encode())  # constant-time
 
 
-def issue_token(env) -> str:
-    expiry = str(int(time.time()) + ADMIN_SESSION_TTL_S)
-    sig = _hmac(env, expiry)
-    return base64.b64encode(expiry.encode()).decode() + "." + sig
+# --------------------------------------------------------------------------- #
+# Sub-admin passwords: PBKDF2-HMAC-SHA256 (stdlib, works in workers-python)
+# --------------------------------------------------------------------------- #
+PBKDF2_ITER = 100_000
+
+
+def hash_sub_password(password: str) -> str:
+    """Hash a sub-admin password -> 'pbkdf2$<iter>$<b64salt>$<b64hash>'."""
+    salt = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", (password or "").encode(), salt, PBKDF2_ITER)
+    return (f"pbkdf2${PBKDF2_ITER}${base64.b64encode(salt).decode()}"
+            f"${base64.b64encode(dk).decode()}")
+
+
+def verify_sub_password(password: str, stored: str) -> bool:
+    """Constant-time verify against a hash_sub_password() string."""
+    try:
+        algo, iters, salt_b64, hash_b64 = (stored or "").split("$")
+        if algo != "pbkdf2":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", (password or "").encode(),
+                                 base64.b64decode(salt_b64), int(iters))
+        return hmac.compare_digest(base64.b64encode(dk).decode(), hash_b64)
+    except Exception:
+        return False
+
+
+# --------------------------------------------------------------------------- #
+# role-aware session tokens: base64(json {exp, role, sid}).sig
+# legacy tokens (base64 of expiry digits only) still verify as super admin.
+# --------------------------------------------------------------------------- #
+def issue_token(env, role: str = "admin", sid: str | None = None) -> str:
+    payload = json.dumps({
+        "exp": int(time.time()) + ADMIN_SESSION_TTL_S,
+        "role": role,
+        "sid": sid,
+    }, separators=(",", ":"))
+    sig = _hmac(env, payload)
+    return base64.b64encode(payload.encode()).decode() + "." + sig
+
+
+def verify_token(env, token: str) -> dict | None:
+    """Return {'role': 'admin'} | {'role': 'sub', 'sid': ...} | None."""
+    try:
+        raw, sig = (token or "").strip().split(".", 1)
+        payload = base64.b64decode(raw.encode()).decode()
+        if not hmac.compare_digest(sig, _hmac(env, payload)):
+            return None
+        if payload.lstrip().startswith("{"):
+            data = json.loads(payload)
+            if int(data.get("exp", 0)) <= int(time.time()):
+                return None
+            role = data.get("role") or "admin"
+            return {"role": role, "sid": data.get("sid")}
+        if int(payload) <= int(time.time()):
+            return None
+        return {"role": "admin", "sid": None}
+    except Exception:
+        return False
 
 
 def _hmac(env, msg: str) -> str:
@@ -116,13 +172,3 @@ def _hmac(env, msg: str) -> str:
     if not key:  # fall back to admin pass so it works with only ADMIN_PASS set
         key = (getattr(env, C.SECRET_ADMIN_PASS, "") or "").encode()
     return base64.b64encode(hmac.new(key, msg.encode(), hashlib.sha256).digest()).decode()
-
-
-def verify_token(env, token: str) -> bool:
-    try:
-        raw, sig = (token or "").strip().split(".", 1)
-        exp = base64.b64decode(raw.encode()).decode()
-        valid = hmac.compare_digest(sig, _hmac(env, exp))  # constant-time
-        return valid and int(exp) > int(time.time())
-    except Exception:
-        return False
