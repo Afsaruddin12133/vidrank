@@ -8,4 +8,10 @@ plan/
 __pycache__/
 *.pyc
 dev_server.log
-
+dev_server.py
+devlocal.py
+check_user_d1.py
+get_project_id.py
+quick_test.py
+sync_*.py
+test_*.py
