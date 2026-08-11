@@ -393,9 +393,18 @@ export default function Users() {
                     <td>{syncTs ? fmtClock(syncTs) : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          className="btn sm primary"
+                          style={{ padding: '4px 10px', fontSize: 12, background: userTier === 'pro' ? '#059669' : '#2563eb', border: 'none' }}
+                          disabled={acting === uid}
+                          onClick={() => setProModalUser({ uid, email, name: u.name, raw: u })}
+                          title={userTier === 'pro' ? "Add +৳499 Balance or Extend Duration" : "Upgrade to Pro"}
+                        >
+                          {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Make PRO'}
+                        </button>
                         <select
                           className="in"
-                          style={{ width: 90 }}
+                          style={{ width: 85 }}
                           disabled={acting === uid}
                           value={userTier === 'pro' ? 'pro' : 'free'}
                           onChange={(e) => onTierSelectChange(u, e.target.value)}
