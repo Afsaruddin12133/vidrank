@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getToken, getRole, clearToken } from './api.js'
+import { getToken, getRole, clearToken, getAdminUser } from './api.js'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Accounts from './pages/Accounts.jsx'
@@ -188,7 +188,7 @@ export default function App() {
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
-                background: '#4f46e5',
+                background: isSub ? '#7c3aed' : '#4f46e5',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -198,11 +198,11 @@ export default function App() {
                 flexShrink: 0,
               }}
             >
-              {isSub ? 'S' : 'A'}
+              {(getAdminUser().trim()[0] || (isSub ? 'S' : 'A')).toUpperCase()}
             </div>
             <div className="sidebar-user-info">
-              <span className="sidebar-user-name">{isSub ? 'Sub Admin' : 'Tamim'}</span>
-              <span className="sidebar-user-role">{isSub ? 'Sub Admin' : 'Firebase Admin'}</span>
+              <span className="sidebar-user-name">{getAdminUser()}</span>
+              <span className="sidebar-user-role">{isSub ? 'Sub Admin' : 'Super Admin'}</span>
             </div>
             <button className="sidebar-logout-btn" onClick={logout} title="Sign Out">
               <IconLogout />

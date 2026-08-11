@@ -12,6 +12,8 @@ let _role = localStorage.getItem(ROLE_KEY) || 'admin'
 // (vite dev proxy forwards /v1 and /admin locally).
 const _BASE = (import.meta.env.VITE_API_BACKEND || 'https://vidrank-backend.fahad288ali.workers.dev').replace(/\/+$/, '')
 
+const USER_KEY = 'vidrank_user'
+
 // ---- admin login (password; optional username => sub-admin login) ----
 export const adminLogin = (password, username = '') =>
   _json('/admin/login', 'POST', username ? { username, password } : { password })
@@ -20,11 +22,22 @@ export const setToken = (token) => {
   if (_token) localStorage.setItem(TOKEN_KEY, _token)
   else localStorage.removeItem(TOKEN_KEY)
 }
-export const setRole = (role) => {
+export const setRole = (role, username = '') => {
   _role = role === 'sub' ? 'sub' : 'admin'
   localStorage.setItem(ROLE_KEY, _role)
+  if (username) {
+    localStorage.setItem(USER_KEY, username)
+  } else {
+    localStorage.removeItem(USER_KEY)
+  }
 }
 export const getRole = () => _role
+
+export const getAdminUser = () => {
+  const saved = localStorage.getItem(USER_KEY)
+  if (saved) return saved
+  return _role === 'sub' ? 'Sub Admin' : 'Super Admin'
+}
 
 export function getToken() {
   return _token
@@ -35,6 +48,7 @@ export function clearToken() {
   _role = 'admin'
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
+  localStorage.removeItem(USER_KEY)
 }
 
 export class ApiError extends Error {
