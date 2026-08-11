@@ -1406,7 +1406,7 @@ async def admin_list_users_paged(request: Request, q: str | None = None,
 
 @app.api_route("/admin/users/{uid}", methods=["PATCH", "POST", "PUT"])
 async def admin_set_user(request: Request, uid: str):
-    """Set a user's tier or active status. Writes D1 and Firestore."""
+    """Set a user's tier, active status, pro duration, and balance. Writes D1 and Firestore."""
     env = _bindings(request)
     auth = await _admin(request)
     if not auth:
@@ -1428,6 +1428,31 @@ async def admin_set_user(request: Request, uid: str):
         await db.set_user_tier(env, uid, t_val)
         details["tier"] = {"from": before.get("tier", "free"), "to": t_val}
 
+    # Pro duration handling (1 month / 15 days / 7 days / custom days)
+    duration_days = body.get("duration_days") or body.get("durationDays")
+    if duration_days and int(duration_days) > 0:
+        days = int(duration_days)
+        exp_ts = int(time.time()) + (days * 86400)
+        try:
+            await env.DB.prepare("UPDATE users SET expires_at=?1 WHERE firebase_uid=?2") \
+                .bind(str(exp_ts), uid).run()
+        except Exception:
+            pass
+        details["duration_days"] = days
+
+    # Balance / Earnings handling (e.g. +499 taka)
+    add_balance = body.get("add_balance") if "add_balance" in body else body.get("addBalance")
+    amount = int(body.get("amount") or 499)
+    if add_balance:
+        cur_bal = int(before.get("balance") or 0)
+        new_bal = cur_bal + amount
+        try:
+            await env.DB.prepare("UPDATE users SET balance=?1 WHERE firebase_uid=?2") \
+                .bind(new_bal, uid).run()
+        except Exception:
+            pass
+        details["added_balance"] = amount
+
     if "is_active" in body or "isActive" in body:
         val = body.get("is_active") if "is_active" in body else body.get("isActive")
         act_int = 1 if bool(val) else 0
@@ -1438,7 +1463,14 @@ async def admin_set_user(request: Request, uid: str):
         await _log_sub_activity(env, auth, "set_user", uid, details)
 
     user = await db.get_user(env, uid)
-    return {"uid": uid, "tier": (user or {}).get("tier", "free"), "is_active": (user or {}).get("is_active", 1)}
+    return {
+        "uid": uid,
+        "tier": (user or {}).get("tier", "free"),
+        "is_active": (user or {}).get("is_active", 1),
+        "balance": (user or {}).get("balance", 0),
+        "expires_at": (user or {}).get("expires_at"),
+    }
+
 
 
 @app.get("/admin/plans")

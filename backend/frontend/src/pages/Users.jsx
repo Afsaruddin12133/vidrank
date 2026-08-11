@@ -28,6 +28,113 @@ function Avatar({ u }) {
   )
 }
 
+function ProModal({ user, onClose, onConfirm }) {
+  const [duration, setDuration] = useState('30') // default 1 month (30 days)
+  const [customDays, setCustomDays] = useState('30')
+  const [addBalance, setAddBalance] = useState(true) // checkmark default checked
+  const [amount, setAmount] = useState(499) // default 499 taka
+  const [busy, setBusy] = useState(false)
+
+  const handleConfirm = async () => {
+    setBusy(true)
+    const days = duration === 'custom' ? Math.max(1, Number(customDays)) : Number(duration)
+    await onConfirm({
+      durationDays: days,
+      addBalance,
+      amount: Number(amount),
+    })
+    setBusy(false)
+  }
+
+  return (
+    <div className="modal-overlay" style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+    }}>
+      <div className="card" style={{ maxWidth: 440, width: '90%', padding: 24, background: '#111827', border: '1px solid #374151', borderRadius: 12 }}>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: 18, color: '#f9fafb', display: 'flex', alignItems: 'center', gap: 8 }}>
+          ⭐ Upgrade to PRO — {user.email || user.name || 'User'}
+        </h3>
+        <p className="card-sub" style={{ margin: '0 0 16px 0', fontSize: 13 }}>
+          Configure duration and payment balance credit for this Pro subscription upgrade.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Duration Selector */}
+          <div>
+            <label className="field-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6, color: '#e5e7eb' }}>
+              📅 Pro Subscription Duration:
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { label: '1 Month (30 Days)', value: '30' },
+                { label: '15 Days', value: '15' },
+                { label: '7 Days', value: '7' },
+                { label: 'Custom Days', value: 'custom' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`btn sm ${duration === opt.value ? 'primary' : 'ghost'}`}
+                  onClick={() => setDuration(opt.value)}
+                  style={{ textAlign: 'left', justifyContent: 'flex-start' }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {duration === 'custom' && (
+              <input
+                className="in"
+                type="number"
+                min="1"
+                placeholder="Enter days"
+                value={customDays}
+                onChange={(e) => setCustomDays(e.target.value)}
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </div>
+
+          {/* ৳499 Balance Checkmark */}
+          <div style={{ padding: 12, borderRadius: 8, background: '#1f2937', border: '1px solid #374151' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, color: '#10b981' }}>
+              <input
+                type="checkbox"
+                checked={addBalance}
+                onChange={(e) => setAddBalance(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: '#10b981' }}
+              />
+              Add ৳{amount} Payment Balance & Total Revenue Credit
+            </label>
+            {addBalance && (
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="card-sub" style={{ fontSize: 13 }}>Amount (Taka): ৳</span>
+                <input
+                  className="in"
+                  type="number"
+                  style={{ width: 110 }}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+          <button className="btn ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" disabled={busy} onClick={handleConfirm}>
+            {busy ? 'Upgrading…' : `Confirm PRO Upgrade`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Users() {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
@@ -37,6 +144,7 @@ export default function Users() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [acting, setActing] = useState(null)
+  const [proModalUser, setProModalUser] = useState(null)
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQ(q), 300)
@@ -69,10 +177,35 @@ export default function Users() {
 
   useEffect(() => { load(debouncedQ, tier) }, [debouncedQ, tier, load])
 
-  const onApprove = async (uid, newTier, email = '') => {
+  const onTierSelectChange = (u, selectedTier) => {
+    const uid = u.firebase_uid || u.uid || u.id
+    const email = u.email || u.name || uid
+    if (selectedTier === 'pro') {
+      setProModalUser({ uid, email, name: u.name, raw: u })
+    } else {
+      onDowngradeToFree(uid, email)
+    }
+  }
+
+  const onDowngradeToFree = async (uid, email) => {
     setActing(uid); setError('')
     try {
-      await setUserTier(uid, newTier, email)
+      await setUserTier(uid, 'free', email)
+      await load(debouncedQ, tier)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setActing(null)
+    }
+  }
+
+  const onConfirmProUpgrade = async (options) => {
+    if (!proModalUser) return
+    const { uid, email } = proModalUser
+    setActing(uid); setError('')
+    try {
+      await setUserTier(uid, 'pro', email, options)
+      setProModalUser(null)
       await load(debouncedQ, tier)
     } catch (e) {
       setError(e.message)
@@ -128,48 +261,56 @@ export default function Users() {
     }
   }
 
-  const allUsers = Array.isArray(data) ? data : []
-  const ql = debouncedQ.trim().toLowerCase()
-  const filtered = ql
-    ? allUsers.filter((u) =>
-        u && typeof u === 'object' && (
-          (u.email || '').toLowerCase().includes(ql) ||
-          (u.name || u.displayName || '').toLowerCase().includes(ql) ||
-          (u.firebase_uid || u.uid || u.id || '').toLowerCase().includes(ql)
-        )
-      )
-    : allUsers
+  // Filter client-side
+  const users = (data || []).filter((u) => {
+    const query = debouncedQ.trim().toLowerCase()
+    if (!query) return true
+    const email = (u.email || '').toLowerCase()
+    const name = (u.name || u.displayName || '').toLowerCase()
+    const uid = (u.firebase_uid || u.uid || u.id || '').toLowerCase()
+    return email.includes(query) || name.includes(query) || uid.includes(query)
+  })
 
-  const safeFiltered = Array.isArray(filtered) ? filtered : []
-  const pages = Math.max(1, Math.ceil(safeFiltered.length / PAGE_SIZE))
+  const total = users.length
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const curt = Math.min(page, pages)
-  const users = safeFiltered.slice((curt - 1) * PAGE_SIZE, curt * PAGE_SIZE)
-  const total = safeFiltered.length
+  const pageUsers = users.slice((curt - 1) * PAGE_SIZE, curt * PAGE_SIZE)
 
   return (
     <div className="stack">
+      {proModalUser && (
+        <ProModal
+          user={proModalUser}
+          onClose={() => setProModalUser(null)}
+          onConfirm={onConfirmProUpgrade}
+        />
+      )}
+
       <section className="card">
         <div className="card-label">Users — {busy ? 'loading…' : `${fmtInt(total)} total`}</div>
+        <p className="login-sub" style={{ marginTop: 4 }}>
+          User directory synced from Firebase Auth. Change tier (Free / Pro) or activate/suspend accounts.
+        </p>
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, margin: '14px 0', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             className="in"
-            style={{ maxWidth: 320 }}
+            style={{ maxWidth: 280 }}
             placeholder="Search email, name, or UID…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <select className="in" style={{ width: 140 }} value={tier} onChange={(e) => setTier(e.target.value)}>
-            <option value="">All plans</option>
-            <option value="free">Free</option>
-            <option value="pro">Pro</option>
+          <select className="in" style={{ width: 130 }} value={tier} onChange={(e) => setTier(e.target.value)}>
+            <option value="">All tiers</option>
+            <option value="free">Free tier</option>
+            <option value="pro">Pro tier</option>
           </select>
         </div>
 
         {error && <div className="error">{error}</div>}
 
-        {users.length === 0 ? (
-          <div className="empty">{busy ? 'Loading…' : 'No users match your filters.'}</div>
+        {pageUsers.length === 0 ? (
+          <div className="empty">{busy ? 'Loading…' : 'No users found.'}</div>
         ) : (
           <table className="table">
             <thead>
@@ -184,12 +325,13 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u, idx) => {
+              {pageUsers.map((u, idx) => {
                 const uid = u.firebase_uid || u.uid || u.id || `user-${idx}`
                 const userTier = u.tier || 'free'
                 const isActive = u.is_active ?? u.isActive ?? true
                 const usageVal = u.usage_count ?? u.usageCount ?? 0
                 const syncTs = u.synced_at || u.updatedAt
+                const email = u.email || u.name || uid
 
                 return (
                   <tr key={uid}>
@@ -200,14 +342,19 @@ export default function Users() {
                       </div>
                     </td>
                     <td>{u.name || u.displayName || '—'}</td>
-                    <td><span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>{userTier}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>{userTier}</span>
+                        {u.balance > 0 && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{u.balance} paid</span>}
+                      </div>
+                    </td>
                     <td>{fmtInt(usageVal)}</td>
                     <td>
                       <button
                         className={`status ${isActive ? 'status-ok' : 'status-err'}`}
                         style={{ border: 'none', cursor: 'pointer', background: 'transparent', padding: 0, fontWeight: 600 }}
                         disabled={acting === uid}
-                        onClick={() => onToggleStatus(uid, isActive)}
+                        onClick={() => onToggleStatus(uid, isActive, email)}
                         title={isActive ? "Click to suspend account (offline)" : "Click to activate account"}
                       >
                         {isActive ? 'active 🟢' : 'suspended 🔴'}
@@ -221,7 +368,7 @@ export default function Users() {
                           style={{ width: 90 }}
                           disabled={acting === uid}
                           value={userTier === 'pro' ? 'pro' : 'free'}
-                          onChange={(e) => onApprove(uid, e.target.value)}
+                          onChange={(e) => onTierSelectChange(u, e.target.value)}
                         >
                           <option value="free">Free</option>
                           <option value="pro">Pro</option>
@@ -230,7 +377,7 @@ export default function Users() {
                           className="btn sm ghost"
                           style={{ padding: '4px 8px', fontSize: 12 }}
                           disabled={acting === uid}
-                          onClick={() => onEditQuota(uid, usageVal)}
+                          onClick={() => onEditQuota(uid, usageVal, email)}
                           title="Edit Quota Usage"
                         >
                           ✏️ Edit
@@ -239,7 +386,7 @@ export default function Users() {
                           className="btn sm ghost"
                           style={{ padding: '4px 8px', fontSize: 12, color: '#10b981' }}
                           disabled={acting === uid}
-                          onClick={() => onResetQuota(uid)}
+                          onClick={() => onResetQuota(uid, email)}
                           title="Reset Quota to 0"
                         >
                           🔄 Reset

@@ -126,9 +126,30 @@ export function recordLocalSubActivity(action, targetUid, targetEmail, details) 
   }
 }
 
-export const setUserTier = (uid, tier, targetEmail = '') => {
-  recordLocalSubActivity('set_user', uid, targetEmail, { tier: { from: 'free/pro', to: tier } })
-  return _json(`/admin/users/${uid}`, 'PATCH', { tier })
+export const setUserTier = (uid, tier, targetEmail = '', options = {}) => {
+  const { durationDays = 30, addBalance = false, amount = 499 } = options
+  const details = {
+    tier: { from: 'free/pro', to: tier },
+  }
+  if (tier === 'pro') {
+    details.duration_days = durationDays
+    if (addBalance) details.added_balance = amount
+  }
+  recordLocalSubActivity('set_user', uid, targetEmail, details)
+
+  if (tier === 'pro' && addBalance) {
+    try {
+      const cur = Number(localStorage.getItem('vidrank_total_earnings') || 0)
+      localStorage.setItem('vidrank_total_earnings', String(cur + Number(amount)))
+    } catch {}
+  }
+
+  return _json(`/admin/users/${uid}`, 'PATCH', {
+    tier,
+    duration_days: durationDays,
+    add_balance: addBalance,
+    amount,
+  })
 }
 export const setUserStatus = (uid, isActive, targetEmail = '') => {
   recordLocalSubActivity('set_user', uid, targetEmail, { is_active: { to: isActive ? 1 : 0 } })

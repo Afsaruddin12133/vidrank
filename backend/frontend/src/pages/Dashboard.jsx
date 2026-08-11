@@ -77,6 +77,10 @@ export default function Dashboard() {
     }
   }
 
+  const userBalancesSum = users.reduce((sum, u) => sum + Number(u.balance || 0), 0)
+  const localEarnings = Number(localStorage.getItem('vidrank_total_earnings') || 0)
+  const totalRevenueTaka = Math.max(userBalancesSum, proUsers * 499) + localEarnings
+
   return (
     <div className="stack">
       {/* Top metrics */}
@@ -86,6 +90,13 @@ export default function Dashboard() {
           <div className="big">{fmtInt(users.length)}</div>
           <div className="card-sub">
             {fmtInt(freeUsers)} free • {fmtInt(proUsers)} pro
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-label">Total Revenue Earned</div>
+          <div className="big" style={{ color: '#10b981' }}>৳{fmtInt(totalRevenueTaka)}</div>
+          <div className="card-sub">
+            {fmtInt(proUsers)} Pro users • ৳499 per upgrade
           </div>
         </div>
         <div className="card">
@@ -105,13 +116,6 @@ export default function Dashboard() {
           </div>
           <div className="card-sub">
             {fmtInt(cacheHits)} / {fmtInt(totalRequests)} cached
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-label">Errors Today</div>
-          <div className="big">{fmtInt(errors)}</div>
-          <div className="card-sub">
-            {totalRequests > 0 ? `${((errors / totalRequests) * 100).toFixed(1)}% error rate` : 'no requests yet'}
           </div>
         </div>
       </section>
