@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePolled } from '../hooks.js'
-import { statsUsage, accountsUsagePaged, listAllAccounts, fmtInt, fmtPct, fmtDur } from '../api.js'
+import { statsUsage, accountsUsagePaged, accountsUsageDay, listAllAccounts, fmtInt, fmtPct, fmtDur } from '../api.js'
 
 const W = 640
 const H = 180
@@ -153,21 +153,54 @@ export default function Tracing() {
 
   const { data: site } = usePolled(() => statsUsage(days), 15000, [days])
   
-  // Polled server-side paginated account usage data
-  const { data: perAccount } = usePolled(
-    () => accountsUsagePaged({ days, q: debouncedQ, provider: providerFilter, page, pageSize }),
+  // Smart polling: tries paged endpoint first; if 404, gracefully falls back to accountsUsageDay
+  const { data: rawPerAccount } = usePolled(
+    async () => {
+      try {
+        const res = await accountsUsagePaged({ days, q: debouncedQ, provider: providerFilter, page, pageSize })
+        if (res && Array.isArray(res.accounts)) {
+          return { isPagedServer: true, ...res }
+        }
+      } catch {
+        /* fallback to standard endpoint */
+      }
+      const fallbackRes = await accountsUsageDay(days)
+      return { isPagedServer: false, ...fallbackRes }
+    },
     15000,
     [days, debouncedQ, providerFilter, page, pageSize]
   )
 
   const sDays = site?.days || []
-  const accts = perAccount?.accounts || []
-  const totalCount = perAccount?.total ?? accts.length
-  const totalPages = perAccount?.pages ?? Math.max(1, Math.ceil(totalCount / pageSize))
-  const curtPage = perAccount?.page ?? page
+  const rawAccts = rawPerAccount?.accounts || []
+  const isPagedServer = !!rawPerAccount?.isPagedServer
 
-  const startIndex = (curtPage - 1) * pageSize
-  const endIndex = Math.min(startIndex + accts.length, totalCount)
+  // Compute filtered & paginated accounts
+  const { pagedAccts, totalCount, totalPages, curtPage, startIndex, endIndex } = useMemo(() => {
+    if (isPagedServer) {
+      const tc = rawPerAccount?.total ?? rawAccts.length
+      const tp = rawPerAccount?.pages ?? Math.max(1, Math.ceil(tc / pageSize))
+      const cp = rawPerAccount?.page ?? page
+      const sIdx = (cp - 1) * pageSize
+      const eIdx = Math.min(sIdx + rawAccts.length, tc)
+      return { pagedAccts: rawAccts, totalCount: tc, totalPages: tp, curtPage: cp, startIndex: sIdx, endIndex: eIdx }
+    } else {
+      // Client-side fallback processing if backend hasn't updated paged route
+      const filtered = rawAccts.filter((a) => {
+        const searchQuery = debouncedQ.trim().toLowerCase()
+        const matchesSearch = !searchQuery || (a.label || '').toLowerCase().includes(searchQuery) || (a.id || '').toLowerCase().includes(searchQuery)
+        const matchesProvider = providerFilter === 'all' || a.provider === providerFilter
+        return matchesSearch && matchesProvider
+      })
+      const tc = filtered.length
+      const tp = Math.max(1, Math.ceil(tc / pageSize))
+      const cp = Math.min(page, tp)
+      const sIdx = (cp - 1) * pageSize
+      const eIdx = Math.min(sIdx + pageSize, tc)
+      const sliced = filtered.slice(sIdx, eIdx)
+      return { pagedAccts: sliced, totalCount: tc, totalPages: tp, curtPage: cp, startIndex: sIdx, endIndex: eIdx }
+    }
+  }, [rawAccts, isPagedServer, rawPerAccount, page, pageSize, debouncedQ, providerFilter])
 
   const totals = useMemo(() => {
     let total = 0, free = 0, pro = 0, cache = 0, errors = 0, latSum = 0, latN = 0
@@ -197,7 +230,7 @@ export default function Tracing() {
     return Array.from(pSet)
   }, [allAccountsList])
 
-  const nearCap = accts.filter((a) => {
+  const nearCap = pagedAccts.filter((a) => {
     const d = (a.days || []).slice(-1)[0]
     return a.daily_limit && d && d.requests >= a.daily_limit * 0.8
   })
@@ -288,11 +321,11 @@ export default function Tracing() {
         <div className="card-label">
           Per-account usage vs limit (with limit line) {totalCount > 0 ? `(${fmtInt(totalCount)} accounts)` : ''}
         </div>
-        {accts.length === 0 ? (
+        {pagedAccts.length === 0 ? (
           <div className="empty">No accounts matching filters — add accounts or clear search.</div>
         ) : (
           <div className="acc-charts">
-            {accts.map((a) => (
+            {pagedAccts.map((a) => (
               <div className="acc-chart" key={a.id}>
                 <div className="acc-title">
                   <span>{a.label || a.id}</span>
@@ -321,7 +354,7 @@ export default function Tracing() {
 
       <section className="card">
         <div className="card-label">Per-account table</div>
-        {accts.length === 0 ? (
+        {pagedAccts.length === 0 ? (
           <div className="empty">No data yet — add accounts or wait for usage.</div>
         ) : (
           <table className="table">
@@ -337,7 +370,7 @@ export default function Tracing() {
               </tr>
             </thead>
             <tbody>
-              {accts.map((a) => {
+              {pagedAccts.map((a) => {
                 const d = (a.days || []).slice(-1)[0]
                 const last = (a.days || []).slice(-1)[0]
                 const requests = last?.requests || 0
