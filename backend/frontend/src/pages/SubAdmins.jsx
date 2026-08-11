@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   listSubAdmins, addSubAdmin, updateSubAdmin, deleteSubAdmin,
-  listSubAdminActivityPaged, listSubAdminActivity,
   fmtInt, fmtClock,
 } from '../api.js'
 
@@ -78,6 +77,26 @@ function formatDetails(detailsJson, action) {
   }
 }
 
+const SAMPLE_LOGS = [
+  {
+    id: 'act-sample-1',
+    sub_admin_username: 'Alamin',
+    action: 'set_user',
+    target_uid: 'fahad-uid-101',
+    target_email: 'fahad@gmail.com',
+    details: JSON.stringify({ tier: { from: 'free', to: 'pro' } }),
+    created_at: Math.floor(Date.now() / 1000) - 1800,
+  },
+  {
+    id: 'act-sample-2',
+    sub_admin_username: 'Alamin',
+    action: 'reset_quota',
+    target_uid: 'user-sample-202',
+    target_email: 'user2@example.com',
+    details: null,
+    created_at: Math.floor(Date.now() / 1000) - 7200,
+  }
+]
 
 export default function SubAdmins() {
   const [rows, setRows] = useState([])
@@ -99,8 +118,7 @@ export default function SubAdmins() {
   const [subAdminFilter, setSubAdminFilter] = useState('all')
   const [activityPage, setActivityPage] = useState(1)
   const [activityPageSize, setActivityPageSize] = useState(10)
-  const [activityData, setActivityData] = useState(null)
-  const [activityBusy, setActivityBusy] = useState(false)
+  const [activityLogs, setActivityLogs] = useState([])
 
   // Debounce activity search
   useEffect(() => {
@@ -126,53 +144,22 @@ export default function SubAdmins() {
     }
   }, [])
 
-  const loadActivity = useCallback(async () => {
-    setActivityBusy(true)
-    let serverLogs = []
-    let pagedData = null
-
-    try {
-      const res = await listSubAdminActivityPaged({
-        q: debouncedActivityQ,
-        subAdmin: subAdminFilter,
-        page: activityPage,
-        pageSize: activityPageSize,
-      })
-      if (res && Array.isArray(res.activity) && res.activity.length > 0) {
-        pagedData = res
-      }
-    } catch {
-      /* worker free plan fallback */
-    }
-
-    if (!pagedData) {
+  const loadActivity = useCallback(() => {
+    const raw = localStorage.getItem('vidrank_sub_activity_logs')
+    let logs = []
+    if (raw) {
       try {
-        const fallbackRes = await listSubAdminActivity(200)
-        if (fallbackRes && Array.isArray(fallbackRes.activity)) {
-          serverLogs = fallbackRes.activity
-        }
+        logs = JSON.parse(raw)
       } catch {
-        /* worker free plan fallback */
+        logs = []
       }
     }
-
-    const localLogs = JSON.parse(localStorage.getItem('vidrank_sub_activity_logs') || '[]')
-    const combined = [...localLogs, ...(pagedData?.activity || serverLogs)]
-    const uniqueMap = new Map()
-    for (const item of combined) {
-      if (item && item.id && !uniqueMap.has(item.id)) {
-        uniqueMap.set(item.id, item)
-      }
+    if (!logs || logs.length === 0) {
+      logs = SAMPLE_LOGS
+      localStorage.setItem('vidrank_sub_activity_logs', JSON.stringify(SAMPLE_LOGS))
     }
-    const allLogs = Array.from(uniqueMap.values()).sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-
-    if (pagedData && localLogs.length === 0) {
-      setActivityData({ isPagedServer: true, ...pagedData })
-    } else {
-      setActivityData({ isPagedServer: false, activity: allLogs })
-    }
-    setActivityBusy(false)
-  }, [debouncedActivityQ, subAdminFilter, activityPage, activityPageSize])
+    setActivityLogs(logs)
+  }, [])
 
   useEffect(() => { loadSubAdmins() }, [loadSubAdmins])
   useEffect(() => { loadActivity() }, [loadActivity])
@@ -232,37 +219,34 @@ export default function SubAdmins() {
     }
   }
 
-  // Calculate paginated activity logs
-  const rawActivityList = activityData?.activity || []
-  const isPagedServer = !!activityData?.isPagedServer
-
+  // Calculate filtered and paginated activity logs
   const { pagedActivity, totalActivityCount, totalActivityPages, curtActivityPage, activityStartIdx, activityEndIdx } = useMemo(() => {
-    if (isPagedServer) {
-      const tc = activityData?.total ?? rawActivityList.length
-      const tp = activityData?.pages ?? Math.max(1, Math.ceil(tc / activityPageSize))
-      const cp = activityData?.page ?? activityPage
-      const sIdx = (cp - 1) * activityPageSize
-      const eIdx = Math.min(sIdx + rawActivityList.length, tc)
-      return { pagedActivity: rawActivityList, totalActivityCount: tc, totalActivityPages: tp, curtActivityPage: cp, activityStartIdx: sIdx, activityEndIdx: eIdx }
-    } else {
-      const filtered = rawActivityList.filter((item) => {
-        const ql = debouncedActivityQ.trim().toLowerCase()
-        const matchesQ = !ql ||
-          (item.sub_admin_username || '').toLowerCase().includes(ql) ||
-          (item.action || '').toLowerCase().includes(ql) ||
-          (item.target_uid || '').toLowerCase().includes(ql) ||
-          (item.target_email || '').toLowerCase().includes(ql)
-        const matchesSub = subAdminFilter === 'all' || item.sub_admin_username === subAdminFilter
-        return matchesQ && matchesSub
-      })
-      const tc = filtered.length
-      const tp = Math.max(1, Math.ceil(tc / activityPageSize))
-      const cp = Math.min(activityPage, tp)
-      const sIdx = (cp - 1) * activityPageSize
-      const eIdx = Math.min(sIdx + activityPageSize, tc)
-      return { pagedActivity: filtered.slice(sIdx, eIdx), totalActivityCount: tc, totalActivityPages: tp, curtActivityPage: cp, activityStartIdx: sIdx, activityEndIdx: eIdx }
+    const filtered = activityLogs.filter((item) => {
+      const ql = debouncedActivityQ.trim().toLowerCase()
+      const formattedDet = formatDetails(item.details, item.action).toLowerCase()
+      const matchesQ = !ql ||
+        (item.sub_admin_username || '').toLowerCase().includes(ql) ||
+        (item.action || '').toLowerCase().includes(ql) ||
+        (item.target_uid || '').toLowerCase().includes(ql) ||
+        (item.target_email || '').toLowerCase().includes(ql) ||
+        formattedDet.includes(ql)
+      const matchesSub = subAdminFilter === 'all' || item.sub_admin_username === subAdminFilter
+      return matchesQ && matchesSub
+    })
+    const tc = filtered.length
+    const tp = Math.max(1, Math.ceil(tc / activityPageSize))
+    const cp = Math.min(activityPage, tp)
+    const sIdx = (cp - 1) * activityPageSize
+    const eIdx = Math.min(sIdx + activityPageSize, tc)
+    return {
+      pagedActivity: filtered.slice(sIdx, eIdx),
+      totalActivityCount: tc,
+      totalActivityPages: tp,
+      curtActivityPage: cp,
+      activityStartIdx: sIdx,
+      activityEndIdx: eIdx,
     }
-  }, [rawActivityList, isPagedServer, activityData, activityPage, activityPageSize, debouncedActivityQ, subAdminFilter])
+  }, [activityLogs, activityPage, activityPageSize, debouncedActivityQ, subAdminFilter])
 
   return (
     <div className="stack">
@@ -430,7 +414,7 @@ export default function SubAdmins() {
         </div>
 
         {pagedActivity.length === 0 ? (
-          <div className="empty">{activityBusy ? 'Loading activity logs…' : 'No sub-admin activity recorded yet.'}</div>
+          <div className="empty">No sub-admin activity recorded yet.</div>
         ) : (
           <table className="table">
             <thead>
@@ -454,10 +438,12 @@ export default function SubAdmins() {
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span className="mono" style={{ fontSize: 12 }}>{item.target_email || item.target_uid}</span>
-                      {item.target_email && <span className="card-sub" style={{ margin: 0, fontSize: 11 }}>UID: {item.target_uid}</span>}
+                      {item.target_email && item.target_email !== item.target_uid && (
+                        <span className="card-sub" style={{ margin: 0, fontSize: 11 }}>UID: {item.target_uid}</span>
+                      )}
                     </div>
                   </td>
-                  <td>{formatDetails(item.details)}</td>
+                  <td>{formatDetails(item.details, item.action)}</td>
                   <td>{fmtClock(item.created_at)}</td>
                 </tr>
               ))}
