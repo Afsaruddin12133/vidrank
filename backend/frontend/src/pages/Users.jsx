@@ -404,25 +404,30 @@ export default function Users() {
                     </td>
 
                     <td>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <button
                           className="btn sm primary"
                           style={{
-                            padding: '4px 12px',
+                            height: 30,
+                            padding: '0 12px',
                             fontSize: 12,
                             background: userTier === 'pro' ? '#059669' : '#2563eb',
                             border: 'none',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
                           }}
                           disabled={acting === uid}
                           onClick={() => setProModalUser({ uid, email, name: u.name, raw: u })}
                           title={userTier === 'pro' ? "Add +৳499 Balance Credit" : "Upgrade account to PRO"}
                         >
-                          {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Make PRO'}
+                          {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Upgrade PRO'}
                         </button>
                         <button
                           className="btn sm ghost"
-                          style={{ padding: '4px 10px', fontSize: 12 }}
+                          style={{ height: 30, padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
                           disabled={acting === uid}
                           onClick={() => onEditQuota(uid, usageVal, email)}
                           title="Edit Quota Usage"
@@ -431,7 +436,7 @@ export default function Users() {
                         </button>
                         <button
                           className="btn sm ghost"
-                          style={{ padding: '4px 10px', fontSize: 12, color: '#10b981' }}
+                          style={{ height: 30, padding: '0 10px', fontSize: 12, color: '#10b981', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
                           disabled={acting === uid}
                           onClick={() => onResetQuota(uid, email)}
                           title="Reset Quota Usage to 0"
