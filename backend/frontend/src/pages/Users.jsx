@@ -7,18 +7,24 @@ const AVATAR_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#059669', '#
 
 function Avatar({ u }) {
   const photo = u.photo_url || u.photoURL || u.avatar
-  if (photo) {
-    return <img src={photo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-  }
   const name = u.name || u.displayName || u.email || '?'
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        alt={name}
+        style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
   const initial = (name.trim()[0] || '?').toUpperCase()
   const hash = [...name].reduce((a, c) => a + c.charCodeAt(0), 0)
-  const color = AVATAR_COLORS[hash % AVATAR_COLORS.length]
+  const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
   return (
     <span
       aria-hidden="true"
       style={{
-        display: 'inline-flex', width: 28, height: 28, borderRadius: '50%',
+        display: 'inline-flex', width: 32, height: 32, borderRadius: '50%',
         alignItems: 'center', justifyContent: 'center',
         background: color, color: '#fff', fontSize: 13, fontWeight: 600, flexShrink: 0,
       }}
@@ -48,10 +54,10 @@ function getProDaysRemaining(expiresAt) {
 }
 
 function ProModal({ user, onClose, onConfirm }) {
-  const [duration, setDuration] = useState('30') // default 1 month (30 days)
+  const [duration, setDuration] = useState('30')
   const [customDays, setCustomDays] = useState('30')
-  const [addBalance, setAddBalance] = useState(true) // checkmark default checked
-  const [amount, setAmount] = useState(499) // default 499 taka
+  const [addBalance, setAddBalance] = useState(true)
+  const [amount, setAmount] = useState(499)
   const [busy, setBusy] = useState(false)
 
   const handleConfirm = async () => {
@@ -79,7 +85,6 @@ function ProModal({ user, onClose, onConfirm }) {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Duration Selector */}
           <div>
             <label className="field-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6, color: '#e5e7eb' }}>
               📅 Pro Subscription Duration:
@@ -115,7 +120,6 @@ function ProModal({ user, onClose, onConfirm }) {
             )}
           </div>
 
-          {/* ৳499 Balance Checkmark */}
           <div style={{ padding: 12, borderRadius: 8, background: '#1f2937', border: '1px solid #374151' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, color: '#10b981' }}>
               <input
@@ -196,35 +200,6 @@ export default function Users() {
 
   useEffect(() => { load(debouncedQ, tier) }, [debouncedQ, tier, load])
 
-  const onTierSelectChange = (u, selectedTier) => {
-    const uid = u.firebase_uid || u.uid || u.id
-    const email = u.email || u.name || uid
-    if (selectedTier === 'pro') {
-      setProModalUser({ uid, email, name: u.name, raw: u })
-    } else if (selectedTier === 'free') {
-      const daysLeft = getProDaysRemaining(u.expires_at)
-      if (u.tier === 'pro' && daysLeft > 0) {
-        alert(
-          `⚠️ Cannot downgrade to Free!\n\nUser "${email}" has an active Pro package running for another ${daysLeft} days.\n\nYou can only downgrade this account to Free after the Pro package time expires.`
-        )
-        return
-      }
-      onDowngradeToFree(uid, email)
-    }
-  }
-
-  const onDowngradeToFree = async (uid, email) => {
-    setActing(uid); setError('')
-    try {
-      await setUserTier(uid, 'free', email)
-      await load(debouncedQ, tier)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setActing(null)
-    }
-  }
-
   const onConfirmProUpgrade = async (options) => {
     if (!proModalUser) return
     const { uid, email } = proModalUser
@@ -254,7 +229,7 @@ export default function Users() {
   }
 
   const onEditQuota = async (uid, currentUsage, email = '') => {
-    const input = window.prompt("Enter new usage count for today (0 = full 10 quota available):", currentUsage || 0)
+    const input = window.prompt("Enter new usage count for today (0 = full quota available):", currentUsage || 0)
     if (input === null) return
     const val = parseInt(input, 10)
     if (isNaN(val) || val < 0) {
@@ -313,46 +288,64 @@ export default function Users() {
       )}
 
       <section className="card">
-        <div className="card-label">Users — {busy ? 'loading…' : `${fmtInt(total)} total`}</div>
-        <p className="login-sub" style={{ marginTop: 4 }}>
-          User directory synced from Firebase Auth. Change tier (Free / Pro) or activate/suspend accounts.
-        </p>
+        {/* Sleek Toolbar Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+            <input
+              className="in"
+              style={{ minWidth: 260, maxWidth: 360, background: '#0b0d14', border: '1px solid #1f2434' }}
+              placeholder="🔍 Search email, name, or UID…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <select
+              className="in"
+              style={{ width: 130, background: '#0b0d14', border: '1px solid #1f2434' }}
+              value={tier}
+              onChange={(e) => setTier(e.target.value)}
+            >
+              <option value="">All Tiers</option>
+              <option value="free">Free Tier</option>
+              <option value="pro">Pro Tier</option>
+            </select>
+          </div>
 
-        <div style={{ display: 'flex', gap: 10, margin: '14px 0', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            className="in"
-            style={{ maxWidth: 280 }}
-            placeholder="Search email, name, or UID…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <select className="in" style={{ width: 130 }} value={tier} onChange={(e) => setTier(e.target.value)}>
-            <option value="">All tiers</option>
-            <option value="free">Free tier</option>
-            <option value="pro">Pro tier</option>
-          </select>
+          <div
+            style={{
+              padding: '4px 12px',
+              borderRadius: 20,
+              background: '#11131f',
+              color: '#9ca3af',
+              fontSize: 12,
+              fontWeight: 600,
+              border: '1px solid #1c1e2e',
+            }}
+          >
+            {busy ? 'Loading…' : `${fmtInt(total)} Users Total`}
+          </div>
         </div>
 
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error" style={{ marginTop: 14 }}>{error}</div>}
 
         {pageUsers.length === 0 ? (
-          <div className="empty">{busy ? 'Loading…' : 'No users found.'}</div>
+          <div className="empty" style={{ marginTop: 20 }}>{busy ? 'Loading user directory…' : 'No users found.'}</div>
         ) : (
-          <table className="table">
+          <table className="table" style={{ marginTop: 20 }}>
             <thead>
               <tr>
-                <th>User</th>
-                <th>Name</th>
-                <th>Plan</th>
-                <th>Usage (today)</th>
-                <th>Active</th>
-                <th>Last sync</th>
-                <th>Action</th>
+                <th>USER</th>
+                <th>PLAN TIER</th>
+                <th>USAGE (TODAY)</th>
+                <th>STATUS</th>
+                <th>LAST SYNC</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {pageUsers.map((u, idx) => {
                 const uid = u.firebase_uid || u.uid || u.id || `user-${idx}`
+                const email = u.email || '—'
+                const name = u.name || u.displayName || '—'
                 const userTier = u.tier || 'free'
                 const isActive = u.is_active ?? u.isActive ?? true
                 const usageVal = u.usage_count ?? u.usageCount ?? 0
@@ -363,58 +356,73 @@ export default function Users() {
                 return (
                   <tr key={uid}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Avatar u={u} />
-                        <span>{u.email || '—'}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600, color: '#f9fafb', fontSize: 13 }}>{name !== '—' ? name : email}</span>
+                          {name !== '—' && <span style={{ fontSize: 12, color: '#9ca3af' }}>{email}</span>}
+                        </div>
                       </div>
                     </td>
-                    <td>{u.name || u.displayName || '—'}</td>
+
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>{userTier}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                        <span className={`tier-pill tier-${userTier === 'pro' ? 'pro' : 'free'}`}>
+                          {userTier}
+                        </span>
                         {userTier === 'pro' && daysRemaining > 0 && (
-                          <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
+                          <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
                         )}
-                        {uBal > 0 && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{uBal} balance</span>}
+                        {uBal > 0 && (
+                          <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{uBal} balance</span>
+                        )}
                       </div>
                     </td>
-                    <td>{fmtInt(usageVal)}</td>
+
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13, color: '#e5e7eb' }}>
+                        {fmtInt(usageVal)}
+                      </span>
+                    </td>
+
                     <td>
                       <button
                         className={`status ${isActive ? 'status-ok' : 'status-err'}`}
                         style={{ border: 'none', cursor: 'pointer', background: 'transparent', padding: 0, fontWeight: 600 }}
                         disabled={acting === uid}
                         onClick={() => onToggleStatus(uid, isActive, email)}
-                        title={isActive ? "Click to suspend account (offline)" : "Click to activate account"}
+                        title={isActive ? "Click to suspend account" : "Click to activate account"}
                       >
                         {isActive ? 'active 🟢' : 'suspended 🔴'}
                       </button>
                     </td>
-                    <td>{syncTs ? fmtClock(syncTs) : '—'}</td>
+
                     <td>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                        {syncTs ? fmtClock(syncTs) : '—'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <button
                           className="btn sm primary"
-                          style={{ padding: '4px 10px', fontSize: 12, background: userTier === 'pro' ? '#059669' : '#2563eb', border: 'none' }}
+                          style={{
+                            padding: '4px 12px',
+                            fontSize: 12,
+                            background: userTier === 'pro' ? '#059669' : '#2563eb',
+                            border: 'none',
+                            fontWeight: 600,
+                          }}
                           disabled={acting === uid}
                           onClick={() => setProModalUser({ uid, email, name: u.name, raw: u })}
-                          title={userTier === 'pro' ? "Add +৳499 Balance or Extend Duration" : "Upgrade to Pro"}
+                          title={userTier === 'pro' ? "Add +৳499 Balance Credit" : "Upgrade account to PRO"}
                         >
                           {userTier === 'pro' ? '⭐ +৳499 Credit' : '⭐ Make PRO'}
                         </button>
-                        <select
-                          className="in"
-                          style={{ width: 85 }}
-                          disabled={acting === uid}
-                          value={userTier === 'pro' ? 'pro' : 'free'}
-                          onChange={(e) => onTierSelectChange(u, e.target.value)}
-                        >
-                          <option value="free">Free</option>
-                          <option value="pro">Pro</option>
-                        </select>
                         <button
                           className="btn sm ghost"
-                          style={{ padding: '4px 8px', fontSize: 12 }}
+                          style={{ padding: '4px 10px', fontSize: 12 }}
                           disabled={acting === uid}
                           onClick={() => onEditQuota(uid, usageVal, email)}
                           title="Edit Quota Usage"
@@ -423,10 +431,10 @@ export default function Users() {
                         </button>
                         <button
                           className="btn sm ghost"
-                          style={{ padding: '4px 8px', fontSize: 12, color: '#10b981' }}
+                          style={{ padding: '4px 10px', fontSize: 12, color: '#10b981' }}
                           disabled={acting === uid}
                           onClick={() => onResetQuota(uid, email)}
-                          title="Reset Quota to 0"
+                          title="Reset Quota Usage to 0"
                         >
                           🔄 Reset
                         </button>
@@ -440,7 +448,7 @@ export default function Users() {
         )}
 
         {data && pages > 1 && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', marginTop: 16 }}>
             <button className="btn sm ghost" disabled={curt <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
             <span className="card-label" style={{ margin: 0 }}>Page {curt} of {pages}</span>
             <button className="btn sm ghost" disabled={curt >= pages} onClick={() => setPage((p) => p + 1)}>Next</button>
