@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getToken, getRole, clearToken } from './api.js'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -17,7 +17,14 @@ const TABS = [
 export default function App() {
   const [token, setTokenState] = useState(getToken())
   const [role, setRoleState] = useState(getRole())
-  const [tab, setTab] = useState('dashboard')
+  const isSub = role === 'sub'
+  const [tab, setTab] = useState(isSub ? 'users' : 'dashboard')
+
+  useEffect(() => {
+    if (isSub && tab !== 'users') {
+      setTab('users')
+    }
+  }, [isSub, tab])
 
   const logout = () => {
     clearToken()
@@ -27,13 +34,23 @@ export default function App() {
   }
 
   if (!token) {
-    return <Login onAuthed={() => { setTokenState(getToken()); setRoleState(getRole()) }} />
+    return (
+      <Login
+        onAuthed={() => {
+          const r = getRole()
+          setTokenState(getToken())
+          setRoleState(r)
+          setTab(r === 'sub' ? 'users' : 'dashboard')
+        }}
+      />
+    )
   }
 
-  const isSub = role === 'sub'
   const tabs = isSub
     ? TABS.filter((t) => t.id === 'users')
     : [...TABS, { id: 'subadmins', label: 'Sub Admins' }]
+
+  const activeTab = isSub ? 'users' : tab
 
   return (
     <div className="app">
@@ -48,7 +65,7 @@ export default function App() {
           {tabs.map((t) => (
             <button
               key={t.id}
-              className={`tab ${tab === t.id ? 'active' : ''}`}
+              className={`tab ${activeTab === t.id ? 'active' : ''}`}
               onClick={() => setTab(t.id)}
             >
               {t.label}
@@ -62,11 +79,11 @@ export default function App() {
         </div>
       </header>
       <main className="content">
-        {tab === 'dashboard' && <Dashboard />}
-        {tab === 'accounts' && <Accounts />}
-        {tab === 'tracing' && <Tracing />}
-        {tab === 'users' && <Users />}
-        {tab === 'subadmins' && <SubAdmins />}
+        {!isSub && activeTab === 'dashboard' && <Dashboard />}
+        {!isSub && activeTab === 'accounts' && <Accounts />}
+        {!isSub && activeTab === 'tracing' && <Tracing />}
+        {activeTab === 'users' && <Users />}
+        {!isSub && activeTab === 'subadmins' && <SubAdmins />}
       </main>
     </div>
   )
