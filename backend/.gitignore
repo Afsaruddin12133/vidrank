@@ -1,7 +1,6 @@
 .venv/
 .venv-workers/
 .venv_bak/
-python_modules/
 .wrangler/
 tests/
 plan/

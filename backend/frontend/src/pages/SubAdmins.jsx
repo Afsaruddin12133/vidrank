@@ -51,18 +51,33 @@ function PaginationControls({ page, totalPages, totalCount, startIndex, endIndex
   )
 }
 
-function formatDetails(detailsJson) {
+function formatDetails(detailsJson, action) {
+  if (action === 'reset_quota') return 'Reset daily usage quota to 0'
   if (!detailsJson) return '—'
   try {
     const obj = typeof detailsJson === 'string' ? JSON.parse(detailsJson) : detailsJson
     if (!obj || typeof obj !== 'object') return String(detailsJson)
-    return Object.entries(obj)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ')
+    const parts = []
+    if (obj.tier) {
+      const fromTier = obj.tier.from || 'free'
+      const toTier = obj.tier.to || 'free'
+      parts.push(`Changed plan: ${fromTier.toUpperCase()} ➔ ${toTier.toUpperCase()}`)
+    }
+    if (obj.is_active != null) {
+      const fromSt = obj.is_active.from ? 'active' : 'suspended'
+      const toSt = obj.is_active.to ? 'active' : 'suspended'
+      parts.push(`Status: ${fromSt} ➔ ${toSt}`)
+    }
+    if (obj.usage_count != null) {
+      parts.push(`Set today usage: ${obj.usage_count}`)
+    }
+    if (parts.length > 0) return parts.join(' | ')
+    return Object.entries(obj).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ')
   } catch {
     return String(detailsJson)
   }
 }
+
 
 export default function SubAdmins() {
   const [rows, setRows] = useState([])
