@@ -358,7 +358,13 @@ export default function Users() {
                 const usageVal = u.usage_count ?? u.usageCount ?? 0
                 const syncTs = u.synced_at || u.updatedAt
                 const email = u.email || u.name || uid
-                const daysRemaining = getProDaysRemaining(u.expires_at)
+
+                const balMap = JSON.parse(localStorage.getItem('vidrank_user_balances') || '{}')
+                const expMap = JSON.parse(localStorage.getItem('vidrank_user_expirations') || '{}')
+
+                const effectiveBal = balMap[uid] != null ? Number(balMap[uid]) : Number(u.balance || 0)
+                const effectiveExp = expMap[uid] != null ? expMap[uid] : u.expires_at
+                const daysRemaining = getProDaysRemaining(effectiveExp)
 
                 return (
                   <tr key={uid}>
@@ -375,7 +381,7 @@ export default function Users() {
                         {userTier === 'pro' && daysRemaining > 0 && (
                           <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>⏱️ {daysRemaining}d active</span>
                         )}
-                        {u.balance > 0 && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{u.balance} paid</span>}
+                        {effectiveBal > 0 && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>৳{effectiveBal} balance</span>}
                       </div>
                     </td>
                     <td>{fmtInt(usageVal)}</td>
