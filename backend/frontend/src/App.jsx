@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getToken, getRole, clearToken } from './api.js'
+import Login from './pages/Login.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import Accounts from './pages/Accounts.jsx'
+import Tracing from './pages/Tracing.jsx'
+import Users from './pages/Users.jsx'
+import SubAdmins from './pages/SubAdmins.jsx'
 import Subscriptions from './pages/Subscriptions.jsx'
 
 const TABS = [
