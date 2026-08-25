@@ -318,6 +318,7 @@ export const listSubAdminActivityPaged = ({ q = '', subAdmin = '', page = 1, pag
 
 // ---- /admin stats ----
 export const statsOverview = () => _get('/admin/stats/overview')
+export const statsLatency = (hours = 24) => _get(`/admin/stats/latency?hours=${hours}`)
 export const statsUsage = (days = 7) => _get(`/admin/stats/usage?days=${days}`)
 
 // ---- /admin geo ----

@@ -139,6 +139,7 @@ export default function Tracing() {
   const [providerFilter, setProviderFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
+  const [pageLoading, setPageLoading] = useState(false)
 
   // Debounce search query
   useEffect(() => {
@@ -151,20 +152,28 @@ export default function Tracing() {
     setPage(1)
   }, [debouncedQ, providerFilter, pageSize, days])
 
+  // Immediately show loading spinner on page change
+  const handlePageChange = (newPage) => {
+    setPageLoading(true)
+    setPage(newPage)
+  }
+
   const { data: site } = usePolled(() => statsUsage(days), 15000, [days])
-  
+
   // Smart polling: tries paged endpoint first; if 404, gracefully falls back to accountsUsageDay
   const { data: rawPerAccount } = usePolled(
     async () => {
       try {
         const res = await accountsUsagePaged({ days, q: debouncedQ, provider: providerFilter, page, pageSize })
         if (res && Array.isArray(res.accounts)) {
+          setPageLoading(false)
           return { isPagedServer: true, ...res }
         }
       } catch {
         /* fallback to standard endpoint */
       }
       const fallbackRes = await accountsUsageDay(days)
+      setPageLoading(false)
       return { isPagedServer: false, ...fallbackRes }
     },
     15000,
@@ -317,7 +326,21 @@ export default function Tracing() {
         </div>
       </div>
 
-      <section className="card">
+      <section className="card" style={{ position: 'relative' }}>
+        {pageLoading && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: 'rgba(10,13,20,0.55)', backdropFilter: 'blur(2px)',
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{ color: '#7dd3fc', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              Loading page…
+            </div>
+          </div>
+        )}
         <div className="card-label">
           Per-account usage vs limit (with limit line) {totalCount > 0 ? `(${fmtInt(totalCount)} accounts)` : ''}
         </div>
@@ -348,11 +371,25 @@ export default function Tracing() {
           totalCount={totalCount}
           startIndex={startIndex}
           endIndex={endIndex}
-          onPageChange={setPage}
+          onPageChange={handlePageChange}
         />
       </section>
 
-      <section className="card">
+      <section className="card" style={{ position: 'relative' }}>
+        {pageLoading && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: 'rgba(10,13,20,0.55)', backdropFilter: 'blur(2px)',
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{ color: '#7dd3fc', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              Loading page…
+            </div>
+          </div>
+        )}
         <div className="card-label">Per-account table</div>
         {pagedAccts.length === 0 ? (
           <div className="empty">No data yet — add accounts or wait for usage.</div>
@@ -416,7 +453,7 @@ export default function Tracing() {
           totalCount={totalCount}
           startIndex={startIndex}
           endIndex={endIndex}
-          onPageChange={setPage}
+          onPageChange={handlePageChange}
         />
       </section>
     </div>

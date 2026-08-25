@@ -769,7 +769,13 @@ async def _generate_impl(request: Request):
     ]
 
     # 1) exact cache (Layer 3) — hit skips provider AND quota
-    key = cache.exact_key(prompts.GENERATE_MODEL, messages, 0.0, 1024)
+    # Cache key uses NORMALIZED text so "How To Grow!" and "how to grow"
+    # share one global entry; the provider request itself stays verbatim.
+    norm_messages = [
+        {"role": "system", "content": messages[0]["content"]},
+        {"role": "user", "content": f"Title: {cache.norm_text(title)}\nDescription: {cache.norm_text(description or '')}"},
+    ]
+    key = cache.exact_key(prompts.GENERATE_MODEL, norm_messages, 0.0, 1024)
     cached = await cache.get_exact(env, key)
     if cached:
         try:
@@ -833,6 +839,15 @@ async def _generate_impl(request: Request):
                 status_code=429,
             )
     print(f"[generate] t={time.time() - t0:.2f}s quota ok, routing to pool", file=sys.stderr, flush=True)
+
+    # Load-shed above the global in-flight cap. Not queued: a queued generate
+    # would lose its result (no delivery path), so shed cleanly instead.
+    if _in_flight > C.IN_FLIGHT_CAP:
+        print(f"[generate] load-shed: in_flight={_in_flight}", file=sys.stderr, flush=True)
+        return JSONResponse(
+            {"error": "high_load", "message": "Server busy — please try again shortly."},
+            status_code=503, headers={"Retry-After": "10"},
+        )
 
     # 4) route to the pool (with fallback inside router)
     account = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
@@ -2214,7 +2229,11 @@ async def admin_accounts_usage_paged(
     page: int = 1,
     page_size: int = 10,
 ):
-    """Server-side paginated per-account usage rollup chart data."""
+    """Server-side paginated per-account usage rollup chart data.
+
+    Uses a single bulk DB query for all page accounts instead of N serial
+    queries — eliminates the pagination hang on large account pools.
+    """
     env = _bindings(request)
     if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
@@ -2222,21 +2241,28 @@ async def admin_accounts_usage_paged(
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
 
-    total = await db.count_accounts(env, q, provider)
-    accounts = await db.list_accounts_paged(env, q, provider, page, page_size)
+    # Both count + list run in parallel via asyncio.gather
+    total, accounts = await asyncio.gather(
+        db.count_accounts(env, q, provider),
+        db.list_accounts_paged(env, q, provider, page, page_size),
+    )
 
-    out = []
-    for a in accounts:
-        rollups = await db.get_account_usage_days(env, a["id"], days)
-        out.append({
+    # Single bulk query for all accounts on this page (was N serial queries)
+    account_ids = [a["id"] for a in accounts]
+    rollups_by_id = await db.get_accounts_usage_days_bulk(env, account_ids, days)
+
+    out = [
+        {
             "id": a["id"],
             "provider": a["provider"],
             "label": a["label"],
             "daily_limit": a["daily_limit"],
             "rpm_limit": a["rpm_limit"],
             "enabled": a["enabled"],
-            "days": rollups,
-        })
+            "days": rollups_by_id.get(a["id"], []),
+        }
+        for a in accounts
+    ]
 
     return {
         "accounts": out,
@@ -2273,8 +2299,8 @@ async def admin_add_account(request: Request):
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
     provider = body.get("provider", "")
-    if provider != "openrouter":
-        return JSONResponse({"error": "provider must be openrouter"}, status_code=400)
+    if provider not in ("openrouter", "groq"):
+        return JSONResponse({"error": "provider must be openrouter|groq"}, status_code=400)
     if not body.get("key"):
         return JSONResponse({"error": "key required"}, status_code=400)
     account_id = uuid.uuid4().hex[:16]
@@ -2364,6 +2390,53 @@ async def admin_account_usage(request: Request, account_id: str):
     live, _ = await _t(env.RATESTATE.get(env.RATESTATE.idFromName(account_id)).get_live(), 3.0)
     return {"live": live, "limit": (acc or {}).get("daily_limit"),
             "rpm_limit": (acc or {}).get("rpm_limit")}
+
+
+@app.get("/admin/stats/latency")
+async def admin_stats_latency(request: Request, hours: int = 24):
+    """p50/p90/p99 latency + rotation health for REAL (non-cache) requests.
+
+    The decision numbers for the capacity matrix: if p90 crosses ~5s for
+    days, model/routing change is due; a high rotation_fail share means the
+    pool is exhausted or accounts are unhealthy.
+    """
+    env = _bindings(request)
+    if not await _super(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    hours = max(1, min(hours, 168))
+    since = int(time.time()) - hours * 3600
+
+    rows, _ = await _t(db._fetch_all(
+        env,
+        "SELECT latency_ms, status FROM usage_log "
+        "WHERE ts > ? AND cache_hit = 0 AND latency_ms IS NOT NULL",
+        since), 5.0)
+    rows = rows or []
+
+    lats = sorted(r["latency_ms"] for r in rows if r.get("latency_ms") is not None)
+
+    def pct(p: float) -> int | None:
+        if not lats:
+            return None
+        idx = min(len(lats) - 1, int(round((p / 100.0) * (len(lats) - 1))))
+        return lats[idx]
+
+    fails = sum(1 for r in rows if (r.get("status") or 0) >= 400)
+    err503, _ = await _t(db._fetch_one(
+        env,
+        "SELECT COUNT(*) as c FROM usage_log "
+        "WHERE ts > ? AND status = 503", since), 5.0)
+
+    return {
+        "window_hours": hours,
+        "sample": len(lats),
+        "p50_ms": pct(50),
+        "p90_ms": pct(90),
+        "p99_ms": pct(99),
+        "avg_ms": int(sum(lats) / len(lats)) if lats else None,
+        "error_rate": round(fails / len(rows), 4) if rows else 0.0,
+        "pool_exhausted_503": (err503 or {}).get("c", 0) if isinstance(err503, dict) else 0,
+    }
 
 
 @app.get("/admin/stats/overview")
@@ -2887,3 +2960,78 @@ async def admin_set_user_usage(request: Request, uid: str):
         return JSONResponse({"error": str(e)}, status_code=500)
     await _log_sub_activity(env, auth, "set_usage", uid, {"usage_count": usage_count})
     return {"ok": True, "uid": uid, "usage_count": usage_count}
+
+# --------------------------------------------------------------------------- #
+# Capacity alerts — hourly cron (wrangler [triggers]), deduped via KV.
+# Sends to ALERT_WEBHOOK_URL (Cloudflare secret) when set; logs otherwise.
+# --------------------------------------------------------------------------- #
+async def _alert_post(url: str, text: str) -> None:
+    try:
+        from js import fetch as js_fetch, JSON as js_JSON
+        init = js_JSON.parse(json.dumps({
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"text": text, "content": text}),
+        }))
+        await js_fetch(url, init)
+    except ImportError:
+        import urllib.request
+        req = urllib.request.Request(
+            url, data=json.dumps({"text": text, "content": text}).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=8)
+
+
+async def check_capacity_alerts(env) -> list[str]:
+    """One alert per type per day (KV dedupe). Returns messages sent."""
+    sent: list[str] = []
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    try:
+        accounts, _ = await _t(db.list_enabled_accounts(env), 5.0)
+        accounts = accounts or []
+        capacity = sum(int(a.get("daily_limit") or 0) for a in accounts)
+        today_start = int(time.time()) - (int(time.time()) % 86400)
+        row, _ = await _t(db._fetch_one(
+            env, "SELECT COUNT(*) as c FROM usage_log WHERE ts > ?", today_start), 5.0)
+        used = (row or {}).get("c", 0) if isinstance(row, dict) else 0
+    except Exception:
+        return sent
+
+    alerts: list[tuple[str, str]] = []
+    if capacity > 0 and used / capacity >= 0.85:
+        alerts.append((
+            "capacity",
+            f"⚠️ VidRank capacity at {100 * used // capacity}% ({used}/{capacity} today, "
+            f"{len(accounts)} accounts). Add OpenRouter accounts now — pool will exhaust soon."))
+    if len(accounts) <= 2:
+        alerts.append((
+            "pool",
+            f"⚠️ VidRank pool has only {len(accounts)} enabled account(s). "
+            f"One dead key = outage. Re-enable or add accounts."))
+    try:
+        err_row, _ = await _t(db._fetch_one(
+            env, "SELECT COUNT(*) as c FROM usage_log WHERE ts > ? AND status = 503",
+            int(time.time()) - 3600), 5.0)
+        err503 = (err_row or {}).get("c", 0) if isinstance(err_row, dict) else 0
+        if err503 >= 10:
+            alerts.append((
+                "errors",
+                f"⚠️ VidRank served {err503} pool-exhausted 503s in the last hour. "
+                f"Users are seeing generation failures — add accounts."))
+    except Exception:
+        pass
+
+    for kind, msg in alerts:
+        key = f"alert:{kind}:{day}"
+        try:
+            if await env.KV.get(key):
+                continue
+            await env.KV.put(key, "1", expiration_ttl=86400)
+        except Exception:
+            pass
+        url = getattr(env, "ALERT_WEBHOOK_URL", "") or ""
+        if url:
+            await _alert_post(url, msg)
+        print(f"[alert] {msg}", file=sys.stderr, flush=True)
+        sent.append(msg)
+    return sent

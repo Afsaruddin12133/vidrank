@@ -36,9 +36,14 @@ class Default(WorkerEntrypoint):
                 payload = message.body
                 # Execute the queued request
                 result = await mq.consume_job(self.env, payload)
-                
+
                 # Mark as complete (ack)
                 message.ack()
             except Exception as e:
                 # Retry on failure (up to max_retries configured in wrangler.toml)
                 message.retry()
+
+    async def scheduled(self, event, ctx):
+        """Hourly cron: capacity/pool/error alerts via webhook (see main.py)."""
+        from app.main import check_capacity_alerts
+        await check_capacity_alerts(self.env)

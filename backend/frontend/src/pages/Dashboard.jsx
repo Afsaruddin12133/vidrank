@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { usePolled } from '../hooks.js'
-import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, getFreeQuota, setFreeQuota, fmtInt, getRole } from '../api.js'
+import { statsOverview, statsLatency, listUsers, listAllAccounts, getPricing, adminGeo, getFreeQuota, setFreeQuota, fmtInt, getRole } from '../api.js'
 
 const CADENC_LABEL = { daily: 'Daily (resets each day)', never: 'Never (one-time total)', unlimited: 'Unlimited (no cap)' }
 
 export default function Dashboard() {
   const isSub = getRole() === 'sub'
   const { data: overview } = usePolled(() => statsOverview(), 5000)
+  const { data: lat } = usePolled(() => statsLatency(24), 60000)
   const { data: usersData } = usePolled(() => listUsers(), 5000)
   const { data: accountsData } = usePolled(() => listAllAccounts(), 5000)
   const { data: pricingData } = usePolled(() => getPricing(), 10000)
@@ -115,6 +116,30 @@ export default function Dashboard() {
           </div>
           <div className="card-sub">
             {fmtInt(cacheHits)} / {fmtInt(totalRequests)} cached
+          </div>
+        </div>
+      </section>
+
+      {/* Latency Percentiles (real requests, last 24h) */}
+      <section className="cards">
+        <div className="card">
+          <div className="card-label">Latency p50 (24h)</div>
+          <div className="big">{lat?.p50_ms != null ? `${(lat.p50_ms / 1000).toFixed(2)}s` : '—'}</div>
+          <div className="card-sub">{fmtInt(lat?.sample || 0)} real (non-cache) requests</div>
+        </div>
+        <div className="card">
+          <div className="card-label">Latency p90 (24h)</div>
+          <div className="big" style={{ color: (lat?.p90_ms || 0) > 5000 ? '#f59e0b' : undefined }}>
+            {lat?.p90_ms != null ? `${(lat.p90_ms / 1000).toFixed(2)}s` : '—'}
+          </div>
+          <div className="card-sub">{(lat?.p90_ms || 0) > 5000 ? '⚠️ above 5s — review routing/model' : 'healthy (<5s)'}</div>
+        </div>
+        <div className="card">
+          <div className="card-label">Error Rate / Pool 503s</div>
+          <div className="big">{lat ? `${((lat.error_rate || 0) * 100).toFixed(1)}%` : '—'}</div>
+          <div className="card-sub">
+            {fmtInt(lat?.pool_exhausted_503 || 0)} pool-exhausted in 24h
+            {(lat?.pool_exhausted_503 || 0) >= 10 ? ' ⚠️ add accounts' : ''}
           </div>
         </div>
       </section>

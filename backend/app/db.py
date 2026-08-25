@@ -609,6 +609,40 @@ async def get_account_usage_days(env, account_id: str, days: int) -> list[dict[s
     )
 
 
+async def get_accounts_usage_days_bulk(env, account_ids: list[str], days: int) -> dict[str, list[dict[str, Any]]]:
+    """Bulk per-account daily usage in ONE query instead of N serial queries.
+
+    Returns dict keyed by account_id: {account_id -> [{day, requests, errors, avg_latency_ms}]}
+    This replaces the serial loop that caused the pagination hang.
+    """
+    if not account_ids:
+        return {}
+    cutoff = int(time.time()) - days * 86400
+    # Build placeholders: ?3, ?4, ... for account IDs
+    placeholders = ",".join(f"?{i + 3}" for i in range(len(account_ids)))
+    rows = await _fetch_all(
+        env,
+        "SELECT account_id, date(ts,'unixepoch') AS day, COUNT(*) AS requests, "
+        " SUM(CASE WHEN status>=400 THEN 1 ELSE 0 END) AS errors, "
+        " AVG(latency_ms) AS avg_latency_ms "
+        f"FROM usage_log WHERE ts>=?1 AND account_id IN ({placeholders}) "
+        "GROUP BY account_id, day ORDER BY account_id, day DESC",
+        cutoff, days, *account_ids,
+    )
+    # Group by account_id
+    result: dict[str, list[dict]] = {aid: [] for aid in account_ids}
+    for row in rows:
+        aid = row.get("account_id")
+        if aid in result:
+            result[aid].append({
+                "day": row["day"],
+                "requests": row["requests"],
+                "errors": row["errors"],
+                "avg_latency_ms": row["avg_latency_ms"],
+            })
+    return result
+
+
 async def set_account_enabled(env, account_id: str, enabled: bool) -> None:
     await env.DB.prepare("UPDATE accounts SET enabled=?1 WHERE id=?2") \
         .bind(int(enabled), account_id).run()

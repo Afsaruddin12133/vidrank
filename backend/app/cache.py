@@ -20,6 +20,15 @@ from . import contracts as C
 # --------------------------------------------------------------------------- #
 # Layer 3 — exact response cache (global)
 # --------------------------------------------------------------------------- #
+def norm_text(text: str) -> str:
+    """Canonicalize user text for cache keys: case/punctuation/spacing
+    variants of the same title collapse to one entry (free-tier lever —
+    every merged variant is a saved API call)."""
+    import re
+    t = re.sub(r"[^\w\s]", " ", (text or "").lower())
+    return " ".join(t.split())
+
+
 def exact_key(model: str, messages: list, temperature: float, max_tokens: int) -> str:
     """Deterministic hash of the stable request shape (model, messages, params)."""
     stable = json.dumps(

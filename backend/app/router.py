@@ -22,13 +22,19 @@ from . import db
 
 ENDPOINTS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
+    "groq": "https://api.groq.com/openai/v1/chat/completions",
 }
-# Legacy Groq model IDs -> OpenRouter equivalents (kept so stored payloads map)
+# Logical model -> per-provider concrete IDs (request follows the account's
+# provider wherever rotation lands, so a groq->openrouter failover still works)
 MODEL_MAP = {
     "openrouter": {
-        # ponytail: free nemotron (reasoning off) — 7-12x faster than gemma/paid llama
         "llama-3.3-70b-versatile": "nvidia/nemotron-3-super-120b-a12b:free",
         "llama-3.1-8b-instant": "nvidia/nemotron-3-super-120b-a12b:free",
+    },
+    "groq": {
+        "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant": "llama-3.1-8b-instant",
+        "nvidia/nemotron-3-super-120b-a12b:free": "llama-3.1-8b-instant",
     },
 }
 TIMEOUT_S = 20          # per-attempt: fast-fail slow providers (normal gen = 2-5s)
@@ -182,6 +188,14 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             "temperature": payload.get("temperature", 0.7),
             "max_tokens": payload.get("max_tokens", 1024),
         }
+        if acc.get("provider") == "openrouter":
+            body["models"] = [model, "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"]
+            # Route within the model's (free) endpoints by speed, not price.
+            # Missed latency thresholds get deprioritized, never excluded.
+            body["provider"] = {
+                "sort": "throughput",
+                "preferred_max_latency": {"p90": 3},
+            }
         if model.startswith("nvidia/"):
             # nemotron leaks reasoning chains into content at low temp otherwise
             body["reasoning"] = {"enabled": False}
@@ -219,6 +233,14 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
                     content = (data["choices"][0]["message"]["content"] or "").strip()
                 except (KeyError, IndexError, ValueError):
                     content = raw
+                try:
+                    u = data.get("usage") or {}
+                    ptd = (u.get("prompt_tokens_details") or {})
+                    cached = int(ptd.get("cached_tokens") or 0)
+                    if cached > 0:
+                        print(f"[router] prompt-cache hit: {cached}/{u.get('prompt_tokens', '?')} tokens cached", flush=True)
+                except Exception:
+                    pass
                 break
         except Exception as e:
             latency_ms = int((time.time() - start) * 1000)

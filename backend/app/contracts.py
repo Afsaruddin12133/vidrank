@@ -68,6 +68,7 @@ MAX_TOKENS   = 8192     # max max_tokens a client may request
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 PROVIDER_DEFAULTS = {
     "openrouter": {"daily_limit": 50,     "rpm_limit": 20},
+    "groq":       {"daily_limit": 14_400, "rpm_limit": 30},
 }
 
 # Request-shape ------------------------------------------------------------ #
