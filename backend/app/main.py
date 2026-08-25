@@ -789,21 +789,20 @@ async def _generate_impl(request: Request):
             tags, desc = data.get("tags") or [], data.get("description") or ""
         except (ValueError, TypeError):
             tags, desc = [], ""
-            if tags and desc:
-                print(f"[generate] t={time.time() - t0:.2f}s cache HIT(exact) uid={uid[:10]}", file=sys.stderr, flush=True)
-                flusher = getattr(request.app.state, "flusher", None)
-                if flusher is not None:
-                    flusher.log_usage(
-                        user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
-                        cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
-                    )
-                await _consume_quota(env, uid)
-                usage, retry_after = await _usage_for(env, uid, tier)
-                return JSONResponse(
-                    {"success": True, "tags": tags, "description": desc,
-                     "usage": usage, "retry_after": retry_after},
-                    headers={"X-Cache": "HIT"},
+        if tags and desc:
+            print(f"[generate] t={time.time() - t0:.2f}s cache HIT(exact) uid={uid[:10]}", file=sys.stderr, flush=True)
+            flusher = getattr(request.app.state, "flusher", None)
+            if flusher is not None:
+                flusher.log_usage(
+                    user_id=uid, account_id=None, model=prompts.GENERATE_MODEL,
+                    cache_hit=True, latency_ms=0, status=200, ts=int(time.time()),
                 )
+            usage, retry_after = await _usage_for(env, uid, tier)
+            return JSONResponse(
+                {"success": True, "tags": tags, "description": desc,
+                 "usage": usage, "retry_after": retry_after},
+                headers={"X-Cache": "HIT"},
+            )
 
     # 2) semantic cache (near-repeat titles) — hit skips quota + provider,
     #    so repeat-y usage stays within the free daily cap and costs $0.
