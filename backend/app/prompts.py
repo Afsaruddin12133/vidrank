@@ -9,7 +9,7 @@ prompts and demands strict JSON the backend can parse.
 """
 from __future__ import annotations
 
-GENERATE_MODEL = "llama-3.3-70b-versatile"  # plan §2: model stays Groq
+GENERATE_MODEL = "llama-3.3-70b-versatile"
 MAX_GENERATE_TAGS = 20
 
 TAG_SYSTEM_PROMPT = """You are an elite YouTube SEO Expert and Viral Growth Strategist. Your goal is to generate tags that maximize the algorithm's reach, increase Search Volume (CTR), and place the video in the 'Suggested' and 'Up Next' sections of YouTube.

@@ -21,17 +21,18 @@ from . import contracts as C
 from . import db
 
 ENDPOINTS = {
-    "groq": "https://api.groq.com/openai/v1/chat/completions",
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
 }
-# Groq-only model IDs -> OpenRouter equivalents (OpenRouter rejects Groq names)
+# Legacy Groq model IDs -> OpenRouter equivalents (kept so stored payloads map)
 MODEL_MAP = {
     "openrouter": {
-        "llama-3.3-70b-versatile": "meta-llama/llama-3.3-70b-instruct",
-        "llama-3.1-8b-instant": "meta-llama/llama-3.1-8b-instruct",
+        # ponytail: free nemotron (reasoning off) — 7-12x faster than gemma/paid llama
+        "llama-3.3-70b-versatile": "nvidia/nemotron-3-super-120b-a12b:free",
+        "llama-3.1-8b-instant": "nvidia/nemotron-3-super-120b-a12b:free",
     },
 }
-TIMEOUT_S = 55
+TIMEOUT_S = 20          # per-attempt: fast-fail slow providers (normal gen = 2-5s)
+ROUTE_DEADLINE_S = 45   # total budget across ALL attempts for one request
 
 
 # --------------------------------------------------------------------------- #
@@ -152,8 +153,14 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
     cache_hit: bool = False
     error_msg: str = ""
     tried: set[str] = {account["id"]}
+    deadline = time.time() + ROUTE_DEADLINE_S
 
+    # Rotate through the WHOLE pool (not a fixed 3): pick_account returns
+    # None once every enabled account is tried/cooldown-excluded, and the
+    # deadline bounds total wall time so users never hang minutes on end.
     for attempt in range(max(1, C.FALLBACK_TRIES)):
+        if attempt > 0 and time.time() >= deadline:
+            break
         acc = account if attempt == 0 else None
         if acc is None:
             acc = await pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
@@ -167,7 +174,7 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
         url = ENDPOINTS.get(acc.get("provider", ""))
         if not url:
             continue
-        model = payload.get("model") or C.GROQ_MODEL
+        model = payload.get("model") or C.DEFAULT_MODEL
         model = MODEL_MAP.get(acc.get("provider", ""), {}).get(model, model)
         body = {
             "model": model,
@@ -175,6 +182,10 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             "temperature": payload.get("temperature", 0.7),
             "max_tokens": payload.get("max_tokens", 1024),
         }
+        if model.startswith("nvidia/"):
+            # nemotron leaks reasoning chains into content at low temp otherwise
+            body["reasoning"] = {"enabled": False}
+        print(f"[router] try {attempt + 1}/{max(1, C.FALLBACK_TRIES)}: {acc.get('provider')} model={model} account={used_id}", flush=True)
         start = time.time()
         try:
             result = await _provider_post(url, body, _decode_key(env, acc), TIMEOUT_S)
@@ -182,6 +193,7 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             status = result["status"]
             raw = result["body"]
             hdrs = result["headers"]
+            print(f"[router] try {attempt + 1} -> status {status} in {latency_ms}ms", flush=True)
             if status >= 400:
                 error_msg = raw[:500]
             await _observe(env, acc, status, hdrs, latency_ms)

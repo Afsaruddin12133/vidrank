@@ -1,0 +1,118 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "VidRank — AI-Powered YouTube SEO",
+  description = "VidRank uses AI to optimize your titles, descriptions, keywords, and tags so your content is easier to discover."
+} = Astro.props;
+
+// Organization structured data — site-level entity for AI answer engines
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "VidRank",
+  url: "https://vidrank.tech",
+  logo: "https://vidrank.tech/logo.png",
+  description: "VidRank is an AI-powered YouTube SEO tool that generates optimized titles, descriptions, keywords, and tags from your video title or file name.",
+};
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="description" content={description} />
+  <title>{title}</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="alternate icon" type="image/png" href="/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" media="print" onload="this.media='all'" />
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" />
+  </noscript>
+  <script is:inline>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+</head>
+<body>
+  <div class="overflow-hidden bg-[radial-gradient(circle_at_75%_4%,rgba(0,119,255,.1),transparent_24rem)] bg-bg">
+    <slot />
+  </div>
+
+  <script is:inline>
+    // Browser-native observer for reveals, meters, and count-ups (Zero JS bundle chain)
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            el.classList.add("is-visible");
+
+            // Count-up animation
+            if (el.classList.contains("js-count")) {
+              const to = Number(el.dataset.to || 0);
+              const startTime = performance.now();
+              const duration = 1000;
+              function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                el.textContent = String(Math.round(easeOut * to));
+                if (progress < 1) requestAnimationFrame(update);
+              }
+              requestAnimationFrame(update);
+            }
+
+            observer.unobserve(el);
+          }
+        });
+      }, { rootMargin: "0px 0px -10% 0px" });
+
+      document.querySelectorAll("[data-reveal], .tag-cloud, .meter, .js-count").forEach((el) => {
+        observer.observe(el);
+      });
+    } else {
+      document.querySelectorAll("[data-reveal], .tag-cloud, .meter").forEach((el) => {
+        el.classList.add("is-visible");
+      });
+    }
+
+    // Scanning state on optimizer
+    const scan = document.querySelector(".scan-block");
+    if (scan) {
+      setInterval(() => scan.classList.toggle("is-scanning"), 3800);
+      scan.classList.add("is-scanning");
+    }
+
+    // FAQ accordion
+    document.querySelectorAll(".faq-item > h3 > button").forEach((btn) => {
+      btn.addEventListener("click", () => btn.parentElement && btn.parentElement.classList.toggle("open"));
+    });
+
+    // Pricing toggle
+    const price = document.getElementById("proPrice");
+    const period = document.getElementById("proPeriod");
+    document.querySelectorAll(".bill").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".bill").forEach((b) => {
+          b.classList.remove("bg-[#1d2735]", "text-white");
+          b.classList.add("text-[#7e8996]", "bg-transparent");
+        });
+        btn.classList.add("bg-[#1d2735]", "text-white");
+        btn.classList.remove("text-[#7e8996]", "bg-transparent");
+        const isYearly = btn.dataset.bill === "yearly";
+        if (price) price.textContent = isYearly ? "$38.30" : "$3.99";
+        if (period) period.textContent = isYearly ? "/year" : "/month";
+      });
+    });
+  </script>
+</body>
+</html>

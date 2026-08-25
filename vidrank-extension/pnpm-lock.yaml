@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@adsonbread/react':
+        specifier: ^1.1.0
+        version: 1.1.0(react@18.3.1)
       firebase:
         specifier: 12.15.0
         version: 12.15.0
@@ -50,6 +53,11 @@ importers:
         version: 5.4.21(@types/node@26.1.2)
 
 packages:
+
+  '@adsonbread/react@1.1.0':
+    resolution: {integrity: sha512-nqwMlIKOk4Lk+sxMA8JDPdGjwf2GlP1meY33K90WFWxwHGPoZLneDbrfykR3u9ufWeBvaOIp3DRjuO1J8dHNsA==}
+    peerDependencies:
+      react: '>=18'
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -1621,6 +1629,10 @@ packages:
     resolution: {integrity: sha512-BbETDVWG+VcMUle37k5Fqp//7SDOK2/1+T7X8TD96M3D9G8jK5VLUdQVdVjGi8im7FGkazX7kk5hkU8X4L5Bng==}
 
 snapshots:
+
+  '@adsonbread/react@1.1.0(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
 
   '@babel/code-frame@7.29.7':
     dependencies:

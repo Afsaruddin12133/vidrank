@@ -1,0 +1,47 @@
+---
+const secFull = (bg: string) => `py-[100px] px-[6vw] max-w-none ${bg} max-[900px]:py-[70px] max-[620px]:py-[50px]`;
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const eyebrowMini = "block text-[#8ea0b5] font-inter font-semibold text-[9px] tracking-[0.14em]";
+
+const meters = [
+  ["Title relevance", "96%", "Excellent"],
+  ["Keyword coverage", "92%", "Excellent"],
+  ["Search intent", "84%", "Strong"],
+  ["Description optimization", "81%", "Strong"],
+  ["Tag relevance", "94%", "Excellent"],
+];
+---
+
+<section class={`${secFull("bg-[#0a0e16]")} grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-12 lg:gap-16 items-center max-w-[1440px] mx-auto`}>
+  <div class="section-intro" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>CLARITY BEFORE YOU PUBLISH</span>
+    <h2 class={h2}>Know what to improve <span>before you publish.</span></h2>
+    <p class="max-w-[460px] mb-[30px] text-muted leading-[1.7] text-[15px]">VidRank analyzes the important metadata signals around your video and turns them into actionable recommendations.</p>
+  </div>
+  <div class="score-card w-full max-w-[620px] p-8 md:p-10 rounded-2xl border border-[rgba(137,190,255,0.16)] bg-[#0c121e]/90 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.5)]" data-reveal>
+    <div class="flex items-center gap-6 pb-6 border-b border-line">
+      <div class="w-[110px] h-[110px] flex flex-col justify-center items-center rounded-full border-8 border-[#3dba9e] shadow-[inset_0_0_18px_rgba(80,241,192,.15)] shrink-0">
+        <strong class="font-outfit font-bold text-[34px] text-white"><span class="js-count" data-to="92">92</span></strong>
+        <span class="text-[#8ea0b5] text-[11px]">/100</span>
+      </div>
+      <div>
+        <span class={eyebrowMini}>VIDRANK SCORE</span>
+        <h3 class="my-1.5 font-outfit font-bold text-[22px] text-white">Strong optimization</h3>
+        <p class="text-[#94a3b8] text-[13px]">Ready to publish with high search discovery potential.</p>
+      </div>
+    </div>
+    {meters.map(([label, w, verdict]) => (
+      <div class="mt-5">
+        <span class="text-[#cbd5e1] text-[13px] font-medium">{label}</span>
+        <div class="flex items-center gap-3 mt-2">
+          <div class="h-2 flex-1 bg-[#182232] rounded-full overflow-hidden">
+            <i class="meter block h-full bg-[#48d2ae] rounded-full origin-left" style={`width:${w}`} data-w={w}></i>
+          </div>
+          <b class="text-[#81e1c6] text-[11px] min-w-[60px] text-right font-mono">{verdict}</b>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

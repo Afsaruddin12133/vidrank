@@ -116,12 +116,179 @@ async def get_plan(env, plan_id: str) -> dict[str, Any] | None:
     )
 
 
+async def get_user_by_email(env, email: str) -> dict[str, Any] | None:
+    if not email:
+        return None
+    return await _fetch_one(
+        env, "SELECT firebase_uid, email, tier, is_active, synced_at, balance, "
+        "subscription_id, expires_at, referred_by, usage_count, last_usage_reset, "
+        "name, photo_url, referred_by_sub_id "
+        "FROM users WHERE lower(email) = lower(?1)",
+        email.strip(),
+    )
+
+
+async def update_user_subscription(
+    env, uid: str, tier: str, subscription_id: str | None = None, expires_at: str | None = None
+) -> None:
+    now = int(time.time())
+    await env.DB.prepare(
+        "UPDATE users SET tier = ?1, "
+        "subscription_id = CASE WHEN ?2 IS NOT NULL THEN ?2 ELSE subscription_id END, "
+        "expires_at = ?3, "
+        "synced_at = ?4 "
+        "WHERE firebase_uid = ?5"
+    ).bind(tier, subscription_id, expires_at, now, uid).run()
+
+
+async def upsert_customer(env, customer_id: str, email: str) -> None:
+    """Upsert a mirrored customer record from Paddle."""
+    now = int(time.time())
+    await env.DB.prepare(
+        "INSERT INTO customers (customer_id, email, created_at, updated_at) "
+        "VALUES (?1, ?2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) "
+        "ON CONFLICT(customer_id) DO UPDATE SET "
+        "email = excluded.email, "
+        "updated_at = CURRENT_TIMESTAMP"
+    ).bind(customer_id, email.strip().lower()).run()
+
+
+async def get_customer(env, customer_id: str) -> dict[str, Any] | None:
+    return await _fetch_one(
+        env, "SELECT customer_id, email, created_at, updated_at FROM customers WHERE customer_id = ?1", customer_id
+    )
+
+
+async def get_customer_by_email(env, email: str) -> dict[str, Any] | None:
+    if not email:
+        return None
+    return await _fetch_one(
+        env, "SELECT customer_id, email, created_at, updated_at FROM customers WHERE lower(email) = lower(?1)", email.strip()
+    )
+
+
+async def upsert_paddle_subscription(
+    env,
+    subscription_id: str,
+    customer_id: str,
+    status: str,
+    price_id: str,
+    product_id: str,
+    scheduled_change_action: str | None = None,
+    scheduled_change_at: str | None = None,
+) -> None:
+    """Upsert a mirrored subscription record from Paddle."""
+    await env.DB.prepare(
+        "INSERT INTO subscriptions ("
+        "  id, subscription_id, customer_id, status, price_id, product_id, "
+        "  scheduled_change_action, scheduled_change_at, updated_at"
+        ") VALUES (?1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP) "
+        "ON CONFLICT(id) DO UPDATE SET "
+        "  subscription_id = excluded.subscription_id, "
+        "  customer_id = excluded.customer_id, "
+        "  status = excluded.status, "
+        "  price_id = excluded.price_id, "
+        "  product_id = excluded.product_id, "
+        "  scheduled_change_action = excluded.scheduled_change_action, "
+        "  scheduled_change_at = excluded.scheduled_change_at, "
+        "  updated_at = CURRENT_TIMESTAMP"
+    ).bind(
+        subscription_id,
+        customer_id,
+        status.strip().lower(),
+        price_id,
+        product_id,
+        scheduled_change_action,
+        scheduled_change_at,
+    ).run()
+
+
+async def get_subscription_by_id(env, subscription_id: str) -> dict[str, Any] | None:
+    return await _fetch_one(
+        env,
+        "SELECT id, subscription_id, customer_id, status, price_id, product_id, "
+        "scheduled_change_action, scheduled_change_at, created_at, updated_at "
+        "FROM subscriptions WHERE id = ?1 OR subscription_id = ?1",
+        subscription_id,
+    )
+
+
+async def upsert_payment(
+    env,
+    payment_id: str,
+    customer_id: str,
+    subscription_id: str | None = None,
+    user_id: str | None = None,
+    email: str | None = None,
+    amount_cents: int = 0,
+    currency: str = "USD",
+    status: str = "completed",
+    card_brand: str | None = None,
+    card_last4: str | None = None,
+    invoice_id: str | None = None,
+    invoice_number: str | None = None,
+    billed_at: str | None = None,
+) -> None:
+    """Store or update a payment transaction mirrored from Paddle."""
+    await env.DB.prepare(
+        "INSERT INTO payments ("
+        "  id, customer_id, subscription_id, user_id, email, amount_cents, currency, "
+        "  status, card_brand, card_last4, invoice_id, invoice_number, billed_at, updated_at"
+        ") VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, CURRENT_TIMESTAMP) "
+        "ON CONFLICT(id) DO UPDATE SET "
+        "  customer_id = excluded.customer_id, "
+        "  subscription_id = COALESCE(excluded.subscription_id, payments.subscription_id), "
+        "  user_id = COALESCE(excluded.user_id, payments.user_id), "
+        "  email = COALESCE(excluded.email, payments.email), "
+        "  amount_cents = excluded.amount_cents, "
+        "  currency = excluded.currency, "
+        "  status = excluded.status, "
+        "  card_brand = COALESCE(excluded.card_brand, payments.card_brand), "
+        "  card_last4 = COALESCE(excluded.card_last4, payments.card_last4), "
+        "  invoice_id = COALESCE(excluded.invoice_id, payments.invoice_id), "
+        "  invoice_number = COALESCE(excluded.invoice_number, payments.invoice_number), "
+        "  billed_at = COALESCE(excluded.billed_at, payments.billed_at), "
+        "  updated_at = CURRENT_TIMESTAMP"
+    ).bind(
+        payment_id,
+        customer_id,
+        subscription_id,
+        user_id,
+        (email or "").lower(),
+        int(amount_cents or 0),
+        currency.upper(),
+        status.lower(),
+        card_brand,
+        card_last4,
+        invoice_id,
+        invoice_number,
+        billed_at,
+    ).run()
+
+
+async def get_payments_for_user(env, email: str | None = None, customer_id: str | None = None, user_id: str | None = None) -> list[dict[str, Any]]:
+    """Retrieve all payment records matching email, customer_id, or user_id."""
+    return await _fetch_all(
+        env,
+        "SELECT * FROM payments "
+        "WHERE (email = ?1 AND ?1 != '') OR (customer_id = ?2 AND ?2 != '') OR (user_id = ?3 AND ?3 != '') "
+        "ORDER BY billed_at DESC, created_at DESC",
+        (email or "").lower(),
+        customer_id or "",
+        user_id or "",
+    )
+
+
+
+
 async def set_user_tier(env, uid: str, tier: str) -> None:
     await env.DB.prepare("UPDATE users SET tier = ?1 WHERE firebase_uid = ?2").bind(tier, uid).run()
 
 
 async def set_user_status(env, uid: str, is_active: int) -> None:
     await env.DB.prepare("UPDATE users SET is_active = ?1 WHERE firebase_uid = ?2").bind(is_active, uid).run()
+
+
 
 
 # --------------------------------------------------------------------------- #

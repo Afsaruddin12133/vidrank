@@ -8,8 +8,18 @@ export function usePoll(fn, ms = 5000, deps = []) {
   fnRef.current = fn
   const [tick, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), ms)
-    return () => clearInterval(id)
+    // Background tabs keep polling otherwise — 19-account dashboards fire
+    // 200+ req/min into the worker and hang it. Pause entirely when hidden.
+    const inc = () => setTick((t) => t + 1)
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') inc()
+    }, ms)
+    const onVis = () => { if (document.visibilityState === 'visible') inc() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [ms, ...deps])
   useEffect(() => {
     fnRef.current()

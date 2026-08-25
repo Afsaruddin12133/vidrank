@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 from collections import defaultdict, deque
-from collections.abc import Callable
 from decimal import Decimal
 from enum import Enum
 from ipaddress import (
@@ -15,48 +14,28 @@ from ipaddress import (
 from pathlib import Path, PurePath
 from re import Pattern
 from types import GeneratorType
-from typing import Annotated, Any
+from typing import Annotated, Any, Callable, Optional, Union
 from uuid import UUID
 
 from annotated_doc import Doc
-from fastapi.exceptions import PydanticV1NotSupportedError
+from fastapi._compat import may_v1
 from fastapi.types import IncEx
 from pydantic import BaseModel
+from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
-from pydantic_core import PydanticUndefinedType
 
-from ._compat import (
-    Url,
-    is_pydantic_v1_model_instance,
-)
-
-try:
-    # pydantic.color.Color is deprecated since v2.0b3, but supporting for bwd-compat
-    from pydantic.color import Color  # ty: ignore[deprecated]
-except ImportError:  # pragma: no cover
-
-    class Color:  # type: ignore[no-redef]
-        pass
-
-
-try:
-    # Supporting the new Color format for newer versions of Pydantic
-    from pydantic_extra_types.color import Color as PyExtraColor
-except ImportError:  # pragma: no cover
-
-    class PyExtraColor:  # type: ignore[no-redef]
-        pass
+from ._compat import Url, _is_undefined, _model_dump
 
 
 # Taken from Pydantic v1 as is
-def isoformat(o: datetime.date | datetime.time) -> str:
+def isoformat(o: Union[datetime.date, datetime.time]) -> str:
     return o.isoformat()
 
 
 # Adapted from Pydantic v1
 # TODO: pv2 should this return strings instead?
-def decimal_encoder(dec_value: Decimal) -> int | float:
+def decimal_encoder(dec_value: Decimal) -> Union[int, float]:
     """
     Encodes a Decimal as int if there's no exponent, otherwise float
 
@@ -84,7 +63,7 @@ def decimal_encoder(dec_value: Decimal) -> int | float:
 ENCODERS_BY_TYPE: dict[type[Any], Callable[[Any], Any]] = {
     bytes: lambda o: o.decode(),
     Color: str,
-    PyExtraColor: str,
+    may_v1.Color: str,
     datetime.date: isoformat,
     datetime.datetime: isoformat,
     datetime.time: isoformat,
@@ -101,14 +80,19 @@ ENCODERS_BY_TYPE: dict[type[Any], Callable[[Any], Any]] = {
     IPv6Interface: str,
     IPv6Network: str,
     NameEmail: str,
+    may_v1.NameEmail: str,
     Path: str,
     Pattern: lambda o: o.pattern,
     SecretBytes: str,
+    may_v1.SecretBytes: str,
     SecretStr: str,
+    may_v1.SecretStr: str,
     set: list,
     UUID: str,
     Url: str,
+    may_v1.Url: str,
     AnyUrl: str,
+    may_v1.AnyUrl: str,
 }
 
 
@@ -136,7 +120,7 @@ def jsonable_encoder(
         ),
     ],
     include: Annotated[
-        IncEx | None,
+        Optional[IncEx],
         Doc(
             """
             Pydantic's `include` parameter, passed to Pydantic models to set the
@@ -145,7 +129,7 @@ def jsonable_encoder(
         ),
     ] = None,
     exclude: Annotated[
-        IncEx | None,
+        Optional[IncEx],
         Doc(
             """
             Pydantic's `exclude` parameter, passed to Pydantic models to set the
@@ -195,7 +179,7 @@ def jsonable_encoder(
         ),
     ] = False,
     custom_encoder: Annotated[
-        dict[Any, Callable[[Any], Any]] | None,
+        Optional[dict[Any, Callable[[Any], Any]]],
         Doc(
             """
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define
@@ -237,11 +221,18 @@ def jsonable_encoder(
                 if isinstance(obj, encoder_type):
                     return encoder_instance(obj)
     if include is not None and not isinstance(include, (set, dict)):
-        include = set(include)  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
+        include = set(include)
     if exclude is not None and not isinstance(exclude, (set, dict)):
-        exclude = set(exclude)  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
-    if isinstance(obj, BaseModel):
-        obj_dict = obj.model_dump(
+        exclude = set(exclude)
+    if isinstance(obj, (BaseModel, may_v1.BaseModel)):
+        # TODO: remove when deprecating Pydantic v1
+        encoders: dict[Any, Any] = {}
+        if isinstance(obj, may_v1.BaseModel):
+            encoders = getattr(obj.__config__, "json_encoders", {})  # type: ignore[attr-defined]
+            if custom_encoder:
+                encoders = {**encoders, **custom_encoder}
+        obj_dict = _model_dump(
+            obj,
             mode="json",
             include=include,
             exclude=exclude,
@@ -250,10 +241,14 @@ def jsonable_encoder(
             exclude_none=exclude_none,
             exclude_defaults=exclude_defaults,
         )
+        if "__root__" in obj_dict:
+            obj_dict = obj_dict["__root__"]
         return jsonable_encoder(
             obj_dict,
             exclude_none=exclude_none,
             exclude_defaults=exclude_defaults,
+            # TODO: remove when deprecating Pydantic v1
+            custom_encoder=encoders,
             sqlalchemy_safe=sqlalchemy_safe,
         )
     if dataclasses.is_dataclass(obj):
@@ -276,7 +271,7 @@ def jsonable_encoder(
         return str(obj)
     if isinstance(obj, (str, int, float, type(None))):
         return obj
-    if isinstance(obj, PydanticUndefinedType):
+    if _is_undefined(obj):
         return None
     if isinstance(obj, dict):
         encoded_dict = {}
@@ -299,7 +294,6 @@ def jsonable_encoder(
                     key,
                     by_alias=by_alias,
                     exclude_unset=exclude_unset,
-                    exclude_defaults=exclude_defaults,
                     exclude_none=exclude_none,
                     custom_encoder=custom_encoder,
                     sqlalchemy_safe=sqlalchemy_safe,
@@ -308,7 +302,6 @@ def jsonable_encoder(
                     value,
                     by_alias=by_alias,
                     exclude_unset=exclude_unset,
-                    exclude_defaults=exclude_defaults,
                     exclude_none=exclude_none,
                     custom_encoder=custom_encoder,
                     sqlalchemy_safe=sqlalchemy_safe,
@@ -338,11 +331,7 @@ def jsonable_encoder(
     for encoder, classes_tuple in encoders_by_class_tuples.items():
         if isinstance(obj, classes_tuple):
             return encoder(obj)
-    if is_pydantic_v1_model_instance(obj):
-        raise PydanticV1NotSupportedError(
-            "pydantic.v1 models are no longer supported by FastAPI."
-            f" Please update the model {obj!r}."
-        )
+
     try:
         data = dict(obj)
     except Exception as e:

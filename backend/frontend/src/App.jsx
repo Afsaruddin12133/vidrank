@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getToken, getRole, clearToken, getAdminUser } from './api.js'
+import { getToken, getRole, clearToken, getAdminUser, restoreSession, adminLogout } from './api.js'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Accounts from './pages/Accounts.jsx'
@@ -106,9 +106,29 @@ const TABS = [
 export default function App() {
   const [token, setTokenState] = useState(getToken())
   const [role, setRoleState] = useState(getRole())
+  const [restoring, setRestoring] = useState(true)  // true while probing refresh cookie
   const isSub = role === 'sub'
   const [tab, setTab] = useState(isSub ? 'users' : 'dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // On first mount: try to restore access_token from the httpOnly refresh cookie.
+  // If the server returns a fresh access_token, we're logged in without any login form.
+  useEffect(() => {
+    if (getToken()) {
+      // Already have an access token in memory (same JS context, e.g. HMR).
+      setRestoring(false)
+      return
+    }
+    restoreSession().then((data) => {
+      if (data && data.access_token) {
+        const r = getRole()
+        setTokenState(data.access_token)
+        setRoleState(r)
+        setTab(r === 'sub' ? 'users' : 'dashboard')
+      }
+      setRestoring(false)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isSub && (tab !== 'users' && tab !== 'subscriptions')) {
@@ -116,11 +136,24 @@ export default function App() {
     }
   }, [isSub, tab])
 
-  const logout = () => {
-    clearToken()
+  const logout = async () => {
+    await adminLogout()  // clears httpOnly cookie on server + wipes local state
     setTokenState('')
     setRoleState('admin')
     setTab('dashboard')
+  }
+
+  // Show a minimal loading state while we probe the refresh cookie
+  if (restoring) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: 'var(--bg-base, #0f0f13)', color: '#888',
+        fontSize: 14, gap: 10,
+      }}>
+        <span style={{ fontSize: 20 }}>↻</span> Restoring session…
+      </div>
+    )
   }
 
   if (!token) {

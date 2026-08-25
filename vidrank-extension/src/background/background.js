@@ -9,8 +9,6 @@ import { GoogleAuthProvider, signInWithCredential, signOut } from 'firebase/auth
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
   || 'https://vidrank-backend.fahad288ali.workers.dev/v1';
 
-console.log('[VidRank] Background script loaded. Backend URL:', BACKEND_URL);
-
 // Initialize default settings upon installation
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
@@ -25,20 +23,12 @@ chrome.runtime.onInstalled.addListener((details) => {
       lastUpdated: new Date().toISOString()
     };
 
-    chrome.storage.sync.set(defaultSettings, () => {
-      if (chrome.runtime.lastError) {
-        console.error("[VidRank] Error initializing sync settings:", chrome.runtime.lastError);
-      } else {
-        console.log("[VidRank] Default sync settings initialized.");
-      }
-    });
+    chrome.storage.sync.set(defaultSettings, () => {});
   }
 });
 
 // Listener for runtime messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[VidRank] Received message:', request.action);
-
   if (request.action === "generateTags") {
     callBackendGenerate(request.title, request.description)
       .then(res => sendResponse(res))
@@ -54,21 +44,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === "login") {
     // Native Chrome OAuth (chrome.identity) + Firebase credential exchange.
     // signInWithPopup is blocked by MV3 CSP, so no offscreen document is needed.
-    console.log('[VidRank] login action received');
     handleGoogleLogin()
       .then(user => {
-        console.log('[VidRank] Firebase login successful:', user.email);
         sendResponse({ success: true, user });
       })
       .catch(err => {
-        console.error('[VidRank] Firebase login failed:', err);
         sendResponse({ success: false, error: err.message });
       });
     return true;
 
 
   } else if (request.action === "logout") {
-    console.log('[VidRank] Logout action triggered');
     signOut(auth)
       .then(() => {
         chrome.storage.local.set({ isLoggedIn: false });
@@ -84,10 +70,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 
   } else if (request.action === "getQuota") {
-    console.log('📊 [QUOTA] Popup requested quota, refreshing from backend...');
     refreshUsage()
       .then(stats => {
-        console.log('📊 [QUOTA] Sending to popup:', stats);
         sendResponse({ success: true, stats });
       })
       .catch(err => sendResponse({ success: false, error: err.message }));
@@ -109,8 +93,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Official MV3 method: signInWithPopup needs to inject https://apis.google.com
 // scripts, which MV3 extension pages block (CSP script-src 'self').
 async function handleGoogleLogin() {
-  console.log('[VidRank] Starting Google login via chrome.identity...');
-
   const { token } = await chrome.identity.getAuthToken({ interactive: true });
   const credential = GoogleAuthProvider.credential(null, token);
   const userCredential = await signInWithCredential(auth, credential);
@@ -129,7 +111,7 @@ async function handleGoogleLogin() {
   await syncLoginWithBackend(user);
 
   try { await refreshUsage(); } catch (e) {
-    console.warn('[VidRank] Could not sync usage:', e);
+    // best-effort: quota refresh failure must not break login
   }
 
   return user;
@@ -139,7 +121,6 @@ async function handleGoogleLogin() {
 async function syncLoginWithBackend(user) {
   try {
     const idToken = await user.getIdToken(true);
-    console.log('[VidRank] Sending login sync request to backend:', `${BACKEND_URL}/auth/login`);
 
     const res = await fetch(`${BACKEND_URL}/auth/login`, {
       method: "POST",
@@ -150,12 +131,10 @@ async function syncLoginWithBackend(user) {
     });
 
     if (!res.ok) {
-      console.error("[VidRank] Backend /v1/auth/login failed with status:", res.status);
       return null;
     }
 
     const data = await res.json();
-    console.log("[VidRank] Backend /v1/auth/login response:", data);
 
     // Keep quota in sync
     if (data.user) {
@@ -176,7 +155,6 @@ async function syncLoginWithBackend(user) {
 
     return data;
   } catch (err) {
-    console.error("[VidRank] Failed to send login request to backend:", err);
     return null;
   }
 }
@@ -186,14 +164,12 @@ async function getAuthDataFromIndexedDB() {
   return new Promise((resolve) => {
     try {
       const request = indexedDB.open('firebaseLocalStorageDb');
-      request.onerror = (err) => {
-        console.error('[VidRank IndexedDB] Failed to open firebaseLocalStorageDb:', err);
+      request.onerror = () => {
         resolve(null);
       };
       request.onsuccess = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('firebaseLocalStorage')) {
-          console.warn('[VidRank IndexedDB] Store firebaseLocalStorage not found');
           db.close();
           return resolve(null);
         }
@@ -206,24 +182,82 @@ async function getAuthDataFromIndexedDB() {
           db.close();
           if (defaultEntry && defaultEntry.value && defaultEntry.value.stsTokenManager) {
             const sts = defaultEntry.value.stsTokenManager;
-            console.log('[VidRank IndexedDB] Found Auth Entry in IndexedDB!');
             resolve(sts);
           } else {
-            console.warn('[VidRank IndexedDB] No auth tokens found in IndexedDB entries:', entries);
             resolve(null);
           }
         };
-        getAllReq.onerror = (err) => {
-          console.error('[VidRank IndexedDB] Failed to read store entries:', err);
+        getAllReq.onerror = () => {
           db.close();
           resolve(null);
         };
       };
     } catch (e) {
-      console.error('[VidRank IndexedDB] Exception during IndexedDB read:', e);
       resolve(null);
     }
   });
+}
+
+// Write refreshed sts tokens back to IndexedDB (firebaseLocalStorageDb).
+// securetoken rotates the refresh_token on every exchange; without this
+// write-back the DB keeps the stale (soon-invalidated) pair forever.
+async function saveStsToIndexedDB(sts) {
+  return new Promise((resolve) => {
+    try {
+      const request = indexedDB.open('firebaseLocalStorageDb');
+      request.onerror = () => resolve(false);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('firebaseLocalStorage')) {
+          db.close();
+          return resolve(false);
+        }
+        const tx = db.transaction('firebaseLocalStorage', 'readwrite');
+        const store = tx.objectStore('firebaseLocalStorage');
+        const getAllReq = store.getAll();
+        getAllReq.onsuccess = () => {
+          const entries = getAllReq.result || [];
+          const entry = entries.find(e => e.fbase_key && e.fbase_key.includes('[DEFAULT]')) || entries[0];
+          if (!entry) {
+            db.close();
+            return resolve(false);
+          }
+          entry.value.stsTokenManager = sts;
+          store.put(entry);
+          tx.oncomplete = () => { db.close(); resolve(true); };
+          tx.onerror = () => { db.close(); resolve(false); };
+        };
+        getAllReq.onerror = () => { db.close(); resolve(false); };
+      };
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+// Silent recovery for a dead (rotated) refresh token: mint a brand-new
+// Firebase session from Chrome's own OAuth grant — no user interaction.
+// Requires only that the user hasn't revoked the extension's Google permission.
+async function silentReauth() {
+  try {
+    const { token } = await chrome.identity.getAuthToken({ interactive: false });
+    if (!token) return null;
+    try {
+      const credential = GoogleAuthProvider.credential(null, token);
+      const userCredential = await signInWithCredential(auth, credential);
+      return userCredential.user;
+    } catch (err) {
+      // Stale cached Chrome OAuth token — drop it and mint a fresh one once.
+      await new Promise(r => chrome.identity.removeCachedAuthToken({ token }, r));
+      const retry = await chrome.identity.getAuthToken({ interactive: false });
+      if (!retry) return null;
+      const credential = GoogleAuthProvider.credential(null, retry.token);
+      const userCredential = await signInWithCredential(auth, credential);
+      return userCredential.user;
+    }
+  } catch (err) {
+    return null;
+  }
 }
 
 // Get Firebase ID token directly from memory, or fallback to IndexedDB
@@ -242,13 +276,11 @@ async function getIdToken() {
 
     // If access token is active (with 60s safety window)
     if (accessToken && expirationTime && (expirationTime - now > 60000)) {
-      console.log('[VidRank Auth] Using active Access Token from IndexedDB');
       return accessToken;
     }
 
     // If expired, exchange refreshToken for a new accessToken via Google OAuth API
     if (refreshToken) {
-      console.log('[VidRank Auth] Refreshing expired Access Token using Refresh Token...');
       try {
         const apiKey = "AIzaSyAlRH6242b-yDFn5E9yfyIwof6LsL7nWp8";
         const refreshRes = await fetch(`https://securetoken.googleapis.com/v1/token?key=${apiKey}`, {
@@ -263,12 +295,16 @@ async function getIdToken() {
         if (refreshRes.ok) {
           const refreshData = await refreshRes.json();
           if (refreshData.id_token) {
-            console.log('[VidRank Auth] Successfully acquired fresh ID Token');
+            await saveStsToIndexedDB({
+              accessToken: refreshData.id_token,
+              refreshToken: refreshData.refresh_token || refreshToken,
+              expirationTime: Date.now() + (refreshData.expires_in || 3600) * 1000
+            });
             return refreshData.id_token;
           }
         }
       } catch (err) {
-        console.warn('[VidRank Auth] Failed to refresh token from IndexedDB refreshToken:', err);
+        // best-effort token refresh
       }
     }
   }
@@ -288,21 +324,38 @@ async function getIdToken() {
   });
 
   if (!user) {
+    const reauthed = await silentReauth();
+    if (reauthed) {
+      return reauthed.getIdToken(true);
+    }
+    // Session unrecoverable — flip storage so every UI surface (popup,
+    // sidepanel, YouTube sidebar) switches to its logged-out view.
+    chrome.storage.local.set({ isLoggedIn: false });
     throw new Error("NOT_LOGGED_IN");
   }
 
   return user.getIdToken(true);
 }
 
+// Auth/token failures must read as an action, not a code — users hit these
+// after the Firebase refresh-token rotation issue and need to re-login.
+function friendlyError(err) {
+  const raw = String((err && (err.message || err.error)) || err || '');
+  const key = raw.toUpperCase();
+  const needsRelogin =
+    key.includes('NOT_LOGGED_IN') ||
+    key.includes('UNAUTHORIZED') ||
+    key.includes('TOKEN') ||
+    key.includes('AUTH') ||
+    key.includes('401');
+  if (needsRelogin) {
+    return 'Your session has expired. Please open the VidRank extension popup, log out, then log in again.';
+  }
+  return raw || 'Something went wrong. Please try again.';
+}
+
 // Call backend to generate tags
 async function callBackendGenerate(title, description) {
-  console.log('🔵 [QUOTA] BEFORE API CALL:', {
-    used: quotaCache.usageCount,
-    remaining: quotaCache.remaining,
-    limit: quotaCache.usageLimit,
-    plan: quotaCache.plan
-  });
-  
   // OPTIMISTIC UPDATE: Increment locally immediately for instant UI feedback
   const originalCache = { ...quotaCache };
   if (quotaCache.usageLimit >= 0 && quotaCache.plan === 'free') {
@@ -311,22 +364,11 @@ async function callBackendGenerate(title, description) {
       usageCount: quotaCache.usageCount + 1,
       remaining: Math.max(0, quotaCache.remaining - 1)
     };
-    console.log('⚡ [QUOTA] OPTIMISTIC INCREMENT:', {
-      from: { used: originalCache.usageCount, remaining: originalCache.remaining },
-      to: { used: quotaCache.usageCount, remaining: quotaCache.remaining }
-    });
     broadcastQuotaUpdate(quotaCache);
   }
   
-  console.log('📤 [REQUEST] Sending to backend:', {
-    url: `${BACKEND_URL}/generate`,
-    title: title.substring(0, 50) + '...',
-    descriptionLength: description.length
-  });
-  
   try {
     const token = await getIdToken();
-    console.log('🔑 [AUTH] Got ID token, length:', token.length);
 
     const res = await fetch(`${BACKEND_URL}/generate`, {
       method: "POST",
@@ -337,38 +379,23 @@ async function callBackendGenerate(title, description) {
       body: JSON.stringify({ title: title || "", description: description || "" })
     });
 
-    console.log('📬 [RESPONSE] Status:', res.status, 'OK:', res.ok);
-
     let body = {};
     try {
       body = await res.json();
-      console.log('📬 [RESPONSE] Full body:', JSON.stringify(body, null, 2));
     } catch (e) {
-      console.error('[VidRank] Failed to parse response');
       // Keep optimistic update on parse error
       return { success: false, error: "INVALID_RESPONSE" };
     }
 
     if (res.status === 200 && body.success) {
-      console.log('📥 [QUOTA] SERVER RESPONSE:', body.usage);
-      
       // SYNC WITH SERVER: If backend has actual count, use it; otherwise keep optimistic
       if (body.usage && typeof body.usage.used === 'number' && body.usage.used > 0) {
-        console.log('✅ [QUOTA] Backend confirmed usage, syncing...');
         persistUsage(body.usage, body.retry_after);
       } else {
-        console.log('⚠️ [QUOTA] Backend returned used=0, keeping optimistic update');
         // Backend didn't increment (DO issue), but we already did optimistically
         broadcastQuotaUpdate(quotaCache);
       }
-      
-      console.log('🟢 [QUOTA] AFTER UPDATE:', {
-        used: quotaCache.usageCount,
-        remaining: quotaCache.remaining,
-        limit: quotaCache.usageLimit,
-        plan: quotaCache.plan
-      });
-      
+
       return {
         success: true,
         tags: body.tags || [],
@@ -382,9 +409,8 @@ async function callBackendGenerate(title, description) {
       };
     }
 
-    const error = body.error || `HTTP ${res.status}`;
-    console.log('🔴 [QUOTA] ERROR:', error, 'Reverting optimistic update');
-    
+    const error = friendlyError(body.error || `HTTP ${res.status}`);
+
     // REVERT: On error, restore original quota
     quotaCache = originalCache;
     broadcastQuotaUpdate(quotaCache);
@@ -396,13 +422,12 @@ async function callBackendGenerate(title, description) {
       usage: body.usage
     };
   } catch (err) {
-    console.error("🔴 [QUOTA] Backend error:", err, 'Reverting optimistic update');
     // REVERT: On network error, restore original quota
     quotaCache = originalCache;
     broadcastQuotaUpdate(quotaCache);
     return {
       success: false,
-      error: err.message || "Network error"
+      error: friendlyError(err)
     };
   }
 }
@@ -429,7 +454,6 @@ async function refreshUsage(force = false) {
     });
 
     if (!res.ok) {
-      console.error("[VidRank] /me endpoint failed:", res.status);
       return { usageCount: 0, remaining: 10, plan: "free", usageLimit: 10, retry_after: 0 };
     }
 
@@ -457,7 +481,6 @@ async function refreshUsage(force = false) {
     broadcastQuotaUpdate(stats);
     return stats;
   } catch (err) {
-    console.error("[VidRank] /me network error:", err);
     return { usageCount: 0, remaining: 10, plan: "free", usageLimit: 10, retry_after: 0 };
   }
 }
@@ -472,15 +495,10 @@ function broadcastQuotaUpdate(stats) {
 
 // Keep latest usage in memory (never persisted to chrome.storage.local)
 function persistUsage(usage, retry_after) {
-  if (!usage) {
-    console.log('⚠️ [QUOTA] persistUsage called with no usage data');
-    return;
-  }
+  if (!usage) return;
   
   const limit = (typeof usage.limit === 'number' && usage.limit >= 0) ? usage.limit : -1;
   const used = usage.used || 0;
-  
-  const oldCache = { ...quotaCache };
   
   quotaCache = {
     usageCount: used,
@@ -489,15 +507,7 @@ function persistUsage(usage, retry_after) {
     plan: usage.plan || 'free',
     retry_after: retry_after || 0
   };
-  
-  console.log('💾 [QUOTA] persistUsage UPDATE:', {
-    from: { used: oldCache.usageCount, remaining: oldCache.remaining },
-    to: { used: quotaCache.usageCount, remaining: quotaCache.remaining },
-    serverData: usage
-  });
   broadcastQuotaUpdate(quotaCache);
 }
 
 let quotaCache = { plan: 'free', usageCount: 0, usageLimit: 10, retry_after: 0 };
-
-console.log('[VidRank] Background script ready');

@@ -5,6 +5,7 @@ description = "VIDRANK Cloudflare Python Worker API"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi",
+    "pydantic-core<2.27",
 ]
 
 [dependency-groups]

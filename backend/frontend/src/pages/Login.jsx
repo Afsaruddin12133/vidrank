@@ -18,7 +18,9 @@ export default function Login({ onAuthed }) {
     }
     try {
       const res = await adminLogin(password, username.trim())
-      setToken(res.token)
+      // access_token already stored in api.js memory by adminLogin()
+      // setToken() just syncs the local module variable for any direct callers
+      setToken(res.access_token)
       setRole(res.role, res.username || username.trim())
       onAuthed()
     } catch (a) {

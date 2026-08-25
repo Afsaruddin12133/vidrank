@@ -365,30 +365,42 @@ export default function Tracing() {
                   <th>Success rate</th>
                   <th>p50/p95 ms</th>
                   <th>Failures</th>
-                  <th>Used / limit</th>
+                  <th>Used / Limit (Today)</th>
+                  <th>Total ({days}d)</th>
                   <th>Est. exhaustion</th>
                   <th>State</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedAccts.map((a) => {
-                  const d = (a.days || []).slice(-1)[0]
-                  const last = (a.days || []).slice(-1)[0]
-                  const requests = last?.requests || 0
-                  const errors = last?.errors || 0
-                  const success = requests ? 1 - errors / requests : null
-                  const p50 = last?.avg_latency_ms
-                  const p95 = last?.avg_latency_ms != null ? last.avg_latency_ms * 1.8 : null
+                  const todayStr = new Date().toISOString().slice(0, 10)
+                  const todayObj = (a.days || []).find((x) => x.day === todayStr)
+                  const lastObj = (a.days || []).slice(-1)[0]
+                  
+                  const todayRequests = todayObj?.requests || 0
+                  const todayErrors = todayObj?.errors || 0
+                  const totalRequestsPeriod = (a.days || []).reduce((s, x) => s + (x.requests || 0), 0)
+                  const totalErrorsPeriod = (a.days || []).reduce((s, x) => s + (x.errors || 0), 0)
+
+                  const success = totalRequestsPeriod ? 1 - totalErrorsPeriod / totalRequestsPeriod : null
+                  const p50 = lastObj?.avg_latency_ms
+                  const p95 = lastObj?.avg_latency_ms != null ? lastObj.avg_latency_ms * 1.8 : null
                   const limit = a.daily_limit
-                  const used = (a.days || []).reduce((s, x) => s + (x.requests || 0), 0)
-                  const exhaustion = exhaustionEst(used, d?.day, limit)
+                  const exhaustion = exhaustionEst(todayRequests, limit)
+                  
                   return (
                     <tr key={a.id}>
                       <td><span className={`provider provider-${a.provider}`}>{a.provider}</span> {a.label || a.id}</td>
                       <td>{fmtPct(success)}</td>
                       <td>{p50 == null ? '—' : `${p50.toFixed(0)} / ${p95.toFixed(0)}`}</td>
-                      <td>{fmtInt(errors)}</td>
-                      <td className="mono">{fmtInt(used)} / {fmtInt(limit)}</td>
+                      <td>{fmtInt(totalErrorsPeriod)}</td>
+                      <td className="mono" style={{ fontWeight: 600 }}>
+                        <span style={{ color: limit && todayRequests >= limit ? '#f87171' : '#e2e8f0' }}>
+                          {fmtInt(todayRequests)}
+                        </span>
+                        {' '}/ {fmtInt(limit)}
+                      </td>
+                      <td className="mono" style={{ color: '#94a3b8' }}>{fmtInt(totalRequestsPeriod)}</td>
                       <td>{exhaustion}</td>
                       <td>{enabledIds.has(a.id) ? <span className="badge ok">enabled</span> : <span className="badge cool">disabled</span>}</td>
                     </tr>
@@ -411,20 +423,19 @@ export default function Tracing() {
   )
 }
 
-// Estimate when an account hits its daily cap given its average per-day rate.
-function exhaustionEst(totalUsed, lastDay, limit) {
+// Estimate when an account hits its daily cap given today's current usage pace.
+function exhaustionEst(usedToday, limit) {
   if (!limit) return '—'
-  if (!lastDay || totalUsed <= 0) return '—'
-  if (totalUsed >= limit) return <span className="badge cool">exhausted</span>
-  const today = new Date().toISOString().slice(0, 10)
-  const usedToday = today === lastDay ? totalUsed : 0
-  if (today !== lastDay) return '—' // no activity today yet
-  // very rough: assume today's usage keeps pace with average daily rate
-  const hourFrac = new Date().getHours() / 24
-  const pace = hourFrac > 0 ? usedToday / hourFrac : 0
+  if (usedToday <= 0) return <span style={{ color: '#64748b' }}>Idle today</span>
+  if (usedToday >= limit) return <span className="badge cool">exhausted</span>
+  
+  const hourFrac = Math.max(0.1, new Date().getUTCHours() / 24)
+  const pace = usedToday / hourFrac
   if (pace <= 0) return '—'
-  const hoursLeft = (limit - usedToday) / pace
-  if (hoursLeft > 24) return '—'
+  
+  const remaining = limit - usedToday
+  const hoursLeft = remaining / (pace / 24)
+  if (hoursLeft > 24) return <span style={{ color: '#10b981' }}>Healthy</span>
   if (hoursLeft <= 0) return <span className="badge cool">exhausted</span>
   return <span>{fmtDur(Math.max(0, Math.round(hoursLeft * 3600)))} left</span>
 }

@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 Verify Firebase token using YOUR BACKEND's Firebase verification

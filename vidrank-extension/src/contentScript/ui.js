@@ -30,7 +30,6 @@ class YouTubeStudioUI {
    */
   init() {
     if (document.getElementById(this.containerId)) {
-      console.warn("[YouTube Tag Generator] Sidebar UI already exists.");
       this.element = document.getElementById(this.containerId);
       return;
     }
@@ -418,9 +417,8 @@ class YouTubeStudioUI {
   /**
    * Log action updates to sidebar UI console panel.
    */
-  log(msg, level = 'info') {
-    // Only console.log under the hood now that UI is removed
-    console.log(`[VidRank] ${level.toUpperCase()}: ${msg}`);
+  log() {
+    // no-op — UI console panel removed
   }
 
   /**

@@ -1,0 +1,12 @@
+.venv/
+.venv-workers/
+.venv_bak/
+.wrangler/
+tests/
+plan/
+__pycache__/
+*.pyc
+dev_server.log
+test_*.py
+scripts/
+migrations/

@@ -1,0 +1,58 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout
+  title="Welcome to VidRank Pro — You're all set!"
+  description="Your VidRank Pro subscription is active. Start optimising your YouTube content today."
+>
+  <Navbar />
+  <main id="main-content" class="min-h-screen flex flex-col items-center justify-center px-6 py-24 text-center">
+    <div class="max-w-[520px] mx-auto" data-reveal>
+
+      <!-- Success icon -->
+      <div class="mx-auto mb-8 w-20 h-20 rounded-full bg-[rgba(61,242,164,0.12)] border border-[rgba(61,242,164,0.3)] flex items-center justify-center shadow-[0_0_40px_rgba(61,242,164,0.15)]">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3df2a4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+
+      <h1 class="font-outfit font-extrabold text-[clamp(28px,4vw,46px)] leading-[1.1] tracking-[-0.03em] text-white mb-4">
+        You're all set! 🎉
+      </h1>
+
+      <p class="text-[#94a3b8] text-[16px] leading-[1.7] mb-10">
+        Your subscription is now active. Install the VidRank Chrome extension
+        and start ranking higher on YouTube today.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a
+          href="https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center gap-2 min-h-[46px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_8px_30px_rgba(0,102,238,.4)] hover:shadow-[0_10px_34px_rgba(0,102,238,.6)] rounded-lg transition-[transform,box-shadow] duration-200 hover:-translate-y-[2px]"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          Install VidRank Extension
+        </a>
+        <a
+          href="/"
+          class="inline-flex items-center justify-center gap-2 min-h-[46px] px-6 font-bold text-[13px] text-white bg-white/[0.04] border border-white/[0.15] hover:bg-white/[0.08] rounded-lg transition-colors duration-200"
+        >
+          Back to home
+        </a>
+      </div>
+
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  main {
+    background: radial-gradient(ellipse at 50% 0%, rgba(0, 102, 238, 0.08) 0%, transparent 60%);
+  }
+</style>

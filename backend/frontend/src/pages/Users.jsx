@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listUsers, setUserTier, setUserStatus, resetUserQuota, setUserUsage, fmtInt, fmtClock } from '../api.js'
+import { listUsers, setUserTier, makeUserFree, setUserStatus, resetUserQuota, setUserUsage, fmtInt, fmtClock } from '../api.js'
 
 const PAGE_SIZE = 25
 
@@ -262,6 +262,19 @@ export default function Users() {
     }
   }
 
+  const onMakeFree = async (uid, email = '') => {
+    if (!window.confirm(`Downgrade this user to Free? Their Pro access will be removed immediately.`)) return
+    setActing(uid); setError('')
+    try {
+      await makeUserFree(uid, email)
+      await load(debouncedQ, tier)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setActing(null)
+    }
+  }
+
   // Filter client-side
   const users = (data || []).filter((u) => {
     const query = debouncedQ.trim().toLowerCase()
@@ -444,6 +457,17 @@ export default function Users() {
                           >
                             🔄 Reset
                           </button>
+                          {userTier === 'pro' && (
+                            <button
+                              className="btn sm ghost"
+                              style={{ height: 30, padding: '0 10px', fontSize: 12, color: '#f59e0b', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
+                              disabled={acting === uid}
+                              onClick={() => onMakeFree(uid, email)}
+                              title="Downgrade this user to Free tier"
+                            >
+                              Make Free
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

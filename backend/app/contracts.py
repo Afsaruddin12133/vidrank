@@ -65,15 +65,14 @@ MAX_MESSAGES = 64       # max chat messages per request
 MAX_TOKENS   = 8192     # max max_tokens a client may request
 
 # Provider defaults (used when provider headers are absent; config is the floor) --- #
-GROQ_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
 PROVIDER_DEFAULTS = {
-    "groq":       {"daily_limit": 14_400, "rpm_limit": 30},
     "openrouter": {"daily_limit": 50,     "rpm_limit": 20},
 }
 
 # Request-shape ------------------------------------------------------------ #
 IN_FLIGHT_CAP = 500      # global in-flight cap; above => enqueue
-FALLBACK_TRIES = 3       # max retries on 429/5xx/timeout
+FALLBACK_TRIES = 12      # attempt cap; loop also stops when pool exhausted or deadline hit
 FANOUT_MAX_PARALLEL = 8  # SoT skeleton->expand fan-out cap
 FANOUT_DEADLINE_S = 25   # per-request fan-out deadline
 SHORT_ANSWER_CLUE = None # reserved

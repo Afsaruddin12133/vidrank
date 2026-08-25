@@ -1,0 +1,726 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Layout
+  title="Account & Billing Dashboard — VidRank"
+  description="View your VidRank AI generation usage, subscription status, and Paddle billing & payment history."
+>
+  <Navbar />
+
+  <main id="main-content" class="min-h-screen pt-28 pb-20 px-[4vw] max-w-[1300px] mx-auto text-white">
+    
+    <!-- Auth Gate / Signed Out State (Hidden if authenticated) -->
+    <div id="loggedOutView" class="py-24 text-center max-w-[480px] mx-auto">
+      <div class="w-16 h-16 rounded-2xl bg-[#0066ee]/15 border border-[#0066ee]/30 mx-auto mb-6 grid place-items-center text-[#2c8cff]">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <h1 class="font-outfit font-extrabold text-[32px] tracking-tight mb-3">Sign in to your Dashboard</h1>
+      <p class="text-[#8ea0b5] text-[14px] leading-relaxed mb-8">
+        Access your live AI usage metrics, subscription settings, and billing history.
+      </p>
+      <button
+        id="dashLoginBtn"
+        type="button"
+        class="inline-flex items-center justify-center gap-3 min-h-[48px] px-8 font-bold text-[14px] text-white bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_8px_30px_rgba(0,102,238,.4)] rounded-xl transition-all cursor-pointer hover:-translate-y-0.5"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+        </svg>
+        Sign in with Google
+      </button>
+    </div>
+
+    <!-- Authenticated Dashboard View -->
+    <div id="loggedInView" class="hidden space-y-8">
+      
+      <!-- Top Header / Greeting Bar -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-2xl bg-[#0c121e]/80 border border-white/10 backdrop-blur-xl shadow-xl">
+        <div class="flex items-center gap-4">
+          <div id="userAvatarBig" class="w-14 h-14 rounded-2xl bg-[#0066ee]/20 text-[#2c8cff] font-extrabold text-xl grid place-items-center overflow-hidden border border-white/15 shrink-0">
+            V
+          </div>
+          <div>
+            <div class="flex items-center gap-2.5">
+              <h1 id="userNameHeading" class="font-outfit font-extrabold text-[24px] tracking-tight leading-tight">Creator</h1>
+              <span id="userTierBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#3df2a4]/15 text-[#3df2a4] border border-[#3df2a4]/30 shadow-[0_0_12px_rgba(61,242,164,0.25)]">
+                PRO
+              </span>
+            </div>
+            <p id="userEmailText" class="text-[#8ea0b5] text-[13px] mt-0.5">creator@example.com</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div id="proMemberPill" class="hidden items-center justify-center gap-2 h-10 px-5 rounded-xl bg-[#3df2a4]/10 border border-[#3df2a4]/25 text-[13px] font-bold text-[#3df2a4] shadow-[0_0_15px_rgba(61,242,164,0.15)]">
+            <span class="w-2 h-2 rounded-full bg-[#3df2a4] shadow-[0_0_8px_#3df2a4]"></span>
+            Pro Member
+          </div>
+          <a
+            id="upgradePlanCta"
+            href="/#pricing"
+            class="hidden inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-[#0066ee] hover:bg-[#0055cc] text-[13px] font-bold text-white transition-all no-underline shadow-[0_4px_15px_rgba(0,102,238,0.4)]"
+          >
+            Upgrade to Pro
+          </a>
+        </div>
+      </div>
+
+      <!-- 4 Metric Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        
+        <!-- Card 1: Subscription Tier -->
+        <div class="p-5 rounded-2xl bg-[#0c121e]/70 border border-white/10 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#8ea0b5] text-[12px] font-semibold uppercase tracking-wider">
+            <span>Subscription Plan</span>
+            <span class="w-2 h-2 rounded-full bg-[#3df2a4] shadow-[0_0_8px_#3df2a4]"></span>
+          </div>
+          <div class="my-4">
+            <h3 id="statPlanName" class="font-outfit font-extrabold text-[28px] text-white leading-tight">Pro Plan</h3>
+            <div class="flex items-center justify-between gap-2 mt-1">
+              <p id="statPlanStatus" class="text-[12px] text-[#3df2a4] font-semibold">Active</p>
+              <button
+                id="cancelSubBtn"
+                type="button"
+                class="hidden text-[11px] text-[#f87171] hover:text-[#fca5a5] transition-colors cursor-pointer bg-transparent border-0 underline"
+              >
+                Cancel subscription
+              </button>
+            </div>
+            <p id="cancelSubNotice" class="hidden text-[11px] text-[#f59e0b] mt-1 font-medium"></p>
+          </div>
+          <div class="text-[11px] text-[#8ea0b5] pt-3 border-t border-white/10 flex justify-between">
+            <span>Price:</span>
+            <span id="statPlanPrice" class="text-white font-mono font-medium">$3.99 / month</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Daily Quota -->
+        <div class="p-5 rounded-2xl bg-[#0c121e]/70 border border-white/10 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#8ea0b5] text-[12px] font-semibold uppercase tracking-wider">
+            <span>Daily AI Quota</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2c8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          </div>
+          <div class="my-4">
+            <h3 id="statQuotaRemaining" class="font-outfit font-extrabold text-[28px] text-white leading-tight">Unlimited</h3>
+            <p id="statQuotaUsedToday" class="text-[12px] text-[#8ea0b5] font-medium mt-1">0 requests used today</p>
+          </div>
+          <div class="text-[11px] text-[#8ea0b5] pt-3 border-t border-white/10 flex justify-between">
+            <span>Resets in:</span>
+            <span id="statQuotaResetTime" class="text-white font-mono font-medium">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Total Spent -->
+        <div class="p-5 rounded-2xl bg-[#0c121e]/70 border border-white/10 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#8ea0b5] text-[12px] font-semibold uppercase tracking-wider">
+            <span>Total Paid</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3df2a4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="my-4">
+            <h3 id="statTotalPaid" class="font-outfit font-extrabold text-[28px] text-white leading-tight">$0.00</h3>
+            <p id="statPaymentStatus" class="text-[12px] text-[#8ea0b5] font-medium mt-1">Via Paddle Billing</p>
+          </div>
+          <div class="text-[11px] text-[#8ea0b5] pt-3 border-t border-white/10 flex justify-between">
+            <span>Paddle ID:</span>
+            <span id="statPaddleCustId" class="text-white font-mono text-[10px] truncate max-w-[130px]">ctm_...</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Next Billing / Expiry -->
+        <div class="p-5 rounded-2xl bg-[#0c121e]/70 border border-white/10 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#8ea0b5] text-[12px] font-semibold uppercase tracking-wider">
+            <span>Renewal Date</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div class="my-4">
+            <h3 id="statRenewalDate" class="font-outfit font-extrabold text-[24px] text-white leading-tight">Next month</h3>
+            <p id="statRenewalSub" class="text-[12px] text-[#8ea0b5] font-medium mt-1">Auto-renews seamlessly</p>
+          </div>
+          <div class="text-[11px] text-[#8ea0b5] pt-3 border-t border-white/10 flex justify-between">
+            <span>Cycle:</span>
+            <span id="statBillingCycle" class="text-white font-mono font-medium">Monthly recurring</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Usage Analytics Graph Section -->
+      <div class="p-6 md:p-8 rounded-2xl bg-[#0c121e]/80 border border-white/10 backdrop-blur-xl shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="font-outfit font-bold text-[20px] text-white tracking-tight">AI Optimization Usage Activity</h2>
+            <p class="text-[#8ea0b5] text-[13px] mt-0.5">Daily YouTube tag and description generations over the last 14 days</p>
+          </div>
+          <div class="flex items-center gap-4 text-[12px]">
+            <div class="flex items-center gap-1.5 text-[#cbd5e1]">
+              <span class="w-3 h-3 rounded-sm bg-[#0066ee]"></span>
+              <span>Total Requests</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#cbd5e1]">
+              <span class="w-3 h-3 rounded-sm bg-[#3df2a4]"></span>
+              <span>Cache Hits</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Responsive Chart -->
+        <div class="relative w-full h-[220px] pt-4" id="chartContainer">
+          <div id="chartSkeleton" class="w-full h-full flex items-end gap-3 animate-pulse">
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[40%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[70%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[50%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[90%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[30%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[60%]"></div>
+            <div class="flex-1 bg-white/5 rounded-t-lg h-[80%]"></div>
+          </div>
+          <div id="chartContent" class="hidden w-full h-full flex items-end gap-2 sm:gap-3"></div>
+        </div>
+      </div>
+
+      <!-- Paddle Payment History & Invoices Table -->
+      <div class="p-6 md:p-8 rounded-2xl bg-[#0c121e]/80 border border-white/10 backdrop-blur-xl shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="font-outfit font-bold text-[20px] text-white tracking-tight">Billing & Payment History</h2>
+            <p class="text-[#8ea0b5] text-[13px] mt-0.5">Real-time payment transactions recorded by Paddle</p>
+          </div>
+          <span class="text-[12px] text-[#8ea0b5] font-mono px-2.5 py-1 rounded-lg bg-white/5 border border-white/10">
+            Powered by Paddle Billing
+          </span>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[640px]">
+            <thead>
+              <tr class="border-b border-white/10 text-[11px] font-semibold uppercase tracking-wider text-[#8ea0b5]">
+                <th class="pb-3 px-3">Date</th>
+                <th class="pb-3 px-3">Transaction ID</th>
+                <th class="pb-3 px-3">Payment Method</th>
+                <th class="pb-3 px-3">Amount</th>
+                <th class="pb-3 px-3">Status</th>
+                <th class="pb-3 px-3 text-right">Invoice</th>
+              </tr>
+            </thead>
+            <tbody id="txTableBody" class="divide-y divide-white/5 text-[13px]">
+              <tr>
+                <td colspan="6" class="py-8 text-center text-[#8ea0b5]">
+                  <span class="animate-pulse">Loading billing transactions...</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  import { getCachedUser, getFirebaseAuthToken, loginWithGoogle, type VidRankUser } from "../lib/firebase";
+
+  const loggedOutView = document.getElementById("loggedOutView");
+  const loggedInView = document.getElementById("loggedInView");
+  const dashLoginBtn = document.getElementById("dashLoginBtn");
+
+  const userNameHeading = document.getElementById("userNameHeading");
+  const userEmailText = document.getElementById("userEmailText");
+  const userTierBadge = document.getElementById("userTierBadge");
+  const userAvatarBig = document.getElementById("userAvatarBig");
+  const openPaddlePortalBtn = document.getElementById("openPaddlePortalBtn");
+  const upgradePlanCta = document.getElementById("upgradePlanCta");
+
+  const statPlanName = document.getElementById("statPlanName");
+  const statPlanStatus = document.getElementById("statPlanStatus");
+  const statPlanPrice = document.getElementById("statPlanPrice");
+  const cancelSubBtn = document.getElementById("cancelSubBtn");
+  const cancelSubNotice = document.getElementById("cancelSubNotice");
+  const statQuotaRemaining = document.getElementById("statQuotaRemaining");
+  const statQuotaUsedToday = document.getElementById("statQuotaUsedToday");
+  const statQuotaResetTime = document.getElementById("statQuotaResetTime");
+  const statTotalPaid = document.getElementById("statTotalPaid");
+  const statPaddleCustId = document.getElementById("statPaddleCustId");
+  const statRenewalDate = document.getElementById("statRenewalDate");
+
+  const chartSkeleton = document.getElementById("chartSkeleton");
+  const chartContent = document.getElementById("chartContent");
+  const txTableBody = document.getElementById("txTableBody");
+
+  const BACKEND_URL = "https://vidrank-backend.fahad288ali.workers.dev";
+
+  async function loadDashboard() {
+    const cached = getCachedUser();
+    if (!cached) {
+      if (loggedOutView) loggedOutView.classList.remove("hidden");
+      if (loggedInView) loggedInView.classList.add("hidden");
+      return;
+    }
+
+    if (loggedOutView) loggedOutView.classList.add("hidden");
+    if (loggedInView) loggedInView.classList.remove("hidden");
+
+    // Populate basic user info
+    if (userNameHeading) userNameHeading.textContent = cached.name || cached.email.split("@")[0];
+    if (userEmailText) userEmailText.textContent = cached.email;
+    if (userAvatarBig) {
+      if (cached.photo_url) {
+        userAvatarBig.innerHTML = `<img src="${cached.photo_url}" alt="Avatar" class="w-full h-full object-cover" />`;
+      } else {
+        userAvatarBig.textContent = (cached.name || cached.email || "V").charAt(0).toUpperCase();
+      }
+    }
+
+    try {
+      const idToken = await getFirebaseAuthToken();
+      if (!idToken) throw new Error("Could not retrieve authentication token.");
+
+      const res = await fetch(`${BACKEND_URL}/v1/user/dashboard-data`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+
+      renderDashboardData(data);
+    } catch (err: any) {
+      console.warn("Dashboard live data fetch fallback:", err);
+      // Fallback with cached state
+      renderFallback(cached);
+    }
+  }
+
+  function renderDashboardData(data: any) {
+    const isPro = data.user?.tier === "pro";
+
+    // Header Badges
+    if (userTierBadge) {
+      userTierBadge.textContent = isPro ? "PRO" : "FREE";
+      userTierBadge.className = isPro
+        ? "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#3df2a4]/15 text-[#3df2a4] border border-[#3df2a4]/30 shadow-[0_0_12px_rgba(61,242,164,0.25)]"
+        : "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/10 text-[#8ea0b5] border border-white/10";
+    }
+
+    const proMemberPill = document.getElementById("proMemberPill");
+    if (isPro) {
+      if (upgradePlanCta) {
+        upgradePlanCta.classList.add("hidden");
+        upgradePlanCta.classList.remove("inline-flex");
+      }
+      if (proMemberPill) {
+        proMemberPill.classList.remove("hidden");
+        proMemberPill.classList.add("flex");
+      }
+    } else {
+      if (upgradePlanCta) {
+        upgradePlanCta.classList.remove("hidden");
+        upgradePlanCta.classList.add("inline-flex");
+      }
+      if (proMemberPill) {
+        proMemberPill.classList.add("hidden");
+        proMemberPill.classList.remove("flex");
+      }
+    }
+
+    // Card 1: Plan
+    const sub = data.subscription || {};
+    const isYearly = !!(sub.is_yearly || sub.interval === "year");
+
+    if (statPlanName) {
+      if (sub.plan_name) {
+        statPlanName.textContent = sub.plan_name;
+      } else {
+        statPlanName.textContent = isPro ? (isYearly ? "VidRank Pro Yearly" : "VidRank Pro Monthly") : "Free Plan";
+      }
+    }
+    if (statPlanStatus) {
+      const subStatus = (sub.status || (isPro ? "Active" : "Standard")).toUpperCase();
+      statPlanStatus.textContent = subStatus;
+      statPlanStatus.className = isPro ? "text-[12px] text-[#3df2a4] font-semibold" : "text-[12px] text-[#8ea0b5] font-semibold";
+    }
+    if (statPlanPrice) {
+      if (sub.formatted_price) {
+        statPlanPrice.textContent = sub.formatted_price;
+      } else if (isPro) {
+        statPlanPrice.textContent = isYearly ? "$38.30 / year" : "$3.99 / month";
+      } else {
+        statPlanPrice.textContent = "$0.00 / free";
+      }
+    }
+
+    // Cancel Subscription Button & Notice handling
+    const scheduledCancel = sub.scheduled_change_action === "cancel";
+    if (cancelSubNotice) {
+      if (scheduledCancel) {
+        const effDate = sub.scheduled_change_at 
+          ? new Date(sub.scheduled_change_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          : "end of period";
+        cancelSubNotice.textContent = `Cancels on ${effDate} (Pro active until then)`;
+        cancelSubNotice.classList.remove("hidden");
+        if (cancelSubBtn) cancelSubBtn.classList.add("hidden");
+      } else {
+        cancelSubNotice.classList.add("hidden");
+        if (cancelSubBtn) {
+          if (isPro) {
+            cancelSubBtn.classList.remove("hidden");
+          } else {
+            cancelSubBtn.classList.add("hidden");
+          }
+        }
+      }
+    }
+
+    // Card 2: Quota
+    const quota = data.quota || {};
+    if (statQuotaRemaining) {
+      statQuotaRemaining.textContent = isPro ? "Unlimited" : `${quota.remaining ?? 10} Left`;
+    }
+    if (statQuotaUsedToday) {
+      statQuotaUsedToday.textContent = `${quota.used_today ?? 0} generations used today`;
+    }
+    if (statQuotaResetTime) {
+      const secs = quota.resets_in_seconds || 0;
+      const hrs = Math.floor(secs / 3600);
+      const mins = Math.floor((secs % 3600) / 60);
+      statQuotaResetTime.textContent = `${hrs}h ${mins}m`;
+    }
+
+    // Card 3: Spent & Paddle ID
+    const billing = data.billing || {};
+    if (statTotalPaid) statTotalPaid.textContent = billing.total_paid || "$0.00";
+    if (statPaddleCustId) statPaddleCustId.textContent = billing.customer_id || "None";
+
+    // Card 4: Renewal Date & Cycle
+    const statBillingCycle = document.getElementById("statBillingCycle");
+    if (statBillingCycle) {
+      if (sub.billing_cycle) {
+        statBillingCycle.textContent = sub.billing_cycle;
+      } else if (isPro) {
+        statBillingCycle.textContent = isYearly ? "Yearly recurring" : "Monthly recurring";
+      } else {
+        statBillingCycle.textContent = "No recurring cycle";
+      }
+    }
+
+    const statRenewalSub = document.getElementById("statRenewalSub");
+    if (statRenewalSub) {
+      if (isPro) {
+        statRenewalSub.textContent = isYearly ? "Auto-renews annually" : "Auto-renews monthly";
+      } else {
+        statRenewalSub.textContent = "Free tier";
+      }
+    }
+
+    if (statRenewalDate) {
+      if (data.user?.expires_at) {
+        try {
+          const d = new Date(data.user.expires_at);
+          statRenewalDate.textContent = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        } catch {
+          statRenewalDate.textContent = "Active";
+        }
+      } else {
+        statRenewalDate.textContent = isPro ? (isYearly ? "Active Yearly" : "Active Monthly") : "No Renewal";
+      }
+    }
+
+    // Render Usage Graph
+    renderUsageChart(data.usage_chart || []);
+
+    // Render Transactions Table
+    renderTransactionsTable(billing.transactions || []);
+  }
+
+  function renderFallback(user: VidRankUser) {
+    const isPro = user.tier === "pro";
+    if (statPlanName) statPlanName.textContent = isPro ? "VidRank Pro" : "Free Plan";
+    if (statQuotaRemaining) statQuotaRemaining.textContent = isPro ? "Unlimited" : "10 Left";
+    if (statTotalPaid) statTotalPaid.textContent = "$0.00";
+    renderUsageChart([]);
+    renderTransactionsTable([]);
+  }
+
+  function renderUsageChart(chartData: Array<{ day: string; total_requests: number; cache_hits: number }>) {
+    if (!chartContainer || !chartSkeleton || !chartContent) return;
+
+    chartSkeleton.classList.add("hidden");
+    chartContent.classList.remove("hidden");
+    chartContent.innerHTML = "";
+
+    // Generate last 14 days
+    const daysMap = new Map<string, { requests: number; hits: number }>();
+    const now = new Date();
+    let totalAllDays = 0;
+
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400000);
+      const dayStr = d.toISOString().substring(0, 10);
+      daysMap.set(dayStr, { requests: 0, hits: 0 });
+    }
+
+    chartData.forEach((item) => {
+      if (daysMap.has(item.day)) {
+        const reqs = item.total_requests || 0;
+        totalAllDays += reqs;
+        daysMap.set(item.day, { requests: reqs, hits: item.cache_hits || 0 });
+      }
+    });
+
+    let maxReq = 1;
+    daysMap.forEach((v) => {
+      if (v.requests > maxReq) maxReq = v.requests;
+    });
+
+    daysMap.forEach((val, dayKey) => {
+      const heightPct = val.requests > 0 ? Math.max(15, Math.round((val.requests / maxReq) * 100)) : 10;
+      const shortDay = dayKey.substring(5); // MM-DD
+
+      const barEl = document.createElement("div");
+      barEl.className = "flex-1 flex flex-col items-center gap-2 group relative h-full justify-end";
+      barEl.innerHTML = `
+        <!-- Tooltip -->
+        <div class="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e293b] border border-white/20 px-2.5 py-1 rounded text-[11px] whitespace-nowrap shadow-xl z-20 pointer-events-none font-mono">
+          <span class="text-[#3df2a4] font-bold">${val.requests}</span> gen (${shortDay})
+        </div>
+        <!-- Bar Fill -->
+        <div class="w-full rounded-t-md transition-all duration-300 ${val.requests > 0 ? 'bg-[#0066ee] hover:bg-[#2c8cff] shadow-[0_0_10px_rgba(0,102,238,0.5)]' : 'bg-white/[0.06] hover:bg-white/10'}" style="height: ${heightPct}%;"></div>
+        <!-- Day Label -->
+        <span class="text-[10px] text-[#8ea0b5] font-mono">${shortDay.slice(3)}</span>
+      `;
+      chartContent.appendChild(barEl);
+    });
+  }
+
+  function renderTransactionsTable(txs: any[]) {
+    if (!txTableBody) return;
+    txTableBody.innerHTML = "";
+
+    if (!txs || txs.length === 0) {
+      txTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-8 text-center text-[#8ea0b5]">
+            No payment transactions recorded yet. Subscribe to Pro to see invoices.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    txs.forEach((tx) => {
+      const dateStr = tx.date ? new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "--";
+      const isCompleted = tx.status === "completed" || tx.status === "paid";
+      const statusBadgeClass = isCompleted
+        ? "bg-[#3df2a4]/15 text-[#3df2a4] border border-[#3df2a4]/30"
+        : "bg-white/10 text-[#8ea0b5] border border-white/10";
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-white/[0.02] transition-colors";
+      tr.innerHTML = `
+        <td class="py-3.5 px-3 font-mono text-[12px] text-white">${dateStr}</td>
+        <td class="py-3.5 px-3 font-mono text-[11px] text-[#8ea0b5] truncate max-w-[140px]">${tx.id || "--"}</td>
+        <td class="py-3.5 px-3 text-[#cbd5e1] text-[12px]">
+          <span class="inline-flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            ${tx.card_brand || 'Card'} ${tx.card_last4 ? `•••• ${tx.card_last4}` : ''}
+          </span>
+        </td>
+        <td class="py-3.5 px-3 font-bold text-white font-mono">${tx.amount || '$0.00'}</td>
+        <td class="py-3.5 px-3">
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${statusBadgeClass}">
+            ${tx.status || 'Active'}
+          </span>
+        </td>
+        <td class="py-3.5 px-3 text-right">
+          <button
+            type="button"
+            data-tx-id="${tx.id}"
+            class="download-receipt-pdf-btn inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#2c8cff] hover:text-[#58a6ff] transition-colors cursor-pointer bg-transparent border-0"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download PDF
+          </button>
+        </td>
+      `;
+      txTableBody.appendChild(tr);
+    });
+
+    // Wire up direct PDF download for each transaction
+    document.querySelectorAll(".download-receipt-pdf-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const txId = target.getAttribute("data-tx-id");
+        if (!txId) return;
+
+        const originalHtml = target.innerHTML;
+        target.innerHTML = `<span class="animate-pulse text-[#8ea0b5]">Opening PDF...</span>`;
+
+        // Pre-open blank tab to avoid popup blockers
+        const pdfWindow = window.open("", "_blank");
+        if (pdfWindow) {
+          pdfWindow.document.write("<p style='font-family: sans-serif; color: #cbd5e1; background: #0c121e; height: 100vh; display: grid; place-items: center; margin: 0;'>Loading Paddle Official Invoice PDF...</p>");
+        }
+
+        try {
+          const idToken = await getFirebaseAuthToken();
+          if (!idToken) throw new Error("Please log in first.");
+
+          const res = await fetch(`${BACKEND_URL}/v1/billing/invoice-pdf?transaction_id=${txId}`, {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const data = await res.json();
+          if (res.ok && data.url) {
+            if (pdfWindow) {
+              pdfWindow.location.href = data.url;
+            } else {
+              window.open(data.url, "_blank");
+            }
+          } else {
+            openPaddlePortal(pdfWindow);
+          }
+        } catch (err) {
+          console.warn("Direct PDF fetch fallback:", err);
+          openPaddlePortal(pdfWindow);
+        } finally {
+          target.innerHTML = originalHtml;
+        }
+      });
+    });
+  }
+
+  // Open Paddle Customer Portal
+  async function openPaddlePortal(existingWindow?: Window | null) {
+    const portalWindow = existingWindow || window.open("", "_blank");
+    if (portalWindow && !existingWindow) {
+      portalWindow.document.write("<p style='font-family: sans-serif; color: #64748b; background: #0c121e; color: #fff; height: 100vh; display: grid; place-items: center; margin: 0;'>Connecting to Paddle Billing Customer Portal...</p>");
+    }
+
+    try {
+      if (openPaddlePortalBtn) {
+        openPaddlePortalBtn.textContent = "Connecting to Paddle...";
+      }
+      const idToken = await getFirebaseAuthToken();
+      if (!idToken) throw new Error("Please log in first.");
+
+      const resp = await fetch(`${BACKEND_URL}/v1/billing/customer-portal`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data.url) {
+        throw new Error(data.message || data.error || "Unable to mint portal session.");
+      }
+
+      if (portalWindow) {
+        portalWindow.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
+      if (portalWindow) portalWindow.close();
+      console.error("Portal error:", e);
+      alert(e.message || "Failed to open Paddle Customer Portal. Please try again.");
+    } finally {
+      if (openPaddlePortalBtn) {
+        openPaddlePortalBtn.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <line x1="2" y1="10" x2="22" y2="10"></line>
+          </svg>
+          Manage Billing in Paddle
+        `;
+      }
+    }
+  }
+
+  openPaddlePortalBtn?.addEventListener("click", openPaddlePortal);
+
+  cancelSubBtn?.addEventListener("click", async () => {
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel your VidRank Pro subscription?\n\n• You will NOT be charged again in the next billing period.\n• You will keep full Pro access until the end of your current cycle."
+    );
+    if (!confirmCancel) return;
+
+    const origText = cancelSubBtn.textContent;
+    cancelSubBtn.textContent = "Cancelling...";
+    try {
+      const idToken = await getFirebaseAuthToken();
+      if (!idToken) throw new Error("Please log in first.");
+
+      const res = await fetch(`${BACKEND_URL}/v1/billing/cancel-subscription`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Subscription cancellation scheduled successfully. Your Pro access remains active until the end of this billing cycle.");
+        loadDashboard();
+      } else {
+        alert(data.message || data.error || "Failed to cancel subscription.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel subscription.");
+    } finally {
+      cancelSubBtn.textContent = origText;
+    }
+  });
+
+  dashLoginBtn?.addEventListener("click", async () => {
+    try {
+      if (dashLoginBtn) dashLoginBtn.textContent = "Signing in...";
+      await loginWithGoogle();
+      await loadDashboard();
+    } catch (err) {
+      console.error(err);
+      if (dashLoginBtn) dashLoginBtn.textContent = "Sign in with Google";
+    }
+  });
+
+  // Initial load
+  loadDashboard();
+
+  window.addEventListener("vidrank:auth:change", () => {
+    loadDashboard();
+  });
+</script>

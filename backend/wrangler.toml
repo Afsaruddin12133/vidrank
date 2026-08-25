@@ -60,8 +60,10 @@ max_retries = 5
 max_concurrency = 50  # Higher concurrency for pro users
 
 [vars]
-GROQ_MODEL = "llama-3.1-8b-instant"
-ALLOWED_ORIGINS = "https://vidrank-dashboard.pages.dev,https://f186ad36.vidrank-dashboard.pages.dev,https://localhost:5173"
+ALLOWED_ORIGINS = "https://vidrank.tech,https://www.vidrank.tech,https://vidrank-dashboard.pages.dev,https://f186ad36.vidrank-dashboard.pages.dev,https://localhost:5173,https://preview.vidrank-landing.pages.dev"
+PADDLE_ENVIRONMENT = "sandbox"
+
+
 
 # Firebase auth is delegated to the vidrank-auth service worker (free-plan split).
 [[services]]
@@ -71,3 +73,6 @@ service = "vidrank-auth"
 # Secrets (Cloudflare Secrets, not in this file):
 #   ENCRYPTION_KEY  (32B, AES-GCM of provider keys)
 #   JWT_SECRET
+
+# Paddle creds live in Cloudflare Secrets (wrangler secret put):
+#   PADDLE_WEBHOOK_SECRET_KEY  PADDLE_API_KEY

@@ -1,14 +1,20 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Iterable
 from typing import (
     Annotated,
     Any,
     BinaryIO,
+    Callable,
+    Optional,
     TypeVar,
     cast,
 )
 
 from annotated_doc import Doc
-from pydantic import GetJsonSchemaHandler
+from fastapi._compat import (
+    CoreSchema,
+    GetJsonSchemaHandler,
+    JsonSchemaValue,
+)
 from starlette.datastructures import URL as URL  # noqa: F401
 from starlette.datastructures import Address as Address  # noqa: F401
 from starlette.datastructures import FormData as FormData  # noqa: F401
@@ -56,11 +62,11 @@ class UploadFile(StarletteUploadFile):
         BinaryIO,
         Doc("The standard Python file object (non-async)."),
     ]
-    filename: Annotated[str | None, Doc("The original file name.")]
-    size: Annotated[int | None, Doc("The size of the file in bytes.")]
+    filename: Annotated[Optional[str], Doc("The original file name.")]
+    size: Annotated[Optional[int], Doc("The size of the file in bytes.")]
     headers: Annotated[Headers, Doc("The headers of the request.")]
     content_type: Annotated[
-        str | None, Doc("The content type of the request, from the headers.")
+        Optional[str], Doc("The content type of the request, from the headers.")
     ]
 
     async def write(
@@ -130,21 +136,36 @@ class UploadFile(StarletteUploadFile):
         return await super().close()
 
     @classmethod
+    def __get_validators__(cls: type["UploadFile"]) -> Iterable[Callable[..., Any]]:
+        yield cls.validate
+
+    @classmethod
+    def validate(cls: type["UploadFile"], v: Any) -> Any:
+        if not isinstance(v, StarletteUploadFile):
+            raise ValueError(f"Expected UploadFile, received: {type(v)}")
+        return v
+
+    @classmethod
     def _validate(cls, __input_value: Any, _: Any) -> "UploadFile":
         if not isinstance(__input_value, StarletteUploadFile):
             raise ValueError(f"Expected UploadFile, received: {type(__input_value)}")
         return cast(UploadFile, __input_value)
 
+    # TODO: remove when deprecating Pydantic v1
+    @classmethod
+    def __modify_schema__(cls, field_schema: dict[str, Any]) -> None:
+        field_schema.update({"type": "string", "format": "binary"})
+
     @classmethod
     def __get_pydantic_json_schema__(
-        cls, core_schema: Mapping[str, Any], handler: GetJsonSchemaHandler
-    ) -> dict[str, Any]:
-        return {"type": "string", "contentMediaType": "application/octet-stream"}
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        return {"type": "string", "format": "binary"}
 
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source: type[Any], handler: Callable[[Any], Mapping[str, Any]]
-    ) -> Mapping[str, Any]:
+        cls, source: type[Any], handler: Callable[[Any], CoreSchema]
+    ) -> CoreSchema:
         from ._compat.v2 import with_info_plain_validator_function
 
         return with_info_plain_validator_function(cls._validate)
@@ -179,8 +200,3 @@ def Default(value: DefaultType) -> DefaultType:
     if the overridden default value was truthy.
     """
     return DefaultPlaceholder(value)  # type: ignore
-
-
-# Sentinel for "parameter not provided" in Param/FieldInfo.
-# Typed as None to satisfy ty
-_Unset = Default(None)

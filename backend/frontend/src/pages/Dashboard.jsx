@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { usePolled } from '../hooks.js'
-import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, getFreeQuota, setFreeQuota, fmtInt } from '../api.js'
+import { statsOverview, listUsers, listAllAccounts, getPricing, adminGeo, getFreeQuota, setFreeQuota, fmtInt, getRole } from '../api.js'
 
 const CADENC_LABEL = { daily: 'Daily (resets each day)', never: 'Never (one-time total)', unlimited: 'Unlimited (no cap)' }
 
 export default function Dashboard() {
+  const isSub = getRole() === 'sub'
   const { data: overview } = usePolled(() => statsOverview(), 5000)
   const { data: usersData } = usePolled(() => listUsers(), 5000)
   const { data: accountsData } = usePolled(() => listAllAccounts(), 5000)
@@ -273,7 +274,8 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Free Quota Settings */}
+      {/* Free Quota Settings — super-admin only */}
+      {!isSub && (
       <section className="card">
         <div className="card-label">Free Tier Quota</div>
         <div className="card-sub" style={{ marginBottom: 14 }}>
@@ -310,8 +312,10 @@ export default function Dashboard() {
         {saved && <div className="status status-ok" style={{ marginTop: 10 }}>{saved}</div>}
         {saveErr && <div className="status status-err" style={{ marginTop: 10 }}>{saveErr}</div>}
       </section>
+      )}
 
-      {/* 7-day history table */}
+      {/* 7-day history table — super-admin only */}
+      {!isSub && (
       <section className="card">
         <div className="card-label">Last 7 Days — Usage Overview</div>
         {days.length === 0 ? (
@@ -359,8 +363,9 @@ export default function Dashboard() {
         )}
         <div className="card-sub note">
           Usage data is aggregated daily. Current day stats update in real-time.
-        </div>
-      </section>
-    </div>
+       </div>
+     </section>
+      )}
+   </div>
   )
 }

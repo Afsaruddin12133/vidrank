@@ -16,4 +16,3 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-console.log("[VidRank] Firebase Auth initialized (extension mode).");

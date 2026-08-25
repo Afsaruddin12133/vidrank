@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import logo from '../assets/logo.png'
+import { PopupAds } from './PopupAds'
 import './Popup.css'
 
 // Login is delegated to the background service worker (the single Firebase auth
@@ -59,7 +60,6 @@ export const Popup = () => {
 
   const updateQuotaDisplay = (s: any) => {
     if (!s) return
-    console.log('✅ [POPUP] Updating quota display:', s)
     if (s.is_suspended || s.is_active === 0) {
       setPlan('suspended')
       setUsage('Suspended')
@@ -80,10 +80,8 @@ export const Popup = () => {
   }
 
   const refreshPlan = () => {
-    console.log('🔄 [POPUP] Refreshing quota from background...')
     chrome.runtime.sendMessage({ action: 'getQuota' }, (res) => {
       if (!res || !res.success) {
-        console.log('❌ [POPUP] Failed to get quota:', res)
         return
       }
       updateQuotaDisplay(res.stats)
@@ -125,14 +123,12 @@ export const Popup = () => {
     // Listen for real-time quota updates from background service worker
     const handleMessage = (message: any) => {
       if (message && message.action === 'quotaUpdated' && message.stats) {
-        console.log('⚡ [POPUP] Received real-time quota update:', message.stats)
         updateQuotaDisplay(message.stats)
       }
     }
 
     const handleStorageChange = (changes: any, area: string) => {
       if (area === 'local' && changes.quotaStats && changes.quotaStats.newValue) {
-        console.log('⚡ [POPUP] Storage quotaStats changed:', changes.quotaStats.newValue)
         updateQuotaDisplay(changes.quotaStats.newValue)
       }
     }
@@ -149,13 +145,10 @@ export const Popup = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('👁️ [POPUP] Popup became visible, refreshing quota...');
         // Popup became visible, refresh quota
         chrome.storage.local.get({ isLoggedIn: false }, (data) => {
           if (data.isLoggedIn) {
             refreshPlan()
-          } else {
-            console.log('ℹ️ [POPUP] User not logged in, skipping quota refresh');
           }
         })
       }
@@ -260,6 +253,7 @@ export const Popup = () => {
             {loginStage === 'opening' ? 'Opening Google sign-in...' : 'Sign in with Google'}
           </button>
           {loginError && <div style={{ color: '#ff4444', marginTop: 15, fontSize: 12 }}>{loginError}</div>}
+          <PopupAds />
         </main>
       ) : (
         /* Settings Forms */
@@ -344,6 +338,7 @@ export const Popup = () => {
               />
             </div>
           </section>
+          {plan !== 'pro' && <PopupAds />}
         </main>
       )}
 

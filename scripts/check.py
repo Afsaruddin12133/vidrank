@@ -1,3 +1,4 @@
+import os
 from firebase_admin import auth, credentials, initialize_app
 
 # 1. Initialize SDK with service account

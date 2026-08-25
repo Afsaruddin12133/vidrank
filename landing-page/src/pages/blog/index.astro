@@ -1,0 +1,121 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import Footer from "../../components/Footer.astro";
+import Icon from "../../components/Icon.astro";
+import { getAllPosts } from "../../lib/blog";
+
+const env = (Astro.locals as any)?.runtime?.env;
+const posts = await getAllPosts(env);
+const categories = ["All", ...new Set(posts.map((p) => p.category))];
+---
+
+<Layout
+  title="Blog & YouTube Growth Guides — VidRank"
+  description="Actionable YouTube SEO guides, algorithm analysis, keyword blueprints, and video optimization strategies for creators."
+>
+  <Navbar />
+  <main id="main-content" class="min-h-screen py-16 px-[6vw] max-w-[1440px] mx-auto">
+    <!-- Header -->
+    <div class="text-center max-w-[760px] mx-auto mb-16" data-reveal>
+      <span class="text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center">
+        <i class="inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]"></i>
+        CREATOR HUB & GUIDES
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(36px,5vw,64px)] leading-[1.05] tracking-[-0.04em] my-4 text-white">
+        YouTube SEO & Growth <span class="text-[#2c8cff]">Intelligence.</span>
+      </h1>
+      <p class="text-muted text-[16px] leading-[1.7]">
+        Explore battle-tested strategies, algorithmic insights, and metadata playbooks designed to grow your YouTube views organically.
+      </p>
+    </div>
+
+    <!-- Category Filter Bar -->
+    <div class="flex items-center justify-center gap-2.5 flex-wrap mb-14" data-reveal>
+      {categories.map((cat, idx) => (
+        <button
+          class={`category-btn px-4 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer border ${
+            idx === 0
+              ? "bg-red text-white border-transparent shadow-[0_4px_20px_rgba(0,119,255,0.3)]"
+              : "bg-white/[0.04] text-[#8ea0b5] border-white/[0.08] hover:text-white hover:bg-white/[0.08]"
+          }`}
+          data-category={cat}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+
+    <!-- Blog Posts Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {posts.map((post) => (
+        <article
+          class="post-card group rounded-2xl p-8 bg-[#0c121e]/90 backdrop-blur-md border border-[rgba(137,190,255,0.16)] flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-[rgba(0,119,255,0.45)] hover:shadow-[0_16px_50px_rgba(0,119,255,0.18)] relative overflow-hidden"
+          data-category={post.category}
+          data-reveal
+        >
+          <!-- Ambient Glow -->
+          <div class={`absolute top-0 left-0 right-0 h-36 bg-gradient-to-b ${post.accentGradient || "from-cyan/20 via-blue-500/10 to-transparent"} opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-300`}></div>
+
+          <div class="relative z-[1]">
+            <div class="flex items-center justify-between gap-2 mb-6">
+              <span class={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border ${post.categoryColor || "text-cyan bg-cyan/10 border-cyan/20"}`}>
+                {post.category}
+              </span>
+              <span class="text-[#8ea0b5] text-[11px] font-medium font-mono">{post.read_time}</span>
+            </div>
+
+            <div class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] text-cyan flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+              <Icon name={(post.icon || "wand-sparkles") as any} />
+            </div>
+
+            <h2 class="font-outfit font-bold text-[22px] text-white leading-[1.3] mb-3 group-hover:text-cyan transition-colors">
+              <a href={`/blog/${post.slug}`} class="text-white hover:text-cyan no-underline">
+                {post.title}
+              </a>
+            </h2>
+
+            <p class="text-[#94a3b8] text-[14px] leading-[1.65] mb-6">
+              {post.description}
+            </p>
+          </div>
+
+          <div class="relative z-[1] pt-5 border-t border-white/[0.08] flex items-center justify-between text-[12px] text-[#8ea0b5]">
+            <span>{new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+            <a href={`/blog/${post.slug}`} class="inline-flex items-center gap-1.5 text-white font-semibold group-hover:text-cyan transition-colors no-underline">
+              Read guide <Icon name="arrow-right" />
+            </a>
+          </div>
+        </article>
+      ))}
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<script is:inline>
+  // Client-side category filtering
+  const categoryBtns = document.querySelectorAll(".category-btn");
+  const postCards = document.querySelectorAll(".post-card");
+
+  categoryBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const selected = btn.dataset.category || "All";
+
+      categoryBtns.forEach((b) => {
+        b.classList.remove("bg-red", "text-white", "border-transparent", "shadow-[0_4px_20px_rgba(0,119,255,0.3)]");
+        b.classList.add("bg-white/[0.04]", "text-[#8ea0b5]", "border-white/[0.08]");
+      });
+      btn.classList.add("bg-red", "text-white", "border-transparent", "shadow-[0_4px_20px_rgba(0,119,255,0.3)]");
+      btn.classList.remove("bg-white/[0.04]", "text-[#8ea0b5]", "border-white/[0.08]");
+
+      postCards.forEach((card) => {
+        if (selected === "All" || card.dataset.category === selected) {
+          card.style.display = "flex";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    });
+  });
+</script>

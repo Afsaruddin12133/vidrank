@@ -214,7 +214,7 @@
       sel.removeAllRanges();
       sel.addRange(saved.range);
     } catch (e) {
-      console.warn('[YouTube Tag Generator] Failed to restore selection:', e);
+      // selection restore is best-effort
     }
   }
 
@@ -710,13 +710,11 @@
         }
 
         const executeGeneration = async () => {
-          console.log('[VidRank] generate click — pre-decrement quota:', { count, plan, usageLimit });
           // Optimistic: decrement sidebar immediately — before API responds
           const usageEl = document.getElementById('yt-sidebar-usage');
           if (usageEl && plan === 'free' && usageLimit >= 0) {
             usageEl.textContent = `${Math.max(0, usageLimit - count - 1)} / ${usageLimit}`;
           }
-          console.log('[VidRank] generate — sidebar set to', usageEl ? usageEl.textContent : '(no element)');
           
           setBtnDisabled(true, 'Generating Metadata...');
           sidebarUI.log(`Title confirmed. Generating description and tags for: "${titleText}"`, "info");
@@ -758,8 +756,6 @@
               const latestCount = (latest && latest.usageCount) || 0;
               const currentPlan = (latest && latest.plan) || "free";
               const latestLimit = latest && latest.usageLimit != null ? latest.usageLimit : -1;
-
-              console.log('[VidRank] generate response — server quota cache:', { latestCount, currentPlan, latestLimit, raw: latest });
 
               // Correct sidebar with actual values from generate response
               const sidebarUsageEl = document.getElementById('yt-sidebar-usage');
@@ -876,7 +872,7 @@
       );
     });
   } catch (err) {
-    console.warn("Chrome API error in onTitleChanged:", err);
+    // onTitleChanged errors are non-fatal
   }
 }
 

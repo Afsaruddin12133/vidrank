@@ -11,6 +11,7 @@ Admin (guard: admin.is_admin):
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -41,7 +42,7 @@ app = FastAPI(
 # ALLOWED_ORIGINS is a CSV Cloudflare var, but Python Workers expose vars via
 # self.env (app.state.env), NOT os.environ — so resolve lazily per request.
 _ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-_ALLOW_HEADERS = ["Authorization", "Content-Type"]
+_ALLOW_HEADERS = ["Authorization", "Content-Type", "Cookie"]
 
 
 def _allowed_origins() -> list[str]:
@@ -71,13 +72,9 @@ class _CORS:
             if message["type"] == "http.response.start" and allowed:
                 headers = list(message.get("headers", []))
                 headers.append((b"access-control-allow-origin", origin.encode()))
+                headers.append((b"access-control-allow-credentials", b"true"))
                 headers.append((b"vary", b"Origin"))
-                headers.append(
-                    (
-                        b"access-control-expose-headers",
-                        b"X-Request-Id",
-                    )
-                )
+                headers.append((b"access-control-expose-headers", b"X-Request-Id"))
                 message["headers"] = headers
             await send(message)
 
@@ -89,6 +86,7 @@ class _CORS:
             if method is not None:
                 headers = [
                     (b"access-control-allow-origin", origin.encode()),
+                    (b"access-control-allow-credentials", b"true"),
                     (b"vary", b"Origin"),
                     (b"access-control-allow-methods", ", ".join(_ALLOW_METHODS).encode()),
                     (b"access-control-allow-headers", ", ".join(_ALLOW_HEADERS).encode()),
@@ -164,6 +162,7 @@ class MIT_RequestMeta:
         global _in_flight
         rid = uuid.uuid4().hex[:12]
         _in_flight += 1
+        t_start = time.time()
 
         path = scope.get("path", "?")
         method = scope.get("method", "?")
@@ -187,7 +186,7 @@ class MIT_RequestMeta:
         def send_wrapper(message):
             if message["type"] == "http.response.start":
                 logged.append(1)
-                print(f"[SERVER MIDDLEWARE] OUTGOING RESPONSE: {method} {path} => Status: {message['status']}\n", file=sys.stderr, flush=True)
+                print(f"[SERVER MIDDLEWARE] OUTGOING RESPONSE: {method} {path} => Status: {message['status']} | {int((time.time() - t_start) * 1000)}ms\n", file=sys.stderr, flush=True)
                 message.setdefault("headers", []).extend([
                     (b"x-request-id", rid.encode()),
                     (b"x-inflight", str(_in_flight).encode()),
@@ -324,17 +323,18 @@ async def auth_login(request: Request):
     # Get current quota status
     verdict = await quotas.get_quota(env, uid) or {}
     
-    # Create backend session token (JWT)
-    import jwt
-    jwt_secret = getattr(env, "JWT_SECRET", "dev-jwt-secret")
-    session_token = jwt.encode({
-        "uid": uid,
-        "email": email,
-        "tier": user.get("tier", C.TIER_FREE),
-        "iat": now,
-        "exp": now + 7 * 24 * 3600  # 7 days
-    }, jwt_secret, algorithm="HS256")
-    
+    # Create backend session token (JWT) — stdlib HS256 via admin module (PyJWT not bundled)
+    session_token = admin_mod.issue_user_token(env, uid, email, user.get("tier", C.TIER_FREE))
+
+    billing_price_id = None
+    sub_id = user.get("subscription_id")
+    if user.get("tier", C.TIER_FREE) == C.TIER_PRO and sub_id:
+        try:
+            sub = await db.get_subscription_by_id(env, sub_id)
+            billing_price_id = (sub or {}).get("price_id")
+        except Exception:
+            pass
+
     return {
         "session_token": session_token,
         "user": {
@@ -343,6 +343,7 @@ async def auth_login(request: Request):
             "name": user.get("name", ""),
             "photo_url": user.get("photo_url", ""),
             "tier": user.get("tier", C.TIER_FREE),
+            "billing_price_id": billing_price_id,
         },
         "quota": {
             "remaining": (verdict.get("remaining") if isinstance(verdict, dict) and isinstance(verdict.get("remaining"), int) and verdict.get("remaining") >= 0 else (C.DEFAULT_FREE_DAILY_LIMIT if user.get("tier", C.TIER_FREE) != C.TIER_PRO else -1)),
@@ -527,7 +528,7 @@ async def chat(request: Request):
         return JSONResponse({"error": "bad_request"}, status_code=400)
     if not isinstance(body, dict):
         return JSONResponse({"error": "bad_request"}, status_code=400)
-    model = body.get("model") or C.GROQ_MODEL
+    model = body.get("model") or C.DEFAULT_MODEL
     messages = body.get("messages") or []
     stream = body.get("stream", False)  # NEW: streaming support
     if not isinstance(messages, list) or len(messages) > C.MAX_MESSAGES:
@@ -734,12 +735,14 @@ async def generate(request: Request):
 async def _generate_impl(request: Request):
     env = _bindings(request)
     auth = request.headers.get("Authorization", "")
+    t0 = time.time()
     try:
         claims = await firebase.verify_token(auth.removeprefix("Bearer ").strip(), env)
     except firebase.AuthError as e:
-        import sys; print(f"[auth-debug] /v1/generate rejected: {e}", file=sys.stderr, flush=True)
+        print(f"[auth-debug] /v1/generate rejected: {e}", file=sys.stderr, flush=True)
         return _auth_reject(e)
     uid = claims.get("uid", "")
+    print(f"[generate] t={time.time() - t0:.2f}s auth ok uid={uid[:10]}", file=sys.stderr, flush=True)
 
     body = await _read_json(request)
     if body is None:
@@ -775,6 +778,7 @@ async def _generate_impl(request: Request):
         except (ValueError, TypeError):
             tags, desc = [], ""
             if tags and desc:
+                print(f"[generate] t={time.time() - t0:.2f}s cache HIT(exact) uid={uid[:10]}", file=sys.stderr, flush=True)
                 flusher = getattr(request.app.state, "flusher", None)
                 if flusher is not None:
                     flusher.log_usage(
@@ -801,6 +805,7 @@ async def _generate_impl(request: Request):
             except (ValueError, TypeError):
                 tags, desc = [], ""
             if tags and desc:
+                print(f"[generate] t={time.time() - t0:.2f}s cache HIT(semantic) uid={uid[:10]}", file=sys.stderr, flush=True)
                 flusher = getattr(request.app.state, "flusher", None)
                 if flusher is not None:
                     flusher.log_usage(
@@ -820,12 +825,14 @@ async def _generate_impl(request: Request):
         u_dict, _ = await _usage_for(env, uid, tier)
         if u_dict.get("remaining", 1) <= 0:
             resets = max(0, int(((int(time.time()) // 86400) + 1) * 86400 - time.time()))
+            print(f"[generate] t={time.time() - t0:.2f}s quota_exceeded uid={uid[:10]}", file=sys.stderr, flush=True)
             return JSONResponse(
                 {"error": "quota_exceeded",
                  "quota_remaining": 0,
                  "resets_in_seconds": resets},
                 status_code=429,
             )
+    print(f"[generate] t={time.time() - t0:.2f}s quota ok, routing to pool", file=sys.stderr, flush=True)
 
     # 4) route to the pool (with fallback inside router)
     account = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
@@ -833,12 +840,14 @@ async def _generate_impl(request: Request):
     if not account:
         return JSONResponse({"error": "provider pool exhausted"}, status_code=503,
                             headers={"Retry-After": "60"})
+    print(f"[generate] t={time.time() - t0:.2f}s account picked id={account.get('id')}", file=sys.stderr, flush=True)
 
     result = await router.execute_request(
         env, user_id=uid, account=account, sticky_key=title,
         payload={"model": prompts.GENERATE_MODEL, "messages": messages,
                  "temperature": 0.0, "max_tokens": 1024},
     )
+    print(f"[generate] t={time.time() - t0:.2f}s provider done status={result.get('status')} latency={result.get('latency_ms')}ms", file=sys.stderr, flush=True)
 
     # 5) log usage (batched flusher)
     flusher = getattr(request.app.state, "flusher", None)
@@ -863,17 +872,21 @@ async def _generate_impl(request: Request):
     parsed = _parse_generate(result.get("content", ""))
     if not parsed:
         return JSONResponse({"error": "generation_failed"}, status_code=502)
+    print(f"[generate] t={time.time() - t0:.2f}s parsed+flushed", file=sys.stderr, flush=True)
 
     # 6) consume quota only after a successful generation
     await _consume_quota(env, uid)
+    print(f"[generate] t={time.time() - t0:.2f}s quota consumed", file=sys.stderr, flush=True)
 
     tags, desc = parsed["tags"], parsed["description"]
     await cache.store_exact(env, key, json.dumps({"tags": tags, "description": desc}))
     if C.TIER_FREE == tier:
         await cache.store_semantic(env, uid, prompts.GENERATE_MODEL, sem_key_text,
                                    json.dumps({"tags": tags, "description": desc}))
+    print(f"[generate] t={time.time() - t0:.2f}s cache stored", file=sys.stderr, flush=True)
 
     usage, retry_after = await _usage_for(env, uid, tier)
+    print(f"[generate] t={time.time() - t0:.2f}s SUCCESS uid={uid[:10]} tags={len(tags)}", file=sys.stderr, flush=True)
     return JSONResponse(
         {"success": True, "tags": tags, "description": desc,
          "usage": usage, "retry_after": retry_after},
@@ -998,10 +1011,21 @@ async def me(request: Request):
         import time
         resets_in_seconds = max(0, int(86400 - (time.time() % 86400)))
         is_active = (user or {}).get("is_active", 1)
+
+        billing_price_id = None
+        sub_id = (user or {}).get("subscription_id")
+        if tier == C.TIER_PRO and sub_id:
+            try:
+                sub = await db.get_subscription_by_id(env, sub_id)
+                billing_price_id = (sub or {}).get("price_id")
+            except Exception:
+                pass
+
         return {
             "uid": uid,
             "email": claims.get("email") or (user or {}).get("email"),
             "tier": tier,
+            "billing_price_id": billing_price_id,
             "is_active": is_active,
             "is_suspended": is_active == 0,
             "quota_remaining": 0 if is_active == 0 else v_remaining,
@@ -1062,44 +1086,1056 @@ async def auth_sync(request: Request):
 
 
 # --------------------------------------------------------------------------- #
+# Paddle Billing Webhook & Security Best Practices
+# --------------------------------------------------------------------------- #
+_PADDLE_IPS_CACHE = {"ts": 0.0, "cidrs": []}
+
+
+def _get_paddle_ip_cidrs() -> list[str]:
+    """Fetch live Paddle IPv4 CIDRs dynamically from https://api.paddle.com/ips (cached 24h)."""
+    now = time.time()
+    if _PADDLE_IPS_CACHE["cidrs"] and (now - _PADDLE_IPS_CACHE["ts"]) < 86400:
+        return _PADDLE_IPS_CACHE["cidrs"]
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "https://api.paddle.com/ips",
+            headers={"User-Agent": "VidRank-Backend/1.0", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            cidrs = data.get("data", {}).get("ipv4_cidrs", [])
+            if cidrs and isinstance(cidrs, list):
+                _PADDLE_IPS_CACHE["cidrs"] = [str(c).strip() for c in cidrs]
+                _PADDLE_IPS_CACHE["ts"] = now
+                return _PADDLE_IPS_CACHE["cidrs"]
+    except Exception as e:
+        import sys
+        print(f"[paddle-ips] Warning: failed to fetch live Paddle IPs ({e})", file=sys.stderr, flush=True)
+    return _PADDLE_IPS_CACHE["cidrs"]
+
+
+def _verify_paddle_ip(request: Request) -> bool:
+    """Verify request client IP is within Paddle's published live CIDR ranges."""
+    cidrs = _get_paddle_ip_cidrs()
+    if not cidrs:
+        return True  # If unable to fetch live IPs, do not hard-fail; rely on HMAC signature verification
+    client_ip = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "")
+    )
+    if not client_ip:
+        return True
+    try:
+        import ipaddress
+        ip = ipaddress.ip_address(client_ip.strip())
+        for cidr in cidrs:
+            if ip in ipaddress.ip_network(cidr, strict=False):
+                return True
+        return False
+    except Exception:
+        return True
+
+
+def _verify_paddle_signature(raw_body: bytes, sig_header: str | None, secret_key: str) -> tuple[bool, str]:
+    """Verify Paddle-Signature HMAC-SHA256 and timestamp freshness (replay attack prevention).
+    
+    Header format: ts=1690000000;h1=5d41402abc4b2a76b9719d911017c592...
+    """
+    if not secret_key:
+        return False, "Missing PADDLE_WEBHOOK_SECRET_KEY"
+    if not sig_header:
+        return False, "Missing Paddle-Signature header"
+
+    parts = {}
+    for item in sig_header.split(";"):
+        if "=" in item:
+            k, v = item.split("=", 1)
+            parts[k.strip()] = v.strip()
+
+    ts_str = parts.get("ts")
+    h1 = parts.get("h1")
+    if not ts_str or not h1:
+        return False, "Malformed Paddle-Signature header"
+
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return False, "Invalid timestamp in Paddle-Signature"
+
+    # 5-minute replay attack tolerance
+    if abs(time.time() - ts) > 300:
+        return False, f"Paddle webhook timestamp expired or drifted (ts={ts}, now={int(time.time())})"
+
+    import hmac
+    import hashlib
+
+    signed_payload = f"{ts}:{raw_body.decode('utf-8')}".encode("utf-8")
+    expected_h1 = hmac.new(secret_key.strip().encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(expected_h1, h1):
+        return False, "Invalid signature hash"
+
+    return True, "ok"
+
+
+@app.post("/v1/billing/paddle-webhook")
+@app.post("/v1/webhooks/paddle")
+async def paddle_webhook(request: Request):
+    """Secure Paddle Billing Webhook receiver for customer & subscription lifecycle events."""
+    env = _bindings(request)
+    
+    # 1. IP allowlist check (optional best-effort, non-blocking if IPs unavailable)
+    if not _verify_paddle_ip(request):
+        import sys
+        client_ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
+        print(f"[paddle-webhook] Blocked unauthorized IP: {client_ip}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "unauthorized_ip"}, status_code=403)
+
+    raw_body = await request.body()
+    sig_header = request.headers.get("Paddle-Signature") or request.headers.get("paddle-signature")
+
+    # Retrieve signing secret (supports sandbox and live)
+    secret_key = (
+        getattr(env, "PADDLE_WEBHOOK_SECRET_KEY", None)
+        or getattr(env, "PADDLE_NOTIFICATION_SECRET", None)
+        or os.environ.get("PADDLE_WEBHOOK_SECRET_KEY", "")
+    )
+
+    # 2. HMAC-SHA256 signature verification — Fail with 400 so Paddle retries
+    if secret_key:
+        valid, reason = _verify_paddle_signature(raw_body, sig_header, secret_key)
+        if not valid:
+            import sys
+            print(f"[paddle-webhook] Signature verification failed: {reason}", file=sys.stderr, flush=True)
+            return JSONResponse({"error": "invalid_signature", "reason": reason}, status_code=400)
+    else:
+        import sys
+        print("[paddle-webhook] Warning: PADDLE_WEBHOOK_SECRET_KEY not set on environment", file=sys.stderr, flush=True)
+
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except Exception as e:
+        return JSONResponse({"error": "invalid_json", "details": str(e)}, status_code=400)
+
+    event_id = payload.get("event_id", "")
+    event_type = payload.get("event_type", "")
+    data = payload.get("data", {}) or {}
+
+    import sys
+    print(f"[paddle-webhook] Processing event: {event_type} (id: {event_id})", file=sys.stderr, flush=True)
+
+    # ── Part 1: Customer events ──────────────────────────────────────────────
+    if event_type.startswith("customer."):
+        customer_id = data.get("id", "")
+        customer_email = (data.get("email") or "").strip().lower()
+        if customer_id and customer_email:
+            await db.upsert_customer(env, customer_id, customer_email)
+            print(f"[paddle-webhook] Upserted customer {customer_id} ({customer_email})", file=sys.stderr, flush=True)
+
+    # ── Part 2: Subscription events ──────────────────────────────────────────
+    elif event_type.startswith("subscription."):
+        sub_id = data.get("id", "")
+        customer_id = data.get("customer_id", "")
+        status = (data.get("status") or "").lower()
+        items = data.get("items") or []
+        price_id = ""
+        product_id = ""
+        if items and isinstance(items, list):
+            price_info = items[0].get("price") or {}
+            price_id = price_info.get("id") or items[0].get("price_id") or ""
+            product_id = price_info.get("product_id") or items[0].get("product_id") or ""
+
+        # Scheduled changes (e.g. action="cancel", effective_at="2026-09-01T00:00:00Z")
+        scheduled_change = data.get("scheduled_change") or {}
+        sched_action = scheduled_change.get("action")
+        sched_at = scheduled_change.get("effective_at")
+
+        # Upsert subscription mirror in D1
+        if sub_id:
+            await db.upsert_paddle_subscription(
+                env,
+                subscription_id=sub_id,
+                customer_id=customer_id,
+                status=status,
+                price_id=price_id,
+                product_id=product_id,
+                scheduled_change_action=sched_action,
+                scheduled_change_at=sched_at,
+            )
+
+        # Upsert customer mirror if customer email is available
+        customer_data = data.get("customer") or {}
+        customer_email = (customer_data.get("email") or "").strip().lower()
+        if customer_id and customer_email:
+            await db.upsert_customer(env, customer_id, customer_email)
+
+        current_billing_period = data.get("current_billing_period") or {}
+        ends_at = current_billing_period.get("ends_at") or data.get("next_billed_at")
+        custom_data = data.get("custom_data") or {}
+
+        # Resolve user in VidRank users table
+        uid = custom_data.get("firebase_uid") or custom_data.get("user_id") or ""
+        email = custom_data.get("email") or customer_email
+        
+        user = None
+        if uid:
+            user = await db.get_user(env, uid)
+        if not user and email:
+            user = await db.get_user_by_email(env, email)
+
+        if user:
+            target_uid = user["firebase_uid"]
+            # Access granting rule: Active AND Trialing grant access.
+            # Scheduled cancellation does NOT revoke access until status actually changes to canceled/expired!
+            if status in ("active", "trialing"):
+                await db.update_user_subscription(
+                    env,
+                    target_uid,
+                    tier=C.TIER_PRO,
+                    subscription_id=sub_id,
+                    expires_at=ends_at,
+                )
+                print(f"[paddle-webhook] Granted PRO access to {target_uid} (sub: {sub_id}, status: {status})", file=sys.stderr, flush=True)
+            elif status in ("canceled", "past_due", "paused"):
+                now_ts = time.time()
+                is_expired = True
+                if ends_at:
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(str(ends_at).replace("Z", "+00:00"))
+                        if dt.timestamp() > now_ts:
+                            is_expired = False
+                    except Exception:
+                        pass
+                if is_expired:
+                    await db.update_user_subscription(
+                        env,
+                        target_uid,
+                        tier=C.TIER_FREE,
+                        subscription_id=sub_id,
+                        expires_at=ends_at,
+                    )
+                    print(f"[paddle-webhook] Reverted user {target_uid} to FREE (status: {status})", file=sys.stderr, flush=True)
+                else:
+                    print(f"[paddle-webhook] Sub {sub_id} is {status} but period ends at {ends_at}; access maintained.", file=sys.stderr, flush=True)
+        else:
+            print(f"[paddle-webhook] User not found for subscription {sub_id} (uid={uid}, email={email})", file=sys.stderr, flush=True)
+
+    # ── Part 3: Transaction events ───────────────────────────────────────────
+    elif event_type.startswith("transaction."):
+        tx_id = data.get("id") or ""
+        status = (data.get("status") or "").lower()
+        custom_data = data.get("custom_data") or {}
+        sub_id = data.get("subscription_id")
+        customer_id = data.get("customer_id") or ""
+        customer_data = data.get("customer") or {}
+        customer_email = (customer_data.get("email") or custom_data.get("email") or "").strip().lower()
+
+        totals = data.get("details", {}).get("totals", {})
+        total_str = totals.get("total", "0")
+        currency = totals.get("currency_code", "USD")
+        try:
+            amount_cents = int(total_str)
+        except (ValueError, TypeError):
+            amount_cents = 0
+
+        # Payments details
+        payments = data.get("payments") or []
+        card_brand = "Card"
+        card_last4 = ""
+        if payments and isinstance(payments, list):
+            m_details = (payments[0].get("method_details") or {}).get("card") or {}
+            card_brand = (m_details.get("type") or "Card").capitalize()
+            card_last4 = m_details.get("last4") or ""
+
+        billed_at = data.get("billed_at") or data.get("created_at")
+        invoice_id = data.get("invoice_id")
+        invoice_number = data.get("invoice_number")
+
+        uid = custom_data.get("firebase_uid") or custom_data.get("user_id") or ""
+        user = None
+        if uid:
+            user = await db.get_user(env, uid)
+        if not user and customer_email:
+            user = await db.get_user_by_email(env, customer_email)
+
+        target_uid = user.get("firebase_uid") if user else uid
+
+        # Upsert payment in D1 payments table
+        if tx_id and customer_id:
+            await db.upsert_payment(
+                env,
+                payment_id=tx_id,
+                customer_id=customer_id,
+                subscription_id=sub_id,
+                user_id=target_uid,
+                email=customer_email,
+                amount_cents=amount_cents,
+                currency=currency,
+                status=status,
+                card_brand=card_brand,
+                card_last4=card_last4,
+                invoice_id=invoice_id,
+                invoice_number=invoice_number,
+                billed_at=billed_at,
+            )
+
+        if customer_id and customer_email:
+            await db.upsert_customer(env, customer_id, customer_email)
+
+        if status in ("completed", "paid") and target_uid:
+            from datetime import datetime, timedelta, timezone
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=32)).isoformat()
+            await db.update_user_subscription(
+                env,
+                target_uid,
+                tier=C.TIER_PRO,
+                subscription_id=sub_id,
+                expires_at=expires_at,
+            )
+            print(f"[paddle-webhook] Transaction {tx_id} saved: user {target_uid} confirmed PRO", file=sys.stderr, flush=True)
+
+    return JSONResponse({"status": "ok", "event_id": event_id})
+
+
+# --------------------------------------------------------------------------- #
+# Paddle HTTP Helper (using Cloudflare Workers native js_fetch)
+# --------------------------------------------------------------------------- #
+async def _paddle_http_call(method: str, url: str, api_key: str, body: dict | None = None) -> tuple[int, dict]:
+    """Execute an outbound HTTP request to Paddle API safely in Cloudflare Workers using js_fetch."""
+    try:
+        from js import fetch as js_fetch, JSON as js_JSON
+        init_dict = {
+            "method": method,
+            "headers": {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+        }
+        if body is not None:
+            init_dict["body"] = json.dumps(body)
+
+        init = js_JSON.parse(json.dumps(init_dict))
+        resp = await js_fetch(url, init)
+        raw = await resp.text()
+        status = int(getattr(resp, "status", 200))
+        data = json.loads(raw) if raw else {}
+        return status, data
+    except ImportError:
+        # Local development fallback
+        import urllib.request
+        import urllib.error
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        req_data = json.dumps(body).encode("utf-8") if body is not None else None
+        req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                raw = resp.read().decode("utf-8")
+                return resp.status, json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as e:
+            raw = e.read().decode("utf-8")
+            return e.code, json.loads(raw) if raw else {"error": str(e)}
+        except Exception as e:
+            return 500, {"error": str(e)}
+
+
+# --------------------------------------------------------------------------- #
+# Customer Portal Session Minting (Paddle Self-Service Portal)
+# --------------------------------------------------------------------------- #
+@app.post("/v1/billing/customer-portal")
+async def get_customer_portal_session(request: Request):
+    """Mint a Paddle customer portal session URL for the authenticated user."""
+    env = _bindings(request)
+    
+    # 1. Authenticate user from Firebase Bearer Token
+    auth_header = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not auth_header:
+        return JSONResponse({"error": "missing_authorization_header"}, status_code=401)
+
+    try:
+        claims = await firebase.verify_token(auth_header, env)
+    except firebase.AuthError as e:
+        return _auth_reject(e)
+
+    uid = claims.get("uid", "")
+    email = (claims.get("email") or "").strip().lower()
+    
+    user = await db.get_user(env, uid)
+    if not user:
+        return JSONResponse({"error": "user_not_found"}, status_code=404)
+
+    # 2. Resolve Paddle customer ID server-side
+    customer_id = None
+    if email:
+        cust_row = await db.get_customer_by_email(env, email)
+        if cust_row:
+            cid = cust_row.get("customer_id")
+            if cid and not str(cid).startswith("ctm_sandbox_test"):
+                customer_id = cid
+
+    sub_id = user.get("subscription_id")
+    if not customer_id and sub_id:
+        sub_row = await db.get_subscription_by_id(env, sub_id)
+        if sub_row:
+            cid = sub_row.get("customer_id")
+            if cid and not str(cid).startswith("ctm_sandbox_test"):
+                customer_id = cid
+
+    # API credentials
+    api_key = (
+        getattr(env, "PADDLE_API_KEY", None)
+        or os.environ.get("PADDLE_API_KEY", "")
+    )
+    paddle_env = (
+        getattr(env, "PUBLIC_PADDLE_ENVIRONMENT", None)
+        or getattr(env, "PADDLE_ENVIRONMENT", "sandbox")
+    )
+    is_sandbox = "sdbx" in api_key or paddle_env == "sandbox"
+    base_url = "https://sandbox-api.paddle.com" if is_sandbox else "https://api.paddle.com"
+
+    # If customer_id not found in DB, try looking up via Paddle API by email
+    if (not customer_id or str(customer_id).startswith("ctm_sandbox_test")) and email and api_key:
+        try:
+            lookup_url = f"{base_url}/customers?email={email}"
+            status, lookup_data = await _paddle_http_call("GET", lookup_url, api_key)
+            if status == 200:
+                customers_found = lookup_data.get("data", [])
+                if customers_found:
+                    customer_id = customers_found[0].get("id")
+                    if customer_id:
+                        await db.upsert_customer(env, customer_id, email)
+        except Exception as e:
+            import sys
+            print(f"[customer-portal] Paddle customer lookup error: {e}", file=sys.stderr, flush=True)
+
+    if not customer_id:
+        return JSONResponse({
+            "error": "no_paddle_customer",
+            "message": "No active billing profile found for your account. Subscribe to a plan first."
+        }, status_code=404)
+
+    # 3. Mint Portal Session with Paddle API
+    try:
+        portal_url = f"{base_url}/customers/{customer_id}/portal-sessions"
+        status, portal_res = await _paddle_http_call("POST", portal_url, api_key, body={})
+        if status not in (200, 201):
+            err_msg = portal_res.get("error", {}).get("detail") or json.dumps(portal_res)
+            return JSONResponse({"error": "paddle_portal_error", "details": err_msg}, status_code=status)
+
+        urls = portal_res.get("data", {}).get("urls", {})
+        general_url = (urls.get("general") or {}).get("overview") or urls.get("overview")
+        return JSONResponse({
+            "success": True,
+            "url": general_url,
+            "customer_id": customer_id,
+            "urls": urls
+        })
+    except Exception as e:
+        import sys
+        print(f"[customer-portal] Exception: {e}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "portal_session_failed", "details": str(e)}, status_code=500)
+
+
+# --------------------------------------------------------------------------- #
+# Direct Paddle PDF Invoice / Receipt Downloader
+# --------------------------------------------------------------------------- #
+@app.get("/v1/billing/invoice-pdf")
+async def get_invoice_pdf_url(request: Request):
+    """Retrieve direct Paddle S3 PDF download URL for a given transaction."""
+    env = _bindings(request)
+    auth_header = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not auth_header:
+        return JSONResponse({"error": "missing_authorization_header"}, status_code=401)
+
+    try:
+        claims = await firebase.verify_token(auth_header, env)
+    except firebase.AuthError as e:
+        return _auth_reject(e)
+
+    transaction_id = request.query_params.get("transaction_id", "").strip()
+    if not transaction_id:
+        return JSONResponse({"error": "missing_transaction_id"}, status_code=400)
+
+    api_key = getattr(env, "PADDLE_API_KEY", None) or os.environ.get("PADDLE_API_KEY", "")
+    paddle_env = getattr(env, "PUBLIC_PADDLE_ENVIRONMENT", None) or getattr(env, "PADDLE_ENVIRONMENT", "sandbox")
+    is_sandbox = "sdbx" in api_key or paddle_env == "sandbox"
+    base_url = "https://sandbox-api.paddle.com" if is_sandbox else "https://api.paddle.com"
+
+    try:
+        url = f"{base_url}/transactions/{transaction_id}/invoice"
+        status, data = await _paddle_http_call("GET", url, api_key)
+        pdf_url = data.get("data", {}).get("url")
+        if not pdf_url:
+            return JSONResponse({"error": "pdf_not_found", "details": data}, status_code=404)
+        return JSONResponse({"success": True, "url": pdf_url})
+    except Exception as e:
+        import sys
+        print(f"[invoice-pdf] Exception: {e}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "failed_to_fetch_pdf", "details": str(e)}, status_code=500)
+
+
+# --------------------------------------------------------------------------- #
+# Switch Billing Period (monthly <-> yearly) — updates the SAME subscription
+# so a plan change never creates a duplicate one.
+# --------------------------------------------------------------------------- #
+@app.post("/v1/billing/switch-plan")
+async def switch_billing_plan(request: Request):
+    """Switch the user's active subscription between monthly and yearly prices.
+
+    Body: {"price_id": "pri_..."} — must differ from the current price.
+    """
+    env = _bindings(request)
+    auth_header = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not auth_header:
+        return JSONResponse({"error": "missing_authorization_header"}, status_code=401)
+    try:
+        claims = await firebase.verify_token(auth_header, env)
+    except firebase.AuthError as e:
+        return _auth_reject(e)
+
+    body = await _read_json(request) or {}
+    new_price_id = str(body.get("price_id") or "").strip()
+    if not new_price_id.startswith("pri_"):
+        return JSONResponse({"error": "bad_request", "message": "price_id required (pri_...)"}, status_code=400)
+
+    uid = claims.get("uid", "")
+    user = await db.get_user(env, uid)
+    if not user:
+        user = await db.get_user_by_email(env, (claims.get("email") or "").strip().lower())
+    sub_id = (user or {}).get("subscription_id")
+    if not sub_id:
+        return JSONResponse({"error": "no_active_subscription", "message": "Buy a Pro plan first."}, status_code=404)
+
+    current = await db.get_subscription_by_id(env, sub_id) or {}
+    if current.get("price_id") == new_price_id:
+        return JSONResponse({"error": "already_on_this_plan"}, status_code=409)
+
+    api_key = getattr(env, "PADDLE_API_KEY", None) or os.environ.get("PADDLE_API_KEY", "")
+    is_sandbox = "sdbx" in api_key
+    base_url = "https://sandbox-api.paddle.com" if is_sandbox else "https://api.paddle.com"
+
+    try:
+        url = f"{base_url}/subscriptions/{sub_id}"
+        status, data = await _paddle_http_call("PATCH", url, api_key, body={
+            "items": [{"price_id": new_price_id, "quantity": 1}],
+            "proration_billing_mode": "prorated_immediately",
+        })
+        if status not in (200, 201):
+            return JSONResponse({"error": "paddle_switch_error", "details": data}, status_code=status)
+
+        items = (data.get("data") or {}).get("items") or [{}]
+        new_price = (items[0].get("price") or {}).get("id") or new_price_id
+        await db.upsert_paddle_subscription(
+            env, subscription_id=sub_id,
+            customer_id=data.get("data", {}).get("customer_id", ""),
+            status=data.get("data", {}).get("status", "active"),
+            price_id=new_price,
+        )
+        return {"success": True, "message": "Billing period switched.", "subscription": data.get("data")}
+    except Exception as e:
+        print(f"[switch-plan] Exception: {e}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "switch_failed", "details": str(e)}, status_code=500)
+
+
+@app.post("/v1/billing/cancel-subscription")
+async def cancel_user_subscription(request: Request):
+    """Cancel user's recurring subscription effective at the end of the current billing cycle."""
+    env = _bindings(request)
+    auth_header = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not auth_header:
+        return JSONResponse({"error": "missing_authorization_header"}, status_code=401)
+
+    try:
+        claims = await firebase.verify_token(auth_header, env)
+    except firebase.AuthError as e:
+        return _auth_reject(e)
+
+    uid = claims.get("uid", "")
+    email = (claims.get("email") or "").strip().lower()
+
+    user = await db.get_user(env, uid)
+    if not user and email:
+        user = await db.get_user_by_email(env, email)
+
+    sub_id = (user or {}).get("subscription_id")
+    if not sub_id:
+        cust = await db.get_customer_by_email(env, email) if email else None
+        if cust:
+            sub_row = await db._fetch_one(
+                env,
+                "SELECT subscription_id FROM subscriptions WHERE customer_id = ?1 AND status IN ('active', 'trialing') ORDER BY updated_at DESC LIMIT 1",
+                cust.get("customer_id")
+            )
+            if sub_row:
+                sub_id = sub_row.get("subscription_id")
+
+    if not sub_id:
+        return JSONResponse({"error": "no_active_subscription", "message": "No active subscription found to cancel."}, status_code=404)
+
+    api_key = getattr(env, "PADDLE_API_KEY", None) or os.environ.get("PADDLE_API_KEY", "")
+    paddle_env = getattr(env, "PUBLIC_PADDLE_ENVIRONMENT", None) or getattr(env, "PADDLE_ENVIRONMENT", "sandbox")
+    is_sandbox = "sdbx" in api_key or paddle_env == "sandbox"
+    base_url = "https://sandbox-api.paddle.com" if is_sandbox else "https://api.paddle.com"
+
+    try:
+        url = f"{base_url}/subscriptions/{sub_id}/cancel"
+        status, data = await _paddle_http_call("POST", url, api_key, body={"effective_from": "next_billing_period"})
+        if status not in (200, 201):
+            return JSONResponse({"error": "paddle_cancel_error", "details": data}, status_code=status)
+
+        sched_at = data.get("data", {}).get("scheduled_change", {}).get("effective_at")
+        await db.upsert_paddle_subscription(
+            env,
+            subscription_id=sub_id,
+            customer_id=data.get("data", {}).get("customer_id", ""),
+            status=data.get("data", {}).get("status", "active"),
+            scheduled_change_action="cancel",
+            scheduled_change_at=sched_at,
+        )
+
+        return JSONResponse({
+            "success": True,
+            "message": "Subscription cancellation scheduled successfully. Pro access remains active until the end of the billing period.",
+            "effective_at": sched_at,
+            "subscription": data.get("data")
+        })
+    except Exception as e:
+        import sys
+        print(f"[cancel-subscription] Exception: {e}", file=sys.stderr, flush=True)
+        return JSONResponse({"error": "cancel_failed", "details": str(e)}, status_code=500)
+
+
+# --------------------------------------------------------------------------- #
+# User Dashboard Data: Usage Graph & Paddle Billing / Payment History
+# --------------------------------------------------------------------------- #
+@app.get("/v1/user/dashboard-data")
+async def get_user_dashboard_data(request: Request):
+    """Return consolidated usage chart data, subscription metrics, and billing records."""
+    env = _bindings(request)
+    auth_header = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not auth_header:
+        return JSONResponse({"error": "missing_authorization_header"}, status_code=401)
+
+    try:
+        claims = await firebase.verify_token(auth_header, env)
+    except firebase.AuthError as e:
+        return _auth_reject(e)
+
+    uid = claims.get("uid", "")
+    email = (claims.get("email") or "").strip().lower()
+
+    user = await db.get_user(env, uid)
+    if not user:
+        user = await db.get_user_by_email(env, email)
+
+    tier = db.get_effective_tier(user) if user else C.TIER_FREE
+
+    # 1. Quota & Limits
+    try:
+        cfg = (await db.get_free_quota(env)) or {}
+    except Exception:
+        cfg = {}
+
+    v_limit = (-1 if tier == C.TIER_PRO or cfg.get("cadence") == C.CADENCE_UNLIMITED
+               else int(cfg.get("limit") or C.DEFAULT_FREE_DAILY_LIMIT))
+    used_today = await _d1_used_today(env, uid) if uid else 0
+    v_remaining = -1 if (tier == C.TIER_PRO or v_limit == -1) else max(0, v_limit - (used_today or 0))
+    resets_in_seconds = max(0, int(86400 - (time.time() % 86400)))
+
+    # 2. 14-Day Usage Graph Data
+    cutoff_ts = int(time.time()) - (14 * 86400)
+    usage_rows = await db._fetch_all(
+        env,
+        "SELECT substr(date(ts, 'unixepoch'), 1, 10) AS day, "
+        "       COUNT(*) AS total_requests, "
+        "       SUM(CASE WHEN cache_hit THEN 1 ELSE 0 END) AS cache_hits "
+        "FROM usage_log "
+        "WHERE user_id = ?1 AND ts >= ?2 "
+        "GROUP BY day ORDER BY day ASC",
+        uid, cutoff_ts,
+    )
+
+    # 3. Subscription & Customer Mirror
+    customer_id = None
+    if email:
+        cust_row = await db.get_customer_by_email(env, email)
+        if cust_row:
+            customer_id = cust_row.get("customer_id")
+
+    sub_row = None
+    sub_id = (user or {}).get("subscription_id")
+    if sub_id:
+        sub_row = await db.get_subscription_by_id(env, sub_id)
+        if sub_row and not customer_id:
+            customer_id = sub_row.get("customer_id")
+    elif customer_id:
+        sub_row = await db._fetch_one(
+            env, "SELECT * FROM subscriptions WHERE customer_id = ?1 ORDER BY updated_at DESC LIMIT 1", customer_id
+        )
+
+    # 4. Paddle Transactions & Invoices
+    api_key = getattr(env, "PADDLE_API_KEY", None) or os.environ.get("PADDLE_API_KEY", "")
+    paddle_env = getattr(env, "PUBLIC_PADDLE_ENVIRONMENT", None) or getattr(env, "PADDLE_ENVIRONMENT", "sandbox")
+    is_sandbox = "sdbx" in api_key or paddle_env == "sandbox"
+    base_url = "https://sandbox-api.paddle.com" if is_sandbox else "https://api.paddle.com"
+
+    transactions_list = []
+    total_paid_cents = 0
+
+    target_customer_ids = set()
+    if customer_id and not str(customer_id).startswith("ctm_sandbox_test"):
+        target_customer_ids.add(customer_id)
+
+    if api_key and email:
+        try:
+            c_url = f"{base_url}/customers?email={email}"
+            c_status, c_data = await _paddle_http_call("GET", c_url, api_key)
+            if c_status == 200:
+                for c_item in c_data.get("data", []):
+                    cid = c_item.get("id")
+                    if cid:
+                        target_customer_ids.add(cid)
+                        customer_id = cid
+                        await db.upsert_customer(env, cid, email)
+        except Exception:
+            pass
+
+    seen_tx_ids = set()
+    for cid in target_customer_ids:
+        try:
+            t_url = f"{base_url}/transactions?customer_id={cid}&order_by=created_at[DESC]"
+            t_status, t_data = await _paddle_http_call("GET", t_url, api_key)
+            if t_status == 200:
+                for tx in t_data.get("data", []):
+                    tx_id = tx.get("id")
+                    if not tx_id or tx_id in seen_tx_ids:
+                        continue
+                    seen_tx_ids.add(tx_id)
+                    status = tx.get("status", "")
+                    
+                    # Filter out draft/incomplete/ready attempts - only show actual completed/paid invoices
+                    if status not in ("completed", "paid"):
+                        continue
+
+                    totals = tx.get("details", {}).get("totals", {})
+                    total_str = totals.get("total", "0")
+                    currency = totals.get("currency_code", "USD")
+                    
+                    try:
+                        cents = int(total_str)
+                    except (ValueError, TypeError):
+                        cents = 0
+
+                    if cents == 0:
+                        # Skip $0 trial authorization setup rows
+                        continue
+
+                    total_paid_cents += cents
+
+                    # Card info
+                    payments = tx.get("payments", [])
+                    card_brand = "Card"
+                    card_last4 = ""
+                    if payments and isinstance(payments, list):
+                        m_details = (payments[0].get("method_details") or {}).get("card") or {}
+                        card_brand = (m_details.get("type") or "Card").capitalize()
+                        card_last4 = m_details.get("last4") or ""
+
+                    # Persist to local DB payments table
+                    try:
+                        await db.upsert_payment(
+                            env,
+                            payment_id=tx_id,
+                            customer_id=cid,
+                            subscription_id=tx.get("subscription_id"),
+                            user_id=uid,
+                            email=email,
+                            amount_cents=cents,
+                            currency=currency,
+                            status=status,
+                            card_brand=card_brand,
+                            card_last4=card_last4,
+                            invoice_id=tx.get("invoice_id"),
+                            invoice_number=tx.get("invoice_number"),
+                            billed_at=tx.get("billed_at") or tx.get("created_at"),
+                        )
+                    except Exception:
+                        pass
+
+                    formatted_amt = f"${(cents / 100):.2f} {currency}"
+
+                    transactions_list.append({
+                        "id": tx_id,
+                        "status": status,
+                        "amount": formatted_amt,
+                        "currency": currency,
+                        "date": tx.get("billed_at") or tx.get("created_at"),
+                        "invoice_number": tx.get("invoice_number"),
+                        "invoice_id": tx.get("invoice_id"),
+                        "card_brand": card_brand,
+                        "card_last4": card_last4,
+                    })
+        except Exception as err:
+            import sys
+            print(f"[dashboard-data] Transaction fetch error for {cid}: {err}", file=sys.stderr, flush=True)
+
+    # Fallback to DB payments if Paddle API returned empty
+    if not transactions_list:
+        try:
+            db_payments = await db.get_payments_for_user(env, email=email, customer_id=customer_id, user_id=uid)
+            for p in db_payments:
+                p_cents = p.get("amount_cents") or 0
+                p_curr = p.get("currency") or "USD"
+                p_status = p.get("status") or "completed"
+                if p_status not in ("completed", "paid") or p_cents == 0:
+                    continue
+                total_paid_cents += p_cents
+                transactions_list.append({
+                    "id": p.get("id"),
+                    "status": p_status,
+                    "amount": f"${(p_cents / 100):.2f} {p_curr}",
+                    "currency": p_curr,
+                    "date": p.get("billed_at") or p.get("created_at"),
+                    "invoice_number": p.get("invoice_number"),
+                    "invoice_id": p.get("invoice_id"),
+                    "card_brand": p.get("card_brand") or "Card",
+                    "card_last4": p.get("card_last4") or "",
+                })
+        except Exception:
+            pass
+
+    # Build enhanced subscription object with exact pricing and billing cycle
+    sub_dict = dict(sub_row) if sub_row else {}
+    price_id = sub_dict.get("price_id") or ""
+    is_yearly = False
+    
+    if "year" in price_id.lower() or "pri_01m0ttns" in price_id:
+        is_yearly = True
+    elif total_paid_cents > 1500 or any(float((t.get("amount") or "0").replace("$", "").split()[0]) > 10 for t in transactions_list):
+        is_yearly = True
+    elif user and user.get("expires_at"):
+        try:
+            import datetime as dt
+            exp_str = str(user["expires_at"]).replace("Z", "+00:00")
+            exp_d = dt.datetime.fromisoformat(exp_str)
+            if (exp_d - dt.datetime.now(dt.timezone.utc)).days > 60:
+                is_yearly = True
+        except Exception:
+            pass
+
+    if tier == C.TIER_PRO:
+        sub_dict["is_yearly"] = is_yearly
+        sub_dict["interval"] = "year" if is_yearly else "month"
+        sub_dict["billing_cycle"] = "Yearly recurring" if is_yearly else "Monthly recurring"
+        sub_dict["formatted_price"] = "$38.30 / year" if is_yearly else "$3.99 / month"
+        sub_dict["plan_name"] = "VidRank Pro Yearly" if is_yearly else "VidRank Pro Monthly"
+    else:
+        sub_dict["is_yearly"] = False
+        sub_dict["interval"] = "none"
+        sub_dict["billing_cycle"] = "No recurring cycle"
+        sub_dict["formatted_price"] = "$0.00 / free"
+        sub_dict["plan_name"] = "Free Plan"
+
+    return JSONResponse({
+        "user": {
+            "uid": uid,
+            "email": email,
+            "name": (user or {}).get("name") or claims.get("name") or email.split("@")[0],
+            "photo_url": (user or {}).get("photo_url") or claims.get("picture"),
+            "tier": tier,
+            "is_active": (user or {}).get("is_active", 1),
+            "expires_at": (user or {}).get("expires_at"),
+        },
+        "quota": {
+            "tier": tier,
+            "remaining": v_remaining,
+            "limit": v_limit,
+            "used_today": used_today or 0,
+            "resets_in_seconds": resets_in_seconds,
+        },
+        "usage_chart": usage_rows,
+        "subscription": sub_dict,
+        "billing": {
+            "customer_id": customer_id,
+            "total_paid": f"${(total_paid_cents / 100):.2f}",
+            "transactions": transactions_list,
+        }
+    })
+
+
+
+
+
+# --------------------------------------------------------------------------- #
 # admin API
+# --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Cookie helpers
+# --------------------------------------------------------------------------- #
+_REFRESH_COOKIE = "admin_refresh"
+_REFRESH_MAX_AGE = admin_mod.REFRESH_TOKEN_TTL_S
+
+
+def _set_refresh_cookie(response: JSONResponse, token: str) -> JSONResponse:
+    """Attach the httpOnly refresh-token cookie to a JSONResponse."""
+    # SameSite=None + Secure required for cross-origin (Pages → Workers).
+    # In local dev (http://localhost) the browser may ignore Secure; that is fine.
+    response.set_cookie(
+        key=_REFRESH_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=_REFRESH_MAX_AGE,
+        path="/admin",
+    )
+    return response
+
+
+def _clear_refresh_cookie(response: JSONResponse) -> JSONResponse:
+    response.set_cookie(
+        key=_REFRESH_COOKIE,
+        value="",
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=0,
+        path="/admin",
+    )
+    return response
+
+
+def _read_refresh_cookie(request: Request) -> str:
+    """Read admin_refresh cookie from the request."""
+    cookie_header = request.headers.get("cookie", "")
+    for part in cookie_header.split(";"):
+        part = part.strip()
+        if part.startswith(f"{_REFRESH_COOKIE}="):
+            return part[len(_REFRESH_COOKIE) + 1:]
+    return ""
+
+
+# --------------------------------------------------------------------------- #
+# /admin/login  (POST — credentials, GET — session probe)
 # --------------------------------------------------------------------------- #
 @app.api_route("/admin/login", methods=["POST", "GET", "PUT", "PATCH"])
 async def admin_login(request: Request):
-    """Login. Super admin: {password}. Sub-admin: {username, password}."""
+    """Login.
+
+    POST {password}                     — super admin login
+    POST {username, password}           — sub-admin login
+    GET  (with valid admin_refresh cookie) — returns current session info
+                                           so the frontend can restore state
+                                           after a page reload without re-login.
+    """
     env = _bindings(request)
+
+    # GET: non-destructive session probe — validate refresh cookie and return
+    # current role/username so the frontend can restore in-memory access token.
     if request.method == "GET":
-        return JSONResponse({"status": "login_endpoint_active"})
+        refresh_tok = _read_refresh_cookie(request)
+        if not refresh_tok:
+            return JSONResponse({"status": "no_session"}, status_code=401)
+        claims = admin_mod.verify_jwt(env, refresh_tok, expected_type="refresh")
+        if not claims:
+            resp = JSONResponse({"status": "session_expired"}, status_code=401)
+            return _clear_refresh_cookie(resp)
+        # Issue a fresh access token so the frontend can continue seamlessly.
+        access_token = admin_mod.issue_access_token(env, claims["role"], claims["sid"])
+        username = None
+        if claims["role"] == "sub" and claims.get("sid"):
+            sub = await db.get_sub_admin(env, claims["sid"])
+            username = (sub or {}).get("username")
+        return JSONResponse({
+            "ok": True,
+            "access_token": access_token,
+            "access_token_ttl_s": admin_mod.ACCESS_TOKEN_TTL_S,
+            "role": claims["role"],
+            "username": username,
+        })
+
     body = await _read_json(request)
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
-    username = str(body.get("username") or "").strip()
+
+    username_in = str(body.get("username") or "").strip()
     password = str(body.get("password") or "")
-    if username:
-        sub = await db.get_sub_admin_by_username(env, username)
+
+    # --- sub-admin login ---
+    if username_in:
+        sub = await db.get_sub_admin_by_username(env, username_in)
         if not sub or not sub.get("is_active"):
             return JSONResponse({"error": "invalid_credentials"}, status_code=401)
         if not admin_mod.verify_sub_password(password, sub.get("pass_hash") or ""):
             return JSONResponse({"error": "invalid_credentials"}, status_code=401)
-        return {
-            "token": admin_mod.issue_token(env, role="sub", sid=sub["id"]),
-            "expires_in_s": admin_mod.ADMIN_SESSION_TTL_S,
+        access_token  = admin_mod.issue_access_token(env,  role="sub", sid=sub["id"])
+        refresh_token = admin_mod.issue_refresh_token(env, role="sub", sid=sub["id"])
+        resp = JSONResponse({
+            "ok": True,
+            "access_token": access_token,
+            "access_token_ttl_s": admin_mod.ACCESS_TOKEN_TTL_S,
             "role": "sub",
             "username": sub["username"],
-        }
+        })
+        return _set_refresh_cookie(resp, refresh_token)
+
+    # --- super-admin login ---
     if not admin_mod.check_admin_password(env, password):
         return JSONResponse({"error": "invalid_credentials"}, status_code=401)
-    return {
-        "token": admin_mod.issue_token(env),
-        "expires_in_s": admin_mod.ADMIN_SESSION_TTL_S,
+    access_token  = admin_mod.issue_access_token(env)
+    refresh_token = admin_mod.issue_refresh_token(env)
+    resp = JSONResponse({
+        "ok": True,
+        "access_token": access_token,
+        "access_token_ttl_s": admin_mod.ACCESS_TOKEN_TTL_S,
         "role": "admin",
-    }
+    })
+    return _set_refresh_cookie(resp, refresh_token)
 
 
+# --------------------------------------------------------------------------- #
+# /admin/refresh  — silent re-issue of access token using refresh cookie
+# --------------------------------------------------------------------------- #
+@app.post("/admin/refresh")
+async def admin_refresh(request: Request):
+    """Exchange valid refresh cookie for a new access token (silent re-auth)."""
+    env = _bindings(request)
+    refresh_tok = _read_refresh_cookie(request)
+    if not refresh_tok:
+        return JSONResponse({"error": "no_refresh_cookie"}, status_code=401)
+    claims = admin_mod.verify_jwt(env, refresh_tok, expected_type="refresh")
+    if not claims:
+        resp = JSONResponse({"error": "refresh_token_invalid"}, status_code=401)
+        return _clear_refresh_cookie(resp)
+    access_token = admin_mod.issue_access_token(env, claims["role"], claims["sid"])
+    return JSONResponse({
+        "ok": True,
+        "access_token": access_token,
+        "access_token_ttl_s": admin_mod.ACCESS_TOKEN_TTL_S,
+        "role": claims["role"],
+    })
+
+
+# --------------------------------------------------------------------------- #
+# /admin/logout  — invalidate session by clearing refresh cookie
+# --------------------------------------------------------------------------- #
+@app.post("/admin/logout")
+async def admin_logout(request: Request):
+    """Clear the refresh-token cookie (client must also discard access token)."""
+    resp = JSONResponse({"ok": True})
+    return _clear_refresh_cookie(resp)
+
+
+# --------------------------------------------------------------------------- #
+# Auth guard helpers (used by all other admin routes)
+# --------------------------------------------------------------------------- #
 async def _admin(request: Request) -> dict | None:
+    """Verify the access JWT from Authorization: Bearer header."""
     env = _bindings(request)
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    return admin_mod.verify_token(env, token)
+    return admin_mod.verify_jwt(env, token, expected_type="access")
 
 
 async def _super(request: Request) -> bool:
@@ -1138,10 +2174,12 @@ async def admin_list_all_accounts(request: Request):
     env = _bindings(request)
     if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    accounts = await db.list_accounts(env)
-    for a in accounts:
+    accounts, err = await _t(db.list_accounts(env), 5.0)
+    if err:
+        return JSONResponse({"error": "db_timeout"}, status_code=504)
+    for a in accounts or []:
         a["key_preview"] = admin_mod.mask_key(env, a.pop("key_enc", "")) if a.get("key_enc") else ""
-    return {"accounts": accounts}
+    return {"accounts": accounts or []}
 
 
 @app.get("/admin/accounts/usage")
@@ -1235,8 +2273,8 @@ async def admin_add_account(request: Request):
     if body is None:
         return JSONResponse({"error": "bad_request"}, status_code=400)
     provider = body.get("provider", "")
-    if provider not in ("groq", "openrouter"):
-        return JSONResponse({"error": "provider must be groq|openrouter"}, status_code=400)
+    if provider != "openrouter":
+        return JSONResponse({"error": "provider must be openrouter"}, status_code=400)
     if not body.get("key"):
         return JSONResponse({"error": "key required"}, status_code=400)
     account_id = uuid.uuid4().hex[:16]
@@ -1290,15 +2328,28 @@ async def admin_delete_account(request: Request, account_id: str):
     return {"deleted": account_id}
 
 
+async def _t(coro, seconds: float = 5.0):
+    # Guard against JS-bridge calls that hang forever — a clean timeout
+    # surfaces as a logged error instead of a runtime "worker hung" cancel.
+    try:
+        return await asyncio.wait_for(coro, seconds), None
+    except Exception as e:
+        return None, e
+
+
 @app.get("/admin/accounts/health")
 async def admin_accounts_health(request: Request):
     env = _bindings(request)
     if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     out = {}
-    for a in await db.list_enabled_accounts(env):
+    accounts, err = await _t(db.list_enabled_accounts(env))
+    if err:
+        return JSONResponse({"error": "db_timeout"}, status_code=504)
+    for a in accounts or []:
         try:
-            out[a["id"]] = await env.RATESTATE.get(env.RATESTATE.idFromName(a["id"])).get_health()
+            h, terr = await _t(env.RATESTATE.get(env.RATESTATE.idFromName(a["id"])).get_health(), 3.0)
+            out[a["id"]] = h if terr is None else {"health": None, "timeout": True}
         except Exception:
             out[a["id"]] = {"health": None}
     return {"health": out}
@@ -1309,14 +2360,8 @@ async def admin_account_usage(request: Request, account_id: str):
     env = _bindings(request)
     if not await _super(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    try:
-        acc = await db.get_account(env, account_id)
-    except Exception:
-        acc = None
-    try:
-        live = await env.RATESTATE.get(env.RATESTATE.idFromName(account_id)).get_live()
-    except Exception:
-        live = None
+    acc, _ = await _t(db.get_account(env, account_id), 5.0)
+    live, _ = await _t(env.RATESTATE.get(env.RATESTATE.idFromName(account_id)).get_live(), 3.0)
     return {"live": live, "limit": (acc or {}).get("daily_limit"),
             "rpm_limit": (acc or {}).get("rpm_limit")}
 
@@ -1423,7 +2468,7 @@ async def admin_set_user(request: Request, uid: str):
         t_val = str(tier).strip().lower()
         if t_val == "free" and before.get("tier") == "pro":
             exp_raw = before.get("expires_at")
-            if exp_raw:
+            if exp_raw and not body.get("force"):
                 try:
                     exp_ts = int(exp_raw) if str(exp_raw).isdigit() else 0
                     if exp_ts > int(time.time()):
@@ -1440,6 +2485,13 @@ async def admin_set_user(request: Request, uid: str):
             pass
         await db.set_user_tier(env, uid, t_val)
         details["tier"] = {"from": before.get("tier", "free"), "to": t_val}
+        if t_val == "free":
+            # Downgrade to free: clear any active Pro expiry so quota falls back to free.
+            try:
+                await env.DB.prepare(
+                    "UPDATE users SET expires_at=NULL WHERE firebase_uid=?1").bind(uid).run()
+            except Exception:
+                pass
 
     # Pro duration handling (1 month / 15 days / 7 days / custom days)
     duration_days = body.get("duration_days") or body.get("durationDays")

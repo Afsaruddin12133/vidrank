@@ -1,0 +1,68 @@
+---
+import Icon from "./Icon.astro";
+import { getAllPosts } from "../lib/blog";
+
+const sec = "py-[110px] px-[8vw] mx-auto max-w-[1440px] max-[900px]:py-[80px] max-[620px]:py-[60px]";
+const h2 = "font-outfit font-extrabold text-[clamp(34px,4.2vw,56px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const introP = "max-w-[540px] text-muted text-[15px] leading-[1.7]";
+
+const allPosts = await getAllPosts();
+const posts = allPosts.slice(0, 3);
+---
+
+<section id="blog" class={`${sec} border-t border-line`}>
+  <div class="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6" data-reveal>
+    <div>
+      <span class={eyebrow}><i class={dot}></i>CREATOR INSIGHTS & STRATEGY</span>
+      <h2 class={h2}>Learn how to <span>rank higher</span> on YouTube.</h2>
+      <p class={introP}>Actionable guides, algorithmic breakdowns, and metadata optimization strategies to grow your audience.</p>
+    </div>
+    <a href="/blog" class="inline-flex items-center gap-2 text-white text-[13px] font-semibold hover:text-cyan transition-colors self-start md:self-end no-underline">
+      Explore all articles <span class="text-cyan"><Icon name="arrow-right" /></span>
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    {posts.map((post) => (
+      <article
+        class="group rounded-2xl p-7 bg-[#0c121e]/90 backdrop-blur-md border border-[rgba(137,190,255,0.16)] flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-[rgba(0,119,255,0.45)] hover:shadow-[0_16px_50px_rgba(0,119,255,0.15)] relative overflow-hidden"
+        data-reveal
+      >
+        <!-- Ambient Top Glow -->
+        <div class={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${post.accentGradient || "from-cyan/20 via-blue-500/10 to-transparent"} opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-300`}></div>
+
+        <div class="relative z-[1]">
+          <div class="flex items-center justify-between gap-2 mb-6">
+            <span class={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border ${post.categoryColor || "text-cyan bg-cyan/10 border-cyan/20"}`}>
+              {post.category}
+            </span>
+            <span class="text-[#8ea0b5] text-[11px] font-medium font-mono">{post.read_time}</span>
+          </div>
+
+          <div class="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] text-cyan flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+            <Icon name={(post.icon || "wand-sparkles") as any} />
+          </div>
+
+          <h3 class="font-outfit font-bold text-[20px] text-white leading-[1.35] mb-3 group-hover:text-cyan transition-colors">
+            <a href={`/blog/${post.slug}`} class="text-white hover:text-cyan no-underline">
+              {post.title}
+            </a>
+          </h3>
+
+          <p class="text-[#94a3b8] text-[13.5px] leading-[1.65] mb-6">
+            {post.description}
+          </p>
+        </div>
+
+        <div class="relative z-[1] pt-5 border-t border-white/[0.08] flex items-center justify-between text-[12px] text-[#8ea0b5]">
+          <span>{new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+          <a href={`/blog/${post.slug}`} class="inline-flex items-center gap-1.5 text-white font-semibold group-hover:text-cyan transition-colors no-underline">
+            Read guide <Icon name="arrow-right" />
+          </a>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>

@@ -1,28 +1,36 @@
 // vidrank API client. All calls are same-origin; vite dev proxy forwards
 // /v1 and /admin to the backend (see vite.config.js). Firebase ID token is
-// attached as `Authorization: Bearer <token>`.
+// attached as `Authorization: Bearer <access_token>`.
+//
+// Auth pattern (two-token):
+//   access_token  — HS256 JWT, 15 min TTL, kept in JS memory (never localStorage).
+//                   Sent as Authorization: Bearer header on every admin API call.
+//   refresh_token — HS256 JWT, 8 h TTL, stored ONLY in httpOnly Secure cookie
+//                   managed by the server. Never readable by JS.
+//                   Used by /admin/refresh to silently issue a new access_token.
 
-const TOKEN_KEY = 'vidrank_token'
 const ROLE_KEY = 'vidrank_role'
-let _token = localStorage.getItem(TOKEN_KEY) || ''
-let _role = localStorage.getItem(ROLE_KEY) || 'admin'
-
-// Backend base. Set VITE_API_BACKEND at build time when the dashboard is
-// served from a different origin than the backend (Pages). Empty = same-origin
-// (vite dev proxy forwards /v1 and /admin locally).
-const _BASE = (import.meta.env.VITE_API_BACKEND || 'https://vidrank-backend.fahad288ali.workers.dev').replace(/\/+$/, '')
-
 const USER_KEY = 'vidrank_user'
 
-// ---- admin login (password; optional username => sub-admin login) ----
-export const adminLogin = (password, username = '') =>
-  _json('/admin/login', 'POST', username ? { username, password } : { password })
-export const setToken = (token) => {
-  _token = (token || '').trim()
-  if (_token) localStorage.setItem(TOKEN_KEY, _token)
-  else localStorage.removeItem(TOKEN_KEY)
+// Access token lives ONLY in module memory — cleared on page refresh (intentional;
+// /admin/login GET restores it silently via the httpOnly refresh cookie).
+let _accessToken = ''
+let _role = localStorage.getItem(ROLE_KEY) || 'admin'
+
+// Backend base URL. Dev: same-origin (vite proxy forwards /v1 & /admin to local backend).
+// Production: deployed worker URL (or VITE_API_BACKEND override).
+const _BASE = (import.meta.env.VITE_API_BACKEND || (import.meta.env.DEV ? '' : 'https://vidrank-backend.fahad288ali.workers.dev')).replace(/\/+$/, '')
+
+// ---- token memory helpers (no localStorage for access token) ----
+export function setToken(token) {
+  _accessToken = (token || '').trim()
 }
-export const setRole = (role, username = '') => {
+
+export function getToken() {
+  return _accessToken
+}
+
+export function setRole(role, username = '') {
   _role = role === 'sub' ? 'sub' : 'admin'
   localStorage.setItem(ROLE_KEY, _role)
   if (username) {
@@ -31,6 +39,7 @@ export const setRole = (role, username = '') => {
     localStorage.removeItem(USER_KEY)
   }
 }
+
 export const getRole = () => _role
 
 export const getAdminUser = () => {
@@ -39,14 +48,9 @@ export const getAdminUser = () => {
   return _role === 'sub' ? 'Sub Admin' : 'Super Admin'
 }
 
-export function getToken() {
-  return _token
-}
-
 export function clearToken() {
-  _token = ''
+  _accessToken = ''
   _role = 'admin'
-  localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
   localStorage.removeItem(USER_KEY)
 }
@@ -58,15 +62,76 @@ export class ApiError extends Error {
   }
 }
 
-async function _req(path, options = {}) {
+// ---- internal fetch helpers ------------------------------------------------
+
+// _refreshing prevents concurrent refresh storms
+let _refreshing = null
+
+async function _tryRefresh() {
+  if (_refreshing) return _refreshing
+  _refreshing = (async () => {
+    try {
+      const resp = await fetch(_BASE + '/admin/refresh', {
+        method: 'POST',
+        credentials: 'include',   // send httpOnly refresh cookie
+      })
+      if (!resp.ok) return false
+      const data = await resp.json()
+      if (data.access_token) {
+        _accessToken = data.access_token
+        // Sync role if server echoed it
+        if (data.role) {
+          _role = data.role === 'sub' ? 'sub' : 'admin'
+          localStorage.setItem(ROLE_KEY, _role)
+        }
+        return true
+      }
+      return false
+    } catch {
+      return false
+    } finally {
+      _refreshing = null
+    }
+  })()
+  return _refreshing
+}
+
+/**
+ * Core fetch wrapper. Attaches access token, auto-refreshes once on 401.
+ * @param {string} path
+ * @param {RequestInit} options
+ * @param {boolean} withCookie  — set true for cookie-touching endpoints
+ */
+async function _req(path, options = {}, withCookie = false) {
   const headers = { ...(options.headers || {}) }
-  if (_token) headers['Authorization'] = `Bearer ${_token}`
+  if (_accessToken) headers['Authorization'] = `Bearer ${_accessToken}`
+
+  const fetchOpts = {
+    ...options,
+    headers,
+    ...(withCookie ? { credentials: 'include' } : {}),
+  }
+
   let resp
   try {
-    resp = await fetch(_BASE + path, { ...options, headers })
+    resp = await fetch(_BASE + path, fetchOpts)
   } catch {
     throw new ApiError('backend unreachable', 0)
   }
+
+  // Silently refresh on 401 and retry once
+  if (resp.status === 401 && !withCookie) {
+    const refreshed = await _tryRefresh()
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${_accessToken}`
+      try {
+        resp = await fetch(_BASE + path, { ...fetchOpts, headers })
+      } catch {
+        throw new ApiError('backend unreachable', 0)
+      }
+    }
+  }
+
   let body = null
   try {
     body = await resp.json()
@@ -80,9 +145,59 @@ async function _req(path, options = {}) {
   return body
 }
 
-const _get = (path) => _req(path)
+const _get  = (path) => _req(path)
 const _json = (path, method, payload) =>
   _req(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+// cookie-touching variant (credentials: include)
+const _cookiePost = (path, payload) =>
+  _req(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, true)
+
+// ---- auth API calls --------------------------------------------------------
+
+/** Login — POST /admin/login with credentials:include so server can set cookie */
+export async function adminLogin(password, username = '') {
+  const body = username ? { username, password } : { password }
+  const data = await _req(
+    '/admin/login',
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+    true, // credentials: include → server sets admin_refresh cookie
+  )
+  // Store access_token in memory; refresh_token is in the httpOnly cookie.
+  if (data.access_token) {
+    _accessToken = data.access_token
+  }
+  return data  // { ok, access_token, role, username? }
+}
+
+/** Logout — clears server-side cookie and wipes local access token */
+export async function adminLogout() {
+  try {
+    await _req('/admin/logout', { method: 'POST' }, true)
+  } catch {
+    // ignore network errors on logout
+  }
+  clearToken()
+}
+
+/** Restore session after page reload via GET /admin/login + refresh cookie */
+export async function restoreSession() {
+  try {
+    const resp = await fetch(_BASE + '/admin/login', { credentials: 'include' })
+    if (!resp.ok) return null
+    const data = await resp.json()
+    if (data.access_token) {
+      _accessToken = data.access_token
+      if (data.role) {
+        _role = data.role === 'sub' ? 'sub' : 'admin'
+        localStorage.setItem(ROLE_KEY, _role)
+      }
+      if (data.username) localStorage.setItem(USER_KEY, data.username)
+    }
+    return data  // { ok, access_token, role, username? }
+  } catch {
+    return null
+  }
+}
 
 // ---- /v1 user endpoints ----
 export const getMe = () => _get('/v1/me')
@@ -163,6 +278,10 @@ export const setUserStatus = (uid, isActive, targetEmail = '') => {
   return _json(`/admin/users/${uid}`, 'PATCH', { is_active: isActive ? 1 : 0 })
 }
 export const approveUser = (uid, targetEmail = '') => setUserTier(uid, 'pro', targetEmail)
+export const makeUserFree = (uid, targetEmail = '') => {
+  recordLocalSubActivity('set_user', uid, targetEmail, { tier: { to: 'free' } })
+  return _json(`/admin/users/${uid}`, 'PATCH', { tier: 'free', force: true })
+}
 export const resetUserQuota = (uid, targetEmail = '') => {
   recordLocalSubActivity('reset_quota', uid, targetEmail)
   return _json(`/admin/users/${uid}/reset-quota`, 'POST')

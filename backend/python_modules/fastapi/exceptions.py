@@ -1,5 +1,5 @@
-from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, TypedDict
+from collections.abc import Sequence
+from typing import Annotated, Any, Optional, TypedDict, Union
 
 from annotated_doc import Doc
 from pydantic import BaseModel, create_model
@@ -49,9 +49,6 @@ class HTTPException(StarletteHTTPException):
             Doc(
                 """
                 HTTP status code to send to the client.
-
-                Read more about it in the
-                [FastAPI docs for Handling Errors](https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception)
                 """
             ),
         ],
@@ -61,21 +58,14 @@ class HTTPException(StarletteHTTPException):
                 """
                 Any data to be sent to the client in the `detail` key of the JSON
                 response.
-
-                Read more about it in the
-                [FastAPI docs for Handling Errors](https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception)
                 """
             ),
         ] = None,
         headers: Annotated[
-            Mapping[str, str] | None,
+            Optional[dict[str, str]],
             Doc(
                 """
                 Any headers to send to the client in the response.
-
-                Read more about it in the
-                [FastAPI docs for Handling Errors](https://fastapi.tiangolo.com/tutorial/handling-errors/#add-custom-headers)
-
                 """
             ),
         ] = None,
@@ -137,7 +127,7 @@ class WebSocketException(StarletteWebSocketException):
             ),
         ],
         reason: Annotated[
-            str | None,
+            Union[str, None],
             Doc(
                 """
                 The reason to close the WebSocket connection.
@@ -176,7 +166,7 @@ class ValidationException(Exception):
         self,
         errors: Sequence[Any],
         *,
-        endpoint_ctx: EndpointContext | None = None,
+        endpoint_ctx: Optional[EndpointContext] = None,
     ) -> None:
         self._errors = errors
         self.endpoint_ctx = endpoint_ctx
@@ -215,7 +205,7 @@ class RequestValidationError(ValidationException):
         errors: Sequence[Any],
         *,
         body: Any = None,
-        endpoint_ctx: EndpointContext | None = None,
+        endpoint_ctx: Optional[EndpointContext] = None,
     ) -> None:
         super().__init__(errors, endpoint_ctx=endpoint_ctx)
         self.body = body
@@ -226,7 +216,7 @@ class WebSocketRequestValidationError(ValidationException):
         self,
         errors: Sequence[Any],
         *,
-        endpoint_ctx: EndpointContext | None = None,
+        endpoint_ctx: Optional[EndpointContext] = None,
     ) -> None:
         super().__init__(errors, endpoint_ctx=endpoint_ctx)
 
@@ -237,20 +227,7 @@ class ResponseValidationError(ValidationException):
         errors: Sequence[Any],
         *,
         body: Any = None,
-        endpoint_ctx: EndpointContext | None = None,
+        endpoint_ctx: Optional[EndpointContext] = None,
     ) -> None:
         super().__init__(errors, endpoint_ctx=endpoint_ctx)
         self.body = body
-
-
-class PydanticV1NotSupportedError(FastAPIError):
-    """
-    A pydantic.v1 model is used, which is no longer supported.
-    """
-
-
-class FastAPIDeprecationWarning(UserWarning):
-    """
-    A custom deprecation warning as DeprecationWarning is ignored
-    Ref: https://sethmlarson.dev/deprecations-via-warnings-dont-work-for-python-libraries
-    """

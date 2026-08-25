@@ -1,0 +1,15 @@
+# VidRank
+
+> VidRank is an AI-powered YouTube SEO tool that generates optimized titles, descriptions, keywords, and tags directly from your video title or renamed video file name.
+
+## Main pages
+
+- [Home](https://vidrank.tech/): AI-powered YouTube SEO generator — turn a video title into a full SEO package
+- [Blog](https://vidrank.tech/blog): YouTube SEO guides and optimization tips
+- [Pricing](https://vidrank.tech/#pricing): Free plan (10 generations/day) and Pro at $3.99/month
+
+## FAQ
+
+- What is VidRank? An AI-powered YouTube optimization engine that generates titles, descriptions, keywords, and tags automatically.
+- How does VidRank work? Rename your video file or enter your title; the AI extracts niche, search intent, and keywords, then generates your SEO package.
+- How much does VidRank cost? Free plan includes 10 generations per day; Pro is $3.99/month with unlimited generations.

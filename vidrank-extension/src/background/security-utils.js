@@ -86,14 +86,12 @@ export function safeStorageGet(keys, defaultValues = {}) {
     try {
       chrome.storage.local.get(keys, (result) => {
         if (chrome.runtime.lastError) {
-          console.error('[Storage] Get error:', chrome.runtime.lastError);
           resolve(defaultValues);
         } else {
           resolve({ ...defaultValues, ...result });
         }
       });
     } catch (error) {
-      console.error('[Storage] Get exception:', error);
       resolve(defaultValues);
     }
   });
@@ -105,14 +103,12 @@ export function safeStorageSet(items) {
     try {
       chrome.storage.local.set(items, () => {
         if (chrome.runtime.lastError) {
-          console.error('[Storage] Set error:', chrome.runtime.lastError);
           reject(chrome.runtime.lastError);
         } else {
           resolve();
         }
       });
     } catch (error) {
-      console.error('[Storage] Set exception:', error);
       reject(error);
     }
   });

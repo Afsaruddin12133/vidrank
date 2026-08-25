@@ -1,0 +1,92 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+
+const lastUpdated = "August 24, 2026";
+
+const sections = [
+  {
+    q: "What information does VidRank collect?",
+    a: "VidRank collects the information you provide directly — your account details (name, email address), the video titles or file names you submit for optimization, and billing information processed by our payment provider when you upgrade to a paid plan. We also collect standard technical data such as IP address, browser type, and usage activity to operate and secure the service.",
+  },
+  {
+    q: "How does VidRank use my information?",
+    a: "We use your information to provide the service: generating SEO titles, descriptions, keywords, and tags from your input; maintaining your account; processing payments; communicating service updates; and improving the quality of our AI outputs. We do not sell your personal information to third parties.",
+  },
+  {
+    q: "How is my data processed by AI?",
+    a: "When you submit a video title or file name, it is processed by AI systems to generate your SEO recommendations. Do not submit sensitive personal information in video titles or file names — only the topic text needed to generate optimization output.",
+  },
+  {
+    q: "What third parties does VidRank share data with?",
+    a: "We share data only with service providers necessary to operate VidRank: Cloudflare (hosting, database storage, and security), AI processing providers that generate your SEO output, and payment processors that handle billing. Each processes data only as needed to perform their function for us.",
+  },
+  {
+    q: "Does VidRank use cookies?",
+    a: "VidRank uses a minimal set of cookies and similar technologies: strictly necessary cookies to keep you logged in and remember your preferences, and security cookies to protect against abuse. We do not run third-party advertising trackers on this site.",
+  },
+  {
+    q: "How long does VidRank keep my data?",
+    a: "We keep your account information for as long as your account is active. Your generated SEO content is retained until you delete it or close your account. When you close your account, we delete or anonymize your personal data within 30 days, except where retention is required by law.",
+  },
+  {
+    q: "What are my privacy rights?",
+    a: "Depending on your location, you may have the right to access, correct, export, or delete the personal data we hold about you, and to object to or restrict certain processing. To exercise any of these rights, contact us at privacy@vidrank.tech. We respond to verified requests within 30 days.",
+  },
+  {
+    q: "How does VidRank protect my information?",
+    a: "All traffic to and from VidRank is encrypted with HTTPS. Data is stored on Cloudflare infrastructure with access controls, and we apply the principle of data minimization — we only collect what is needed to provide the service.",
+  },
+  {
+    q: "How will VidRank notify me of policy changes?",
+    a: "If we make material changes to this Privacy Policy, we will notify you by email (if you have an account) and update the 'Last updated' date at the top of this page before the change takes effect.",
+  },
+];
+---
+
+<Layout
+  title="Privacy Policy — VidRank"
+  description="How VidRank collects, uses, stores, and protects your information when you use our AI-powered YouTube SEO tools."
+>
+  <Navbar />
+  <main id="main-content" class="min-h-screen py-16 px-[6vw] max-w-[1440px] mx-auto">
+    <div class="max-w-[780px] mx-auto">
+      <div class="mb-14" data-reveal>
+        <span class="text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center">
+          <i class="inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]"></i>
+          LEGAL
+        </span>
+        <h1 class="font-outfit font-extrabold text-[clamp(36px,5vw,56px)] leading-[1.05] tracking-[-0.04em] my-4 text-white">
+          Privacy <span class="text-[#2c8cff]">Policy.</span>
+        </h1>
+        <p class="text-muted text-[15px] leading-[1.7]">
+          This Privacy Policy explains what information VidRank collects, how we use it, and the choices you have.
+          Last updated: {lastUpdated}.
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-10">
+        {
+          sections.map((s, i) => (
+            <section data-reveal>
+              <h2 class="font-outfit font-bold text-[22px] text-white leading-[1.3] mb-3" id={`q${i + 1}`}>
+                {s.q}
+              </h2>
+              <p class="text-[#94a3b8] text-[15px] leading-[1.8]">{s.a}</p>
+            </section>
+          ))
+        }
+
+        <section data-reveal>
+          <h2 class="font-outfit font-bold text-[22px] text-white leading-[1.3] mb-3">How do I contact VidRank?</h2>
+          <p class="text-[#94a3b8] text-[15px] leading-[1.8]">
+            For any privacy questions, data requests, or concerns, email us at
+            <a href="mailto:privacy@vidrank.tech" class="text-cyan hover:underline">privacy@vidrank.tech</a>.
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>

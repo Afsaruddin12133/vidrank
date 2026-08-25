@@ -1,0 +1,14 @@
+name = "vidrank-landing"
+compatibility_date = "2026-08-20"
+pages_build_output_dir = "./dist"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "vidrank-db"
+database_id = "b16a526a-09bf-43b0-9eff-3eedb6f03176"
+
+[vars]
+ENVIRONMENT = "production"
+SITE_URL = "https://vidrank.ai"
+BLOG_API_SECRET = "vidrank-secret-n8n-key"
