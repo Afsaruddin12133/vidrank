@@ -189,9 +189,11 @@ async def execute_request(env, *, user_id: str, account: dict, payload: dict,
             "max_tokens": payload.get("max_tokens", 1024),
         }
         if acc.get("provider") == "openrouter":
-            body["models"] = [model, "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"]
             # Route within the model's (free) endpoints by speed, not price.
             # Missed latency thresholds get deprioritized, never excluded.
+            # No "models" fallback array: the backup (nano-omni reasoning)
+            # leaks reasoning-format output that breaks JSON parsing — a
+            # parse-fail 502 is worse than letting our account rotation retry.
             body["provider"] = {
                 "sort": "throughput",
                 "preferred_max_latency": {"p90": 3},

@@ -54,6 +54,7 @@ class QuotaDO(DurableObject):
         self.env = env
         self._day_started: float | None = None
         self._used: int = 0
+        self._rpm_hits: list[float] = []  # sliding-window timestamps (spam guard)
 
     # -- storage helpers ----------------------------------------------------- #
     async def _load(self) -> None:
@@ -73,6 +74,8 @@ class QuotaDO(DurableObject):
             else:
                 self._day_started = stored_start
                 self._used = data.get("used", 0)
+                self._rpm_hits = [t for t in (data.get("rpm_hits") or [])
+                                  if now - t < C.USER_RPM_WINDOW_S]
         except Exception:
             self._day_started = today_utc_start
             self._used = 0
@@ -80,7 +83,8 @@ class QuotaDO(DurableObject):
     async def _save(self) -> None:
         try:
             await self.state.storage.put(
-                "q", {"day_started": self._day_started, "used": self._used}
+                "q", {"day_started": self._day_started, "used": self._used,
+                      "rpm_hits": self._rpm_hits}
             )
         except Exception:
             pass  # DO memory is truth for live; storage is durability best-effort
@@ -142,24 +146,52 @@ class QuotaDO(DurableObject):
         return cfg.get("cadence") == C.CADENCE_NEVER
 
     async def inc(self) -> dict:
-        """Increment usage. Returns verdict; raises QuotaError when over."""
+        """Increment usage. Returns verdict: ok=true means consumed;
+        ok=false + rate_limited=true means the spam guard tripped
+        (retry_after_s tells the caller how long to wait); ok=false
+        otherwise means daily quota exhausted."""
+        now = time.time()
         await self._load()
         if not await self._cadence_never():
             await self._rollover()
+        self._rpm_hits = [t for t in self._rpm_hits if now - t < C.USER_RPM_WINDOW_S]
+        if len(self._rpm_hits) >= C.USER_RPM_LIMIT:
+            oldest = self._rpm_hits[0]
+            wait = max(1, int(C.USER_RPM_WINDOW_S - (now - oldest)) + 1)
+            return {"ok": False, "rate_limited": True, "retry_after_s": wait}
         limit = await self._limit()
         if await self._window_expired() or (limit is not None and self._used >= limit):
-            raise QuotaError()
+            return {"ok": False, "rate_limited": False,
+                    "remaining": 0, "resets_in_seconds": self._reset_s()}
         self._used += 1
+        self._rpm_hits.append(now)
         await self._save()
         remaining = limit - self._used if limit is not None else -1
-        now = time.time()
-        next_utc_day = ((int(now) // DAY_S) + 1) * DAY_S
         return {
             "ok": True,
             "remaining": remaining,
-            "resets_in_seconds": max(0, int(next_utc_day - now)),
+            "resets_in_seconds": self._reset_s(),
             "limit": limit,
         }
+
+    def _reset_s(self) -> int:
+        now = time.time()
+        return max(0, int((((int(now) // DAY_S) + 1) * DAY_S) - now))
+
+    async def spam_check(self) -> dict:
+        """Read-only sliding-window verdict: would inc() be allowed right now?
+
+        Called before routing so spam is rejected without touching the pool;
+        does NOT increment anything (the post-success inc() owns the counts).
+        """
+        now = time.time()
+        await self._load()
+        self._rpm_hits = [t for t in self._rpm_hits if now - t < C.USER_RPM_WINDOW_S]
+        if len(self._rpm_hits) >= C.USER_RPM_LIMIT:
+            oldest = self._rpm_hits[0]
+            wait = max(1, int(C.USER_RPM_WINDOW_S - (now - oldest)) + 1)
+            return {"ok": False, "rate_limited": True, "retry_after_s": wait}
+        return {"ok": True}
 
     async def remaining(self) -> dict:
         await self._load()

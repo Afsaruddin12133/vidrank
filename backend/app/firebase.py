@@ -58,6 +58,12 @@ async def verify_token(token: str, env=None) -> dict:
     if not uid:
         raise AuthError("missing uid in token")
 
+    # Quota-theft guard: script-created Firebase accounts have
+    # email_verified=false until they click the link. Blocking here turns
+    # mass fake signups into wasted API calls (they can't reach the pool).
+    if payload.get("email") and not payload.get("email_verified", False):
+        raise AuthError("email not verified")
+
     claims = {
         "uid": uid,
         "email": payload.get("email") or "",

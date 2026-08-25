@@ -47,6 +47,12 @@ TIER_FREE = "free"
 TIER_PRO  = "pro"
 DEFAULT_FREE_DAILY_LIMIT = 10  # plan says 10/day free ("extension business plan")
 
+# Per-user spam guard: max real generations inside a sliding window.
+# 5/min comfortably covers normal creator behavior (1-2 gens per video,
+# seconds apart) while stopping rapid button-spam against the pool.
+USER_RPM_LIMIT = 5
+USER_RPM_WINDOW_S = 60
+
 # Free-tier quota cadence (admin-configurable via /admin/free-quota):
 #   daily        — limit per day, resets each day (optional window_days cap)
 #   never        — one-time total limit, never resets
@@ -81,7 +87,8 @@ SHORT_ANSWER_CLUE = None # reserved
 # Caching -------------------------------------------------------------------
 RESP_CACHE_TTL_S = 7 * 24 * 60 * 60   # resp: 7 days
 SEM_CACHE_TTL_S  = 7 * 24 * 60 * 60   # sem: 7 days
-SEM_COSINE_THRESHOLD = 0.90
+SEM_COSINE_THRESHOLD = 0.93  # bumped from 0.90: short-title cosine inflation caused wrong-topic hits
+SEM_JACCARD_MIN = 0.6        # word-overlap gate: cosine alone can't tell "my first car" from "my first boyfriend"
 EMBEDDING_MODEL = "@cf/baai/bge-small-en-v1.5"
 
 # Memory graph ------------------------------------------------------------

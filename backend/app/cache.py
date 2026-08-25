@@ -29,6 +29,16 @@ def norm_text(text: str) -> str:
     return " ".join(t.split())
 
 
+def _jaccard(a: str, b: str) -> float:
+    """Word-overlap similarity in [0,1]. Short-title embeddings inflate
+    cosine on shared filler words ("my first car" vs "my first boyfriend"
+    scores ~0.9+); word overlap exposes the topic mismatch."""
+    wa, wb = set(norm_text(a).split()), set(norm_text(b).split())
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
 def exact_key(model: str, messages: list, temperature: float, max_tokens: int) -> str:
     """Deterministic hash of the stable request shape (model, messages, params)."""
     stable = json.dumps(
@@ -121,7 +131,10 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 
 async def get_semantic(env, user_id: str, model: str, text: str) -> str | None:
-    """Return cached response if an entry with cosine >= threshold exists."""
+    """Return cached response if an entry passes BOTH similarity gates:
+    cosine >= SEM_COSINE_THRESHOLD and word-overlap >= SEM_JACCARD_MIN.
+    The second gate exists because short titles inflate cosine similarity
+    on filler words and return wrong-topic results."""
     try:
         vec = await _embed(env, text)
         if not vec:
@@ -136,9 +149,14 @@ async def get_semantic(env, user_id: str, model: str, text: str) -> str | None:
             sim = _cosine(vec, e.get("embedding") or [])
             if sim > best_sim:
                 best, best_sim = e, sim
-        if best is not None and best_sim >= C.SEM_COSINE_THRESHOLD:
-            return best.get("response")
-        return None
+        if best is None or best_sim < C.SEM_COSINE_THRESHOLD:
+            return None
+        stored_text = best.get("text") or ""
+        if not stored_text:
+            return None  # legacy entry (pre-guard): cannot verify topic match
+        if _jaccard(text, stored_text) < C.SEM_JACCARD_MIN:
+            return None  # embedding says close, words say different topic
+        return best.get("response")
     except Exception:
         return None
 
@@ -151,7 +169,7 @@ async def store_semantic(env, user_id: str, model: str, text: str, content: str)
         key = f"{C.KV_SEM}{model}:{user_id}"
         raw = await env.KV.get(key, "text")
         entries = json.loads(raw) if raw else []
-        entries.append({"embedding": vec, "response": content, "ts": time.time()})
+        entries.append({"embedding": vec, "response": content, "text": text, "ts": time.time()})
         # ponytail: O(n) scan, capped at 500; upgrade to vector index if exceeded
         entries = entries[-500:]
         await env.KV.put(key, json.dumps(entries), expiration_ttl=C.SEM_CACHE_TTL_S)

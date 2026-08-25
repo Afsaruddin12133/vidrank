@@ -141,8 +141,14 @@ async def _read_json(request: Request) -> dict | None:
 def _auth_reject(e: firebase.AuthError) -> JSONResponse:
     """401 with token_expired when the ID token itself expired (client must
     refresh via Firebase), generic unauthorized otherwise."""
-    code = "token_expired" if isinstance(e, firebase.TokenExpired) else "unauthorized"
-    return JSONResponse({"error": code}, status_code=401)
+    if isinstance(e, firebase.TokenExpired):
+        return JSONResponse({"error": "token_expired"}, status_code=401)
+    if "not verified" in str(e):
+        return JSONResponse(
+            {"error": "email_not_verified",
+             "message": "Please verify your email address, then try again."},
+            status_code=403)
+    return JSONResponse({"error": "unauthorized"}, status_code=401)
 
 
 # --------------------------------------------------------------------------- #
@@ -765,7 +771,7 @@ async def _generate_impl(request: Request):
 
     messages = [
         {"role": "system", "content": prompts.GENERATE_SYSTEM_PROMPT},
-        {"role": "user", "content": f"Title: {title}\nDescription: {description or 'None'}"},
+        {"role": "user", "content": f"Title: {title}\nDescription: {description or 'None'}\n\n[Note: Strictly generate tags and description for the topic of '{title}'. If the description discusses an unrelated topic, ignore it completely.]"},
     ]
 
     # 1) exact cache (Layer 3) — hit skips provider AND quota
@@ -826,7 +832,7 @@ async def _generate_impl(request: Request):
                     headers={"X-Cache": "SEM"},
                 )
 
-    # 3) quota check (free: dailyLimit; pro: unlimited)
+    # 3) quota check (free: dailyLimit; pro: unlimited) + spam guard
     if tier != C.TIER_PRO:
         u_dict, _ = await _usage_for(env, uid, tier)
         if u_dict.get("remaining", 1) <= 0:
@@ -839,6 +845,23 @@ async def _generate_impl(request: Request):
                 status_code=429,
             )
     print(f"[generate] t={time.time() - t0:.2f}s quota ok, routing to pool", file=sys.stderr, flush=True)
+
+    # Sliding-window spam guard BEFORE touching the provider pool: rapid
+    # button-spam burns OpenRouter RPM for nothing. Read-only DO check —
+    # the post-success _consume_quota (inc) owns the real counts.
+    try:
+        guard = await env.QUOTA.get(env.QUOTA.idFromName(uid)).spam_check()
+    except Exception:
+        guard = {"ok": True}
+    if isinstance(guard, dict) and guard.get("rate_limited"):
+        wait = int(guard.get("retry_after_s") or 60)
+        print(f"[generate] t={time.time() - t0:.2f}s rate_limited uid={uid[:10]} wait={wait}s", file=sys.stderr, flush=True)
+        return JSONResponse(
+            {"success": False,
+             "message": f"You're going fast! Please wait about {wait}s and try again.",
+             "retry_after": wait},
+            status_code=429, headers={"Retry-After": str(wait)},
+        )
 
     # Load-shed above the global in-flight cap. Not queued: a queued generate
     # would lose its result (no delivery path), so shed cleanly instead.
@@ -885,6 +908,26 @@ async def _generate_impl(request: Request):
         )
 
     parsed = _parse_generate(result.get("content", ""))
+    if not parsed:
+        # Provider returned 200 with unparseable content (empty/truncated
+        # completion observed in production). Retry on FRESH accounts —
+        # the response quality is per-request, another key usually parses.
+        used = {result.get("account_id")}
+        for retry in range(2):
+            print(f"[generate] t={time.time() - t0:.2f}s parse-fail retry {retry + 1}/2", file=sys.stderr, flush=True)
+            acct = await router.pick_account(env, time.strftime("%Y-%m-%d", time.gmtime()),
+                                             int(time.time()), exclude=used)
+            if not acct:
+                break
+            used.add(acct["id"])
+            result = await router.execute_request(
+                env, user_id=uid, account=acct, sticky_key=title,
+                payload={"model": prompts.GENERATE_MODEL, "messages": messages,
+                         "temperature": 0.0, "max_tokens": 1024},
+            )
+            parsed = _parse_generate(result.get("content", ""))
+            if parsed:
+                break
     if not parsed:
         return JSONResponse({"error": "generation_failed"}, status_code=502)
     print(f"[generate] t={time.time() - t0:.2f}s parsed+flushed", file=sys.stderr, flush=True)
@@ -953,14 +996,20 @@ def _clean_tags(tags: list) -> list[str]:
     return out[: prompts.MAX_GENERATE_TAGS]
 
 
-async def _consume_quota(env, uid: str) -> None:
-    """Inc the user's QuotaDO after a successful generation (pro: no-op)."""
+async def _consume_quota(env, uid: str) -> dict:
+    """Inc the user's QuotaDO after a successful generation (pro: no-op).
+
+    Returns the verdict; ok=false with rate_limited=true means the user's
+    spam guard tripped (caller should surface a friendly wait message)."""
     try:
         do = env.QUOTA.get(env.QUOTA.idFromName(uid))
         if do is not None:
-            await do.inc()
+            v = await do.inc()
+            if isinstance(v, dict):
+                return v
     except Exception:
-        pass  # Silently fail - optimistic frontend will handle it
+        pass
+    return {"ok": True}
 
 
 async def _d1_used_today(env, uid: str) -> int:
