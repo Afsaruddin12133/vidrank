@@ -8,8 +8,10 @@ interface Props {
 
 const {
   title = "VidRank — AI-Powered YouTube SEO",
-  description = "VidRank uses AI to optimize your titles, descriptions, keywords, and tags so your content is easier to discover."
+  description = "VidRank is an AI YouTube SEO tool that generates high-ranking titles, descriptions, keywords, and tags to maximize video views and search reach."
 } = Astro.props;
+
+const canonicalUrl = `https://vidrank.tech${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
 
 // Organization structured data — site-level entity for AI answer engines
 const orgSchema = {
@@ -30,6 +32,20 @@ const orgSchema = {
   <meta name="theme-color" content="#05070d" />
   <meta name="description" content={description} />
   <meta name="msvalidate.01" content="59979AB498D2A468988723DF6FD66025" />
+  <link rel="canonical" href={canonicalUrl} />
+
+  <!-- Open Graph / Facebook / Bing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:site_name" content="VidRank" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+
   <title>{title}</title>
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   <link rel="alternate icon" type="image/png" href="/logo.png" />
