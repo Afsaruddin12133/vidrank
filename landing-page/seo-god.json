@@ -6,12 +6,12 @@
     "status": "running"
   },
   "gsc": {
-    "connected": false
+    "connected": true
   },
   "phases": {
     "setup": "done",
     "audit": "pending",
-    "measure": "pending",
+    "measure": "done",
     "ai_visibility": "pending",
     "schedule": "pending"
   },
