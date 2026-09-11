@@ -64,7 +64,7 @@ max_concurrency = 50  # Higher concurrency for pro users
 
 [vars]
 ALLOWED_ORIGINS = "https://vidrank.tech,https://www.vidrank.tech,https://vidrank-dashboard.pages.dev,https://f186ad36.vidrank-dashboard.pages.dev,https://localhost:5173,https://preview.vidrank-landing.pages.dev"
-PADDLE_ENVIRONMENT = "sandbox"
+PADDLE_ENVIRONMENT = "live"
 
 
 
