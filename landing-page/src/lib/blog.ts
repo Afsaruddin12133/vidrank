@@ -1,4 +1,5 @@
 import seedPosts from "../data/posts.json";
+import comparisonPosts from "../data/comparison-posts.json";
 import type { BlogPost, CreateBlogPostInput } from "./types";
 
 /**
@@ -6,7 +7,8 @@ import type { BlogPost, CreateBlogPostInput } from "./types";
  * Supports Cloudflare D1 runtime bindings when deployed on Cloudflare,
  * or fast local JSON/SQLite storage for development & static generation.
  */
-let inMemoryPosts: BlogPost[] = [...seedPosts];
+// ponytail: merge seed + comparison JSON so new posts always render even when prod D1 has rows (D1 wins per slug)
+let inMemoryPosts: BlogPost[] = [...(seedPosts as BlogPost[]), ...(comparisonPosts as BlogPost[])];
 
 export async function getAllPosts(env?: { DB?: any }): Promise<BlogPost[]> {
   // If Cloudflare D1 binding is provided at runtime
@@ -15,12 +17,18 @@ export async function getAllPosts(env?: { DB?: any }): Promise<BlogPost[]> {
       const result = await env.DB.prepare(
         "SELECT * FROM posts WHERE is_published = 1 ORDER BY created_at DESC"
       ).all();
-      if (result.results && result.results.length > 0) {
-        return result.results.map((row: any) => ({
+      if (result.results) {
+        const dbPosts: BlogPost[] = result.results.map((row: any) => ({
           ...row,
           tags: typeof row.tags === "string" ? JSON.parse(row.tags) : row.tags,
           is_published: Boolean(row.is_published),
         }));
+        // ponytail: D1 wins per slug; seed/comparison posts still render when D1 lacks them
+        const bySlug = new Map<string, BlogPost>();
+        for (const p of [...inMemoryPosts, ...dbPosts]) bySlug.set(p.slug, p);
+        return [...bySlug.values()].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
       }
     } catch (err) {
       console.warn("D1 query error, falling back to local store:", err);

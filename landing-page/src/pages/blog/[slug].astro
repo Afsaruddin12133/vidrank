@@ -27,13 +27,27 @@ const allPosts = await getAllPosts(env);
 const relatedPosts = allPosts.filter((p) => p.slug !== slug).slice(0, 2);
 
 // Normalize literal escape characters and parse Markdown cleanly
+// ponytail: strip leading markdown H1 — hero header already renders the title (fixes duplicate-h1 SEO error)
 function renderMarkdown(rawMarkdown: string): string {
   if (!rawMarkdown) return "";
   const normalized = rawMarkdown
     .replace(/\\r\\n/g, "\n")
     .replace(/\\n/g, "\n")
-    .replace(/\\t/g, "  ");
+    .replace(/\\t/g, "  ")
+    .replace(/^\s*#\s+[^\n]*\n+/, "");
   return marked.parse(normalized) as string;
+}
+
+// ponytail: meta title ≤60 chars on word boundary (fixes title-too-long SEO error)
+function metaTitle(t: string): string {
+  const suffix = " | VidRank";
+  const budget = 60 - suffix.length;
+  let out = "";
+  for (const w of t.split(" ")) {
+    if ((out + " " + w).trim().length > budget) break;
+    out = (out + " " + w).trim();
+  }
+  return out.replace(/[\s&:,\-–—]+$/, "") + suffix;
 }
 
 const contentHtml = renderMarkdown(post.content_markdown);
@@ -53,7 +67,7 @@ const structuredData = {
     "name": "VidRank",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://vidrank.ai/logo.png"
+        "url": "https://vidrank.tech/logo.png"
     }
   },
   "datePublished": post.created_at,
@@ -62,7 +76,7 @@ const structuredData = {
 ---
 
 <Layout
-  title={`${post.title} — VidRank Guide`}
+  title={metaTitle(post.title)}
   description={post.description}
 >
   <!-- Sticky Reading Progress Bar -->

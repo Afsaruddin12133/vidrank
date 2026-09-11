@@ -10,5 +10,5 @@ database_id = "b16a526a-09bf-43b0-9eff-3eedb6f03176"
 
 [vars]
 ENVIRONMENT = "production"
-SITE_URL = "https://vidrank.ai"
+SITE_URL = "https://vidrank.tech"
 BLOG_API_SECRET = "vidrank-secret-n8n-key"

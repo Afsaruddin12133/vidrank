@@ -1,6 +1,11 @@
 # VidRank
 
-> VidRank is an AI-powered YouTube SEO tool that generates optimized titles, descriptions, keywords, and tags directly from your video title or renamed video file name.
+> VidRank is an AI-powered YouTube SEO tool that generates optimized titles, descriptions, keywords, and tags from a video title or renamed video file name. Free plan: 10 generations/day; Pro: $3.99/month unlimited. Available as a web app and a free Chrome extension.
+
+## Products
+
+- [VidRank Web App](https://vidrank.tech/): AI YouTube SEO generator — turn a video title or file name into a full SEO package
+- [VidRank Chrome Extension](https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk): free Chrome extension that generates optimized YouTube titles, descriptions, and tags in one click, on the Chrome Web Store
 
 ## Main pages
 
@@ -8,8 +13,22 @@
 - [Blog](https://vidrank.tech/blog): YouTube SEO guides and optimization tips
 - [Pricing](https://vidrank.tech/#pricing): Free plan (10 generations/day) and Pro at $3.99/month
 
+## Free tools
+
+- [YouTube Tag Extractor](https://vidrank.tech/tools/youtube-tag-extractor): free tool that shows any YouTube video's exact tags, ranked in the order its creator added them, with one-click copy
+
+## Comparison guides
+
+- [vidIQ vs TubeBuddy](https://vidrank.tech/blog/vidiq-vs-tubebuddy): honest comparison of keyword research, A/B testing, and bulk tools
+- [TubeBuddy Alternatives](https://vidrank.tech/blog/tubebuddy-alternatives): 7 alternatives compared by workflow and budget
+- [vidIQ Alternatives](https://vidrank.tech/blog/vidiq-alternatives): 6 alternatives compared by bottleneck, not hype
+- [VidRank vs TubeBuddy](https://vidrank.tech/blog/vidrank-vs-tubebuddy): one-click AI metadata vs a full research suite
+- [Best YouTube Tag Generator 2026](https://vidrank.tech/blog/best-youtube-tag-generator-2026): generators tested and ranked
+- [Best Chrome Extensions for YouTubers](https://vidrank.tech/blog/best-chrome-extensions-for-youtubers): the 9-install lean stack
+
 ## FAQ
 
 - What is VidRank? An AI-powered YouTube optimization engine that generates titles, descriptions, keywords, and tags automatically.
+- Does VidRank have a Chrome extension? Yes. VidRank has a free Chrome extension that generates optimized YouTube titles, descriptions, and tags in one click, available on the Chrome Web Store.
 - How does VidRank work? Rename your video file or enter your title; the AI extracts niche, search intent, and keywords, then generates your SEO package.
 - How much does VidRank cost? Free plan includes 10 generations per day; Pro is $3.99/month with unlimited generations.

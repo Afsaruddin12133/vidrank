@@ -24,6 +24,11 @@ export const GET: APIRoute = async ({ locals }) => {
       changefreq: "yearly",
       priority: "0.3",
     },
+    {
+      loc: `${SITE}/tools/youtube-tag-extractor`,
+      changefreq: "monthly",
+      priority: "0.9",
+    },
     ...posts.map((post) => ({
       loc: `${SITE}/blog/${post.slug}`,
       lastmod: post.updated_at ? new Date(post.updated_at).toISOString().slice(0, 10) : undefined,

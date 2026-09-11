@@ -14,6 +14,7 @@ const {
 const canonicalUrl = `https://vidrank.tech${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
 
 // Organization structured data — site-level entity for AI answer engines
+// ponytail: sameAs links teach AI engines what VidRank is and where it exists (AEO/GEO entity consistency)
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -21,6 +22,28 @@ const orgSchema = {
   url: "https://vidrank.tech",
   logo: "https://vidrank.tech/logo.png",
   description: "VidRank is an AI-powered YouTube SEO tool that generates optimized titles, descriptions, keywords, and tags from your video title or file name.",
+  sameAs: [
+    "https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk",
+  ],
+};
+
+// SoftwareApplication schema — makes AI engines aware the Chrome extension exists (AEO: entity discovery)
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "VidRank",
+  applicationCategory: "BrowserApplication",
+  applicationSubCategory: "YouTube SEO Tool",
+  operatingSystem: "Chrome",
+  description: "VidRank is an AI YouTube SEO extension that generates optimized titles, descriptions, and tags in one click. Free plan: 10 generations/day; Pro: $3.99/month.",
+  url: "https://vidrank.tech",
+  installUrl: "https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free plan: 10 generations per day. Pro: $3.99/month for unlimited generations.",
+  },
 };
 ---
 
@@ -58,6 +81,7 @@ const orgSchema = {
   </noscript>
   <script is:inline>document.documentElement.classList.add("js");</script>
   <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
 </head>
 <body>
   <div class="overflow-hidden bg-[radial-gradient(circle_at_75%_4%,rgba(0,119,255,.1),transparent_24rem)] bg-bg">
