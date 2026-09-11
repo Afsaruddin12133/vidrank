@@ -1,0 +1,31 @@
+# Builds and deploys the landing page to Cloudflare Pages
+# when the seo-agent (or a human) commits landing-page content changes.
+name: Deploy landing page
+on:
+  push:
+    branches: [main]
+    paths: ["landing-page/**"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install deps
+        working-directory: landing-page
+        run: npm install
+      - name: Build
+        working-directory: landing-page
+        run: npm run build
+      - name: Deploy to Cloudflare Pages
+        working-directory: landing-page
+        run: npx wrangler pages deploy dist --project-name vidrank-landing --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 888ad088a0b226524650478393ad1561
+      - name: IndexNow ping
+        run: curl -s "https://api.indexnow.org/indexnow?url=https://vidrank.tech/&key=d82ab09b3cee4d06a45e26cf0dbda4bc" > /dev/null
