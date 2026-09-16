@@ -21,6 +21,33 @@ Source: suggestqueries.google.com (client=firefox, hl=en, gl=us), 17 seeds → 1
 
 **Volume source status:** Ahrefs free keyword generator is login-gated (no captcha shown, silently blocks). Use Trends + autocomplete until user logs in to Ahrefs in Chrome.
 
+## UPDATE Sep 16 (later) — AHREFS DATA PULLED (user logged in, Chrome session)
+
+Source: ahrefs.com/keyword-generator, free tier (banded volumes, ~6 searches before rate limit).
+
+| Keyword | KD | Volume | Vidrank coverage |
+|---|---|---|---|
+| youtube tags | Hard | >1000 | guide (rewritten Sep 16) |
+| youtube tags generator | Hard | >1000 | extractor/blog content |
+| **youtube tag generator** | **Medium** | **>1000** | ⚠️ only via comparison post — HEAD TERM, best KD/vol combo seen, needs dedicated target |
+| youtube tag generator free | Medium | >100 | extractor page ✓ |
+| best youtube tag generator | Medium | <100 | best-youtube-tag-generator-2026 ✓ |
+| free youtube tag generator | Hard | <100 | extractor page |
+| ai youtube tag generator | **Easy** | <100 | gap → blog candidate |
+| **what are tags on youtube / what are youtube tags** | **Easy** | >100 | guide content ✓ |
+| youtube tags example | Hard | >100 | gap → listicle content |
+| youtube tags list / list of youtube tags | Hard | >100 | most-searched-tags ✓ |
+| popular / most popular youtube tags | Hard | >100 | most-searched-tags ✓ |
+| youtube tags rank checker | — | >100 | rank-checker page ✓ (built Sep 16) |
+| trending youtube tags | — | >100 | gap → pairs with Trends "viral" rising |
+| youtube tags character limit 500 | — | >100 | how-many-tags ✓ (built Sep 16) |
+| how do youtube tags work | — | >100 | guide ✓ |
+| youtube (broad) | Hard | >10M | not targetable |
+
+**Rate limit:** ~6 free searches/day/session. Remaining seeds for next session: youtube shorts tags, most searched tags on youtube, vidiq vs tubebuddy, youtube hashtag generator, tubebuddy alternatives.
+
+**Insight:** `youtube tag generator` (Medium KD, >1000 vol) is the strongest target in the niche — vidrank's extractor/generator content should be repositioned to take it head-on (dedicated `/tools/youtube-tag-generator` page or retitle existing comparison).
+
 ---
 
 ## "vidiq vs tubebuddy"
