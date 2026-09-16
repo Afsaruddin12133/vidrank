@@ -1,0 +1,146 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import Footer from "../../components/Footer.astro";
+import Icon from "../../components/Icon.astro";
+
+const title = "YouTube Rank Checker — Check Your Video Rankings Free";
+const description = "Free YouTube rank checker guide: see where your video ranks for any keyword in 2 minutes, why tag rankings move slowly, and how to fix videos stuck on page 2+.";
+
+const faqs = [
+  {
+    q: "How do I check my YouTube video ranking?",
+    a: "Open an incognito window (so your watch history does not personalize results), search your exact keyword on YouTube, and count where your video appears. Note both the position and whether it shows in the main grid or only under 'Filters'. Repeat after 7 days to see movement. This manual method is what most paid rank trackers automate.",
+  },
+  {
+    q: "What is a YouTube rank checker?",
+    a: "A rank checker shows the position your video holds in YouTube search results for a specific keyword. Tools automate the incognito-search method across many keywords and dates so you can see trends — for example, whether a title change moved you from position 18 to position 9.",
+  },
+  {
+    q: "Why is my video not ranking on YouTube?",
+    a: "The usual causes, in order: the title does not match what people search, the thumbnail CTR is low (YouTube stops surfacing videos nobody clicks), the video is new (most videos need 2–6 weeks to settle), or the topic is dominated by channels with far more authority on it. Tags are a minor factor — they help YouTube classify the video, not push a weak performer up.",
+  },
+  {
+    q: "How long do YouTube tags take to affect ranking?",
+    a: "Tag changes usually reflect in search within a few days, but ranking movement from tags alone is small because tags are a minor signal. Real ranking gains come from fixing the title to match search phrases, improving the thumbnail CTR, and holding watch time. Check your position again 7 days after any change.",
+  },
+  {
+    q: "Do YouTube tags matter for ranking in 2026?",
+    a: "Yes, but as a supporting signal. YouTube's own guidance says tags mainly help with misspellings, synonyms, and disambiguation. A clean tag set (15–30 relevant tags, exact topic first) removes ambiguity for the algorithm. No tag list can rescue weak content — extract competitor tags to cover the variants they use, then compete on title and thumbnail.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: "YouTube Rank Checker: How to Check Your Video Rankings Free",
+  description,
+  author: { "@type": "Organization", name: "VidRank" },
+  datePublished: "2026-09-16",
+  dateModified: "2026-09-16",
+};
+---
+
+<Layout title={title} description={description}>
+  <Navbar />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> Free Method · 2 Minutes
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Free YouTube Rank Checker
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Want to know where your video actually ranks on YouTube? Here is the rank checker method that works in any browser — no signup, no extension — plus what to do when your video is stuck on page 2.
+      </p>
+    </header>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Check your YouTube rank in 2 minutes (manual method)</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li>Open an <strong>incognito/private window</strong>. This matters: YouTube personalizes results by watch history, so your normal browser may show your own video higher than the public sees it.</li>
+          <li>Go to YouTube and search your <strong>exact target keyword</strong> — the phrase a viewer would type, not your video's creative title.</li>
+          <li>Count your video's position in the results grid. Write it down with the date.</li>
+          <li>Repeat the same search every 7 days under identical conditions. The <em>trend</em> is the signal — one position up or down is noise; three positions over a month is a real move.</li>
+        </ol>
+        <p class="mt-3">
+          This manual YouTube rank checker method is the same one most paid rank trackers automate. For one to three keywords, doing it by hand every week beats paying for a tool.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">What a rank position actually tells you</h2>
+        <p>
+          YouTube search ranking is a lagging indicator. A video at position 4–10 with a low click-through rate will drift down; a video at position 15 that earns clicks when shown will climb. That is why checking rank alone is half the picture — pair your weekly rank check with the impressions and CTR numbers in YouTube Studio → Analytics → Reach. Rank shows where you are; CTR shows whether you deserve to move up.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Video stuck on page 2? Fix these in order</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li><strong>Title vs. search phrase.</strong> Your title should contain the phrase people actually search. "I Traveled 9000km!!!" ranks for nothing; "Japan Travel Guide: 14 Days in Tokyo &amp; Kyoto" ranks for the phrases viewers type.</li>
+          <li><strong>Tags: cover the variants.</strong> YouTube uses tags for misspellings, synonyms, and disambiguation. Keep 15–30 relevant tags with your exact topic first. Use the free <a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube tag extractor</a> to see the exact tag sets top-ranking videos in your niche use, then cover the variants they missed.</li>
+          <li><strong>Thumbnail CTR.</strong> If Studio shows CTR under ~3%, fixing the thumbnail moves rankings more than any metadata change.</li>
+          <li><strong>Watch time on the traffic YouTube already gives you.</strong> Check whether viewers from search drop off in the first 30 seconds — YouTube stops ranking videos that fail the clicks they earn.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">How VidRank fits in</h2>
+        <p>
+          VidRank is built around the part of ranking you control before upload: metadata. It generates titles from your file name, builds a scored tag set for your exact topic, and writes descriptions — then you use the manual rank checker above to verify the movement. Extract what the top videos tag with the <a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">free extractor tool</a>, or <a href="/#pricing" class="text-cyan hover:underline">start with VidRank's free tier</a> for AI-generated metadata on your own videos.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Frequently asked questions</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">More free YouTube SEO tools &amp; guides</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — See Any Video's Tags</a></li>
+        <li><a href="/blog/tags-for-youtube-shorts" class="text-cyan hover:underline">YouTube Shorts Tags: Copy-Paste Sets by Niche</a></li>
+        <li><a href="/blog/vidrank-vs-vidiq" class="text-cyan hover:underline">VidRank vs vidIQ: Which Should You Use?</a></li>
+        <li><a href="/blog/best-youtube-tag-generator-2026" class="text-cyan hover:underline">Best YouTube Tag Generator in 2026 (Tested)</a></li>
+        <li><a href="/blog/vidiq-vs-tubebuddy" class="text-cyan hover:underline">vidIQ vs TubeBuddy: Honest Comparison</a></li>
+        <li><a href="/blog/best-chrome-extensions-for-youtubers" class="text-cyan hover:underline">9 Best Chrome Extensions for YouTube Creators</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Last updated: September 16, 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+</Layout>

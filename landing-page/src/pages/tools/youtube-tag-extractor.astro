@@ -4,8 +4,8 @@ import Navbar from "../../components/Navbar.astro";
 import Footer from "../../components/Footer.astro";
 import Icon from "../../components/Icon.astro";
 
-const title = "YouTube Tag Extractor & Checker — Free, Any Video";
-const description = "Free YouTube tag extractor and checker: paste any video URL to see its tags ranked, one-click copy, no login. See what top videos in your niche tag.";
+const title = "YouTube Tag Extractor — Any Video or Shorts Link (Free)";
+const description = "Free YouTube tag extractor: paste any video or Shorts link to see its exact tags, ranked and one-click copy. Works by link, no login. Plus how to research competitor tags.";
 
 const faqs = [
   {
@@ -48,6 +48,7 @@ const appSchema = {
   applicationCategory: "SEOApplication",
   operatingSystem: "Any (web)",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-12",
 };
 ---
 
@@ -100,19 +101,53 @@ const appSchema = {
       </div>
     </section>
 
-    <!-- How to use -->
-    <section class="mb-10">
-      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">How to use extracted tags</h2>
-      <ol class="text-[#94a3b8] text-[14px] leading-[1.7] space-y-2 pl-5 list-decimal">
-        <li>Paste the URL of a top-ranking video in your niche.</li>
-        <li>Copy its tag list and note the variants, synonyms, and misspellings it covers.</li>
-        <li>Build your own set of 15–30 tags: exact topic first, variants next, 1–2 broad category tags last.</li>
-        <li>Generate a scored, ranked set for your specific video with <a href="/#pricing" class="text-cyan hover:underline">VidRank</a> — it ranks your tags instead of listing them.</li>
-      </ol>
+    <!-- Content: question-shaped sections, answer-first (AEO/GEO capsules) -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">What are YouTube tags?</h2>
+        <p>
+          YouTube tags are keywords in a video's metadata that help YouTube understand its topic — especially synonyms, misspellings, and alternate phrasings that don't fit in the title. They are a minor ranking signal: tags mostly help YouTube place and disambiguate a video, not push a weak video up the results.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Why use a YouTube tag extractor?</h2>
+        <p>
+          YouTube hides tags from the page you see, so the only way to read a competitor's tag list is a tool that fetches the video's metadata for you. An extractor shows exactly which keyword variants the top-ranking videos in your niche decided were worth adding — turning tag research from guesswork into a checklist.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">How to research competitor tags in 4 steps</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li>Search your video's exact topic on YouTube and open the top 3 results.</li>
+          <li>Paste each URL above and copy its tag list — the tool works with any video or Shorts link.</li>
+          <li>Note which tags appear on multiple top videos. Those repeats are the niche's core keyword variants.</li>
+          <li>Add the ones that genuinely fit your video, then fill gaps with synonyms and misspellings the top videos missed.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">5 rules for choosing YouTube tags</h2>
+        <ul class="space-y-2 pl-5 list-disc">
+          <li>Lead with your exact topic, phrased the way people actually search.</li>
+          <li>Add close variants and synonyms next — not 20 near-duplicates.</li>
+          <li>Include common misspellings; YouTube's own guidance recommends them.</li>
+          <li>Keep the list to 15–30 tags. Volume is not the goal, coverage is.</li>
+          <li>Never add celebrity names or unrelated trending terms — that violates YouTube's tag policy.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Do YouTube tags still matter in 2026?</h2>
+        <p>
+          Yes — but less than titles, thumbnails, and watch time. YouTube describes tags as useful mainly for misspellings and disambiguation. Treat them as a free minor edge: a properly built tag list takes about 5 minutes and helps the algorithm classify your video, but no tag set can rescue weak content. Extracting competitor tags shows you the baseline; ranking comes from everything else you do on top of it.
+        </p>
+      </div>
     </section>
 
     <!-- FAQ -->
-    <section class="mb-6">
+    <section class="mb-10">
       <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Frequently asked questions</h2>
       <div class="space-y-3">
         {faqs.map((f) => (
@@ -126,6 +161,24 @@ const appSchema = {
         ))}
       </div>
     </section>
+
+    <!-- Internal links: hub-spoke per pSEO research -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">More free YouTube SEO guides from VidRank</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Check Your Video Rankings Free</a></li>
+        <li><a href="/blog/tags-for-youtube-shorts" class="text-cyan hover:underline">YouTube Shorts Tags: Copy-Paste Sets by Niche</a></li>
+        <li><a href="/blog/vidrank-vs-vidiq" class="text-cyan hover:underline">VidRank vs vidIQ: Which Should You Use?</a></li>
+        <li><a href="/blog/best-youtube-tag-generator-2026" class="text-cyan hover:underline">Best YouTube Tag Generator in 2026 (Tested &amp; Ranked)</a></li>
+        <li><a href="/blog/vidiq-vs-tubebuddy" class="text-cyan hover:underline">vidIQ vs TubeBuddy: Which YouTube SEO Tool Wins?</a></li>
+        <li><a href="/blog/vidiq-alternatives" class="text-cyan hover:underline">6 Best vidIQ Alternatives (Honest Comparison)</a></li>
+        <li><a href="/blog/tubebuddy-alternatives" class="text-cyan hover:underline">7 Best TubeBuddy Alternatives (Free &amp; Paid)</a></li>
+        <li><a href="/blog/vidrank-vs-tubebuddy" class="text-cyan hover:underline">VidRank vs TubeBuddy: Which Should You Use?</a></li>
+        <li><a href="/blog/best-chrome-extensions-for-youtubers" class="text-cyan hover:underline">9 Best Chrome Extensions for YouTube Creators</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Last updated: September 12, 2026</p>
   </main>
 
   <Footer />

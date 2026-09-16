@@ -29,6 +29,11 @@ export const GET: APIRoute = async ({ locals }) => {
       changefreq: "monthly",
       priority: "0.9",
     },
+    {
+      loc: `${SITE}/tools/youtube-rank-checker`,
+      changefreq: "monthly",
+      priority: "0.9",
+    },
     ...posts.map((post) => ({
       loc: `${SITE}/blog/${post.slug}`,
       lastmod: post.updated_at ? new Date(post.updated_at).toISOString().slice(0, 10) : undefined,
