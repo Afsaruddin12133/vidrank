@@ -2,6 +2,27 @@
 
 Source: suggestqueries.google.com (client=firefox, hl=en, gl=us), 17 seeds → 143 real queries.
 
+## UPDATE Sep 16 — Google Trends breakouts + fresh mining
+
+**Trends (US, past 90 days, seed "youtube tags") — RISING/BREAKOUT:**
+- `most searched tags on youtube` — **Breakout** → built `/blog/most-searched-tags-on-youtube`
+- `how many tags can you have on youtube 2019` — **+1,000%** → built `/blog/how-many-tags-can-you-have-on-youtube`
+- `youtube tag extractor` — **Breakout** (our own tool's head keyword is surging)
+- `best coding youtube channels` — Breakout → niche tag-page candidate
+- `plan a content strategy to grow a new youtube shorts channel` — Breakout → strategy-post candidate
+
+**Fresh autocomplete clusters (Sep 16):**
+- `youtube rank checker` family (online, tag rank, video rank, tracker) → built `/tools/youtube-rank-checker`
+- `tubebuddy vs tuberanker`, `vidrank vs vidiq` → built `/blog/vidrank-vs-vidiq`; tuberanker page still open
+- `youtube hashtag generator` family → no page yet (tools-hub candidate)
+- `tags for youtube shorts` family → built `/blog/tags-for-youtube-shorts`
+
+**GSC (Aug 25–Sep 13):** homepage pos 4.6 (brand only); extensions roundup pos 24 (best non-brand — internal-link target); ultimate-guide pos 59.1 / 162 impr → title rewritten Sep 16. Indexed 8, not-indexed 4 (www/canonical — fixed via middleware 301 Sep 16).
+
+**Volume source status:** Ahrefs free keyword generator is login-gated (no captcha shown, silently blocks). Use Trends + autocomplete until user logs in to Ahrefs in Chrome.
+
+---
+
 ## "vidiq vs tubebuddy"
 
 - vidiq vs tubebuddy
