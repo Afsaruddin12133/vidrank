@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro preview",
-    "build": "astro build",
+    "dev": "node init && astro dev",
+    "start": "node init && astro preview",
+    "build": "node init && astro build",
     "preview": "astro preview",
     "pages:dev": "astro build && wrangler pages dev dist",
     "pages:deploy": "astro build && wrangler pages deploy dist --project-name vidrank-landing --commit-dirty=true && curl -s 'https://api.indexnow.org/indexnow?url=https://vidrank.tech/&key=d82ab09b3cee4d06a45e26cf0dbda4bc' > /dev/null",
