@@ -1,0 +1,41 @@
+---
+import Icon from "../Icon.astro";
+
+const sec = "py-[100px] px-[6vw] mx-auto max-w-[1440px] max-[900px]:py-[70px] max-[620px]:py-[50px]";
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const h2c = `${h2} text-center`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+
+const featureList = [
+  ["wand-sparkles", "KI-Titel-Optimierung", "Generiere stärkere, suchoptimierte YouTube-Titel, die deine Klickrate maximieren."],
+  ["tags", "Smarte Tags", "Finde relevante Tags und Keyword-Varianten automatisch, um deine Suchindexierung zu verbessern."],
+  ["file-text", "SEO-Beschreibungen", "Erstelle keyword-dichte Beschreibungen, abgestimmt auf Suchintention und Zuschauerbindung."],
+  ["search", "Keyword-Intelligenz", "Finde ungenutzte Suchvolumen-Chancen, ohne mühsame manuelle Keyword-Recherche."],
+  ["lightbulb", "Content-Ideen", "Verwandle dein Kanalthema in virale Video-Chancen, basierend auf echter Zuschauernachfrage."],
+  ["chart-column", "Kanal-Audit", "Erkenne Metadaten-Lücken und Optimierungspotenzial in deiner gesamten Video-Bibliothek."],
+];
+---
+
+<section id="features" class={`${sec} text-center`}>
+  <div class="section-intro centered text-center" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>EINE ENGINE. JEDER VORTEIL.</span>
+    <h2 class={h2c}>Die SEO-Arbeit, <span>erledigt.</span></h2>
+  </div>
+  <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
+    {featureList.map(([icon, title, body]) => (
+      <div class="group p-7 rounded-2xl border border-line bg-[#0c111c]/90 backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-[rgba(0,119,255,.5)] hover:shadow-[0_16px_40px_rgba(0,119,255,0.12)] flex flex-col items-start justify-between min-h-[220px]" data-reveal>
+        <div>
+          <div class="grid place-items-center w-11 h-11 text-cyan rounded-xl border border-[rgba(0,240,255,.25)] bg-[rgba(0,240,255,.08)] group-hover:scale-110 transition-transform duration-300">
+            <Icon name={icon as any} />
+          </div>
+          <h3 class="mt-6 mb-2.5 font-outfit font-bold text-[20px] text-white group-hover:text-cyan transition-colors">{title}</h3>
+          <p class="text-[#94a3b8] text-[13px] leading-[1.65]">{body}</p>
+        </div>
+        <span class="mt-6 text-cyan inline-flex items-center gap-1 text-[12px] font-semibold group-hover:translate-x-1 transition-transform">
+          Mehr erfahren <Icon name="arrow-right" />
+        </span>
+      </div>
+    ))}
+  </div>
+</section>

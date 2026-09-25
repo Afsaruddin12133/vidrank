@@ -1,0 +1,373 @@
+---
+import Icon from "../Icon.astro";
+
+const sec =
+  "py-[110px] px-[8vw] mx-auto max-w-[1440px] max-[900px]:py-[80px] max-[900px]:px-[6vw] max-[620px]:py-[60px] max-[620px]:px-[5vw]";
+const btn =
+  "inline-flex items-center justify-center gap-[9px] min-h-[45px] px-6 font-bold text-[13px] text-white rounded-lg transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-[2px]";
+const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_8px_30px_rgba(0,102,238,.4)] hover:shadow-[0_10px_34px_rgba(0,102,238,.6)]`;
+const eyebrow =
+  "text-red font-outfit font-semibold text-[11px] tracking-[0.15em] inline-flex items-center";
+const dot =
+  "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const eyebrowMini =
+  "block text-[#8ea0b5] font-inter font-semibold text-[9px] tracking-[0.14em]";
+
+const heroTags = [
+  "basquete",
+  "câmera lenta",
+  "melhores momentos de basquete",
+  "basquete cinematográfico",
+  "melhores momentos esportivos",
+  "esportes virais",
+];
+---
+
+<section
+  class={`${sec} min-h-180 relative grid grid-cols-1 justify-items-center gap-15 pt-20 max-[900px]:pt-16`}
+>
+  <div
+    class="absolute rounded-full blur-[60px] pointer-events-none w-82.5 h-82.5 bg-[rgba(0,119,255,.11)] right-[18%] top-[8%]"
+  >
+  </div>
+  <div
+    class="absolute rounded-full blur-[60px] pointer-events-none w-62.5 h-62.5 bg-[rgba(0,240,255,.07)] right-0 bottom-[10%]"
+  >
+  </div>
+
+  <div class="hero-copy text-center relative z-[1] max-w-[880px]">
+    <span class={eyebrow}><i class={dot}></i>SEO PARA YOUTUBE COM IA</span>
+    <h1
+      class="font-outfit font-extrabold text-[clamp(36px,5.2vw,74px)] leading-[1.12] tracking-[-0.03em] mx-auto my-5 max-w-[840px]"
+    >
+      Transforme cada vídeo em <br class="hidden sm:inline" /><span
+        class="text-[#2c8cff]">uma oportunidade de descoberta.</span
+      >
+    </h1>
+    <p
+      class="hero-sub max-w-155 mx-auto mb-7.5 text-muted text-[16px] leading-[1.65]"
+    >
+      O VidRank é uma ferramenta de SEO para YouTube com IA que gera títulos,
+      descrições, palavras-chave e tags com alto potencial de ranqueamento
+      diretamente a partir do seu <strong>título de vídeo</strong> ou do
+      <strong>nome do arquivo de vídeo renomeado</strong>.
+    </p>
+    <div class="flex items-center justify-center gap-4 flex-wrap max-[620px]:flex-col max-[620px]:w-full max-[620px]:max-w-[320px] max-[620px]:mx-auto">
+      <a
+        href="https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center gap-3 min-h-[52px] px-7 font-bold text-[14px] text-white bg-primary hover:bg-[#0055cc] rounded-xl shadow-[0_8px_30px_rgba(0,102,238,.45)] hover:shadow-[0_10px_35px_rgba(0,102,238,.65)] transition-all hover:-translate-y-0.5 no-underline group max-[620px]:w-full"
+      >
+        <img
+          src="/chrome-store-logo.svg"
+          alt="Chrome Web Store"
+          width="24"
+          height="24"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          class="w-6 h-6 object-contain"
+        />
+        <div class="text-left">
+          <span
+            class="block text-[10px] font-medium text-white/80 uppercase tracking-wider leading-none"
+            >Disponível na</span
+          >
+          <span class="block text-[14px] font-bold text-white leading-tight"
+            >Chrome Web Store</span
+          >
+        </div>
+        <span
+          class="text-cyan group-hover:translate-x-1 transition-transform ml-1"
+          >→</span
+        >
+      </a>
+      <a
+        href="/pt-br/#how"
+        class="inline-flex items-center justify-center gap-[10px] px-6 min-h-[52px] rounded-xl bg-white/[0.05] border border-white/10 text-[#cdd6e4] text-[13px] font-semibold transition-colors hover:bg-white/10 hover:text-white no-underline max-[620px]:w-full"
+      >
+        <span
+          class="grid place-items-center w-6 h-6 rounded-full bg-cyan/15 text-cyan"
+          ><Icon name="play" /></span
+        >
+        Veja como funciona
+      </a>
+    </div>
+
+    <!-- Chrome Web Store Ratings & Trust Badge -->
+    <a
+      href="https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="trust inline-flex items-center justify-center gap-3 text-[#94a3b8] hover:text-white transition-colors text-[12px] mt-6 py-2 px-5 rounded-full bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] hover:border-cyan/40 shadow-sm no-underline group"
+    >
+      <img
+        src="/chrome-store-logo.svg"
+        alt="Chrome Web Store"
+        width="16"
+        height="16"
+        loading="lazy"
+        decoding="async"
+        class="w-4 h-4 object-contain"
+      />
+      <span class="flex items-center gap-1 text-[#ffbd2e] font-semibold">
+        ★★★★★ <span class="text-white ml-0.5">5.0</span>
+      </span>
+      <span class="text-white/20">|</span>
+      <span
+        class="flex items-center gap-1.5 text-[#cdd6e4] group-hover:text-cyan transition-colors"
+      >
+        Chrome Web Store Oficial
+      </span>
+      <span class="text-white/20">|</span>
+      <span class="text-[#3df2a4] font-medium">Grátis para instalar</span>
+    </a>
+  </div>
+
+  <!-- Autoplaying Video Container -->
+  <div
+    class="video-player-window w-full rounded-2xl border border-[rgba(0,119,255,0.35)] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_60px_rgba(0,119,255,0.18)] overflow-hidden relative mb-8"
+  >
+    <div class="relative w-full aspect-video bg-[#03060c] overflow-hidden">
+      <video
+        id="heroVideo"
+        class="w-full h-full object-cover block pointer-events-none"
+        src="/hero-video.mp4"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        aria-label="Vídeo de demonstração do fluxo de trabalho do VidRank"
+      >
+        <track kind="captions" />
+      </video>
+    </div>
+  </div>
+
+  <!-- Official Chrome Extension Store Banner Card -->
+  <div
+    class="extension-banner-card w-full rounded-2xl bg-[#0c121e]/90 border border-[rgba(0,119,255,0.35)] shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-6 sm:p-7 mb-12 flex flex-col md:flex-row items-center justify-between gap-5 relative overflow-hidden backdrop-blur-md"
+    data-reveal
+  >
+    <div
+      class="absolute -right-20 -bottom-20 w-64 h-64 bg-cyan/10 rounded-full blur-3xl pointer-events-none"
+    >
+    </div>
+
+    <div class="flex items-center gap-4.5">
+      <div class="relative shrink-0">
+        <img
+          src="/extension-logo.png"
+          alt="Logo da extensão VidRank"
+          width="56"
+          height="56"
+          loading="lazy"
+          decoding="async"
+          class="w-14 h-14 rounded-2xl p-1 bg-white/[0.06] border border-white/15 shadow-[0_0_25px_rgba(0,119,255,0.3)] object-contain"
+        />
+        <img
+          src="/chrome-store-logo.svg"
+          alt="Chrome Store"
+          width="24"
+          height="24"
+          loading="lazy"
+          decoding="async"
+          class="w-6 h-6 absolute -bottom-1 -right-1 bg-[#0c121e] rounded-full p-0.5 border border-white/20 shadow-md"
+        />
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <span class="text-white font-outfit font-bold text-[18px]"
+            >Extensão VidRank para Chrome</span
+          >
+          <span
+            class="text-[10px] font-bold text-[#50f1c0] bg-[#50f1c0]/10 border border-[#50f1c0]/20 px-2 py-0.5 rounded-md flex items-center gap-1"
+          >
+            <img src="/chrome-store-logo.svg" alt="" width="12" height="12" loading="lazy" decoding="async" class="w-3 h-3" /> Chrome Web
+            Store
+          </span>
+        </div>
+        <p
+          class="text-[#94a3b8] text-[13px] leading-[1.5] max-w-[440px] mb-1.5"
+        >
+          Otimize títulos, descrições e tags com 1 clique direto no seu
+          navegador.
+        </p>
+        <div class="flex items-center gap-2.5 text-[12px]">
+          <span class="text-[#ffbd2e] font-semibold">★★★★★ Avaliação 5.0</span>
+          <span class="text-white/20">•</span>
+          <span class="text-[#3df2a4] font-medium">Grátis para instalar</span>
+        </div>
+      </div>
+    </div>
+
+    <a
+      href="https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center justify-center gap-3 min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-xl shadow-[0_8px_25px_rgba(0,102,238,0.5)] hover:scale-[1.02] transition-all no-underline shrink-0 whitespace-nowrap group"
+    >
+      <img src="/chrome-store-logo.svg" alt="" width="20" height="20" loading="lazy" decoding="async" class="w-5 h-5 object-contain" />
+      <span>Adicionar ao Chrome</span>
+      <span class="text-cyan group-hover:translate-x-1 transition-transform"
+        >→</span
+      >
+    </a>
+  </div>
+
+  <!-- optimizer card wrapper -->
+  <div class="relative w-full max-w-[880px] mx-auto" data-reveal>
+    <!-- Floating Chips outside overflow-hidden card -->
+    <div
+      class="float-chip chip absolute z-10 hidden md:flex items-center gap-[7px] py-[9px] px-3.5 text-[#bcc6d4] bg-[#151d29] border border-line text-[10px] -left-[28px] top-[18%] rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.6)] backdrop-blur-md"
+    >
+      <span class="text-red"><Icon name="sparkles" /></span> Com IA
+    </div>
+    <div
+      class="float-chip chip absolute z-10 hidden md:flex items-center gap-[7px] py-[9px] px-3.5 text-[#a9f4dd] bg-[#151d29] border border-line text-[10px] -right-[24px] bottom-[16%] rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.6)] backdrop-blur-md"
+    >
+      <span
+        class="inline-block w-[7px] h-[7px] bg-[#3df2a4] rounded-full shadow-[0_0_11px_#3df2a4]"
+      ></span> Análise ao vivo
+    </div>
+
+    <!-- Inner Optimizer Card -->
+    <div
+      class="optimizer relative w-full bg-[rgba(16,22,33,.9)] border border-[rgba(255,255,255,.14)] shadow-[0_25px_80px_rgba(0,0,0,.4),0_0_80px_rgba(0,119,255,.07)] rounded-2xl overflow-hidden backdrop-blur-md"
+    >
+      <div
+        class="absolute -inset-px -z-[1] bg-[linear-gradient(130deg,rgba(0,119,255,0.42),transparent_35%,rgba(0,240,255,0.3))] blur-[20px] opacity-55 pointer-events-none"
+        aria-hidden="true"
+      >
+      </div>
+
+      <div
+        class="h-[52px] sm:h-[58px] flex items-center justify-between gap-2 px-4 sm:px-[22px] border-b border-line text-[#dfe7f2] font-outfit font-semibold text-[12px]"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="status-dot inline-block w-[7px] h-[7px] bg-[#3df2a4] rounded-full shadow-[0_0_11px_#3df2a4]"
+          ></span>
+          VidRank AI
+        </div>
+        <span class="text-[#8ea0b5] font-inter font-medium text-[10px]"
+          >Motor de Título e Nome de Arquivo</span
+        >
+      </div>
+
+      <div class="p-4 sm:p-[30px]">
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <span class={eyebrowMini}>ARQUIVO DE VÍDEO OU TÍTULO DE ENTRADA</span>
+          <span
+            class="text-[9px] sm:text-[10px] font-mono text-cyan bg-cyan/10 border border-cyan/20 px-2 py-0.5 rounded"
+            >Extraído automaticamente do arquivo</span
+          >
+        </div>
+        <div class="input-block">
+          <strong
+            class="block my-2 sm:my-[10px] mb-3 font-outfit font-semibold text-[17px] sm:text-[21px] text-white break-words"
+            >Basquete Cinematográfico em Câmera Lenta</strong
+          >
+          <div
+            class="flex items-center justify-between gap-2 text-[#8ea0b5] text-[11px] bg-black/30 p-2.5 rounded-lg border border-white/5 flex-wrap"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <span
+                class="grid place-items-center w-[22px] h-[22px] bg-[rgba(0,119,255,.16)] text-red rounded-[4px] shrink-0"
+                ><Icon name="play" /></span
+              >
+              <span class="font-mono text-white/90 font-medium text-[11px] truncate max-w-[170px] sm:max-w-none"
+                >cinematic_basketball_slowmo.mp4</span
+              >
+            </div>
+            <span
+              class="text-[#3df2a4] flex items-center gap-1 text-[10px] shrink-0"
+              ><Icon name="check" /> Renomeado e Pronto</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="scan-block relative my-4 sm:my-[30px] p-3.5 sm:p-[18px] bg-[#0d1219] border border-[rgba(255,255,255,.07)] overflow-hidden rounded-xl"
+        >
+          <span
+            class="scan-line hidden [.is-scanning_&]:block absolute left-0 right-0 top-0 h-px bg-cyan shadow-[0_0_15px_var(--color-cyan)] animate-[scan_1.4s_linear_infinite] will-change-transform"
+          ></span>
+          <span class={eyebrowMini}>ANÁLISE DE IA</span>
+          <div
+            class="analysis flex items-center gap-2 mt-2.5 text-[#adb8c5] text-[11px]"
+          >
+            <span class="text-cyan shrink-0"><Icon name="check" /></span> Tópico identificado <small
+              class="ml-auto text-[#8ea0b5]">01</small
+            >
+          </div>
+          <div
+            class="analysis flex items-center gap-2 mt-2.5 text-[#adb8c5] text-[11px]"
+          >
+            <span class="text-cyan shrink-0"><Icon name="check" /></span> Palavras-chave mapeadas <small
+              class="ml-auto text-[#8ea0b5]">02</small
+            >
+          </div>
+          <div
+            class="analysis flex items-center gap-2 mt-2.5 text-[#adb8c5] text-[11px]"
+          >
+            <span class="text-cyan shrink-0"><Icon name="check" /></span> Otimização pronta
+            <small class="ml-auto text-[#8ea0b5]">03</small>
+          </div>
+        </div>
+
+        <div
+          class="p-4 sm:p-5 border border-[rgba(0,240,255,.18)] bg-[linear-gradient(120deg,rgba(0,240,255,.06),rgba(0,119,255,.04))] rounded-xl"
+        >
+          <div class="flex justify-between items-center gap-2">
+            <span class={eyebrowMini}>SAÍDA</span>
+            <span
+              class="text-[#50f1c0] bg-[rgba(80,241,192,.08)] border border-[rgba(80,241,192,.18)] px-2 py-[4px] font-inter font-semibold text-[9px] rounded shrink-0"
+              >92 PONTOS DE SEO</span
+            >
+          </div>
+          <strong
+            class="output-title block max-w-[540px] my-2.5 sm:my-[13px] font-outfit font-semibold text-[15px] sm:text-[17px] leading-[1.35] text-white break-words"
+          >
+            Basquete Cinematográfico em Câmera Lenta <em class="text-cyan not-italic"
+              >| Melhores Momentos Esportivos Insanos</em
+            >
+          </strong>
+          <div class="tag-cloud flex flex-wrap gap-1.5 sm:gap-[7px]">
+            {
+              heroTags.map((t) => (
+                <span class="inline-flex py-1 px-2 border border-[rgba(0,240,255,.18)] bg-[rgba(0,240,255,.06)] text-[#9deef1] text-[10px] rounded">
+                  {t}
+                </span>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="flex items-center justify-between px-4 sm:px-[22px] py-3.5 sm:py-4 text-[#737e8b] border-t border-line text-[11px]"
+      >
+        <span class="flex items-center gap-1.5 text-[10px] sm:text-[11px]"
+          ><span class="text-[#3df2a4]"><Icon name="check" /></span> Otimização concluída</span
+        >
+        <button
+          type="button"
+          class="flex items-center gap-1.5 text-[#d5dde8] hover:text-white border-0 bg-transparent text-[11px] cursor-pointer transition-colors"
+          >Executar novamente <Icon name="wand-sparkles" /></button
+        >
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  // Ensure video autoplays smoothly on load
+  const video = document.getElementById("heroVideo");
+  if (video) {
+    video.muted = true;
+    video.play().catch(() => {});
+  }
+</script>

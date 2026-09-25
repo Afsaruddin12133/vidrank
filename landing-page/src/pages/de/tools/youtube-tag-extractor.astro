@@ -1,0 +1,238 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/de/Navbar.astro";
+import Footer from "../../../components/de/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+
+const title = "YouTube Tag Extractor — Jeder Video- oder Shorts-Link (Kostenlos)";
+const description = "Kostenloser YouTube Tag Extractor: Video- oder Shorts-Link einfügen und alle Tags mit einem Klick kopieren. Keine Anmeldung nötig.";
+
+const faqs = [
+  {
+    q: "Was macht der YouTube Tag Extractor?",
+    a: "Du fügst eine beliebige YouTube-Video-URL ein, und das Tool zeigt genau die Tags, die dieses Video verwendet, in der Reihenfolge, in der sie hinzugefügt wurden. Tags sind ein kleines, aber echtes Ranking-Signal für Tippfehler, Synonyme und Abgrenzung — dieses Tool zeigt dir, wie Top-Videos in deiner Nische diese Varianten abdecken.",
+  },
+  {
+    q: "Wie sehe ich YouTube-Tags in Chrome?",
+    a: "YouTube versteckt Tags auf der sichtbaren Seite, du brauchst also ein Tool: Dieser kostenlose Extractor funktioniert in jedem Browser, oder installiere die VidRank Chrome-Erweiterung, um Tags direkt beim Browsen auf YouTube zu sehen und gerankte Metadaten zu erstellen.",
+  },
+  {
+    q: "Ist dieser YouTube Tag Checker kostenlos?",
+    a: "Ja, komplett kostenlos und ohne Anmeldung — er funktioniert als Tag Extractor, Tag Checker und Tags-Analyzer für jedes öffentliche Video. VidRanks kostenloser Tarif umfasst außerdem KI-generierte Titel, Tags und Beschreibungen für deine eigenen Videos.",
+  },
+  {
+    q: "Wie nutze ich extrahierte Tags richtig?",
+    a: "Behalte 15–30 Tags pro Video: zuerst dein genaues Thema, dann enge Varianten, dann häufige Tippfehler und ein bis zwei breite Kategorie-Tags. Füge nicht 40 Beinahe-Duplikate ein — YouTubes Richtlinien raten davon ab. Nutze extrahierte Tags, um Lücken in deinem eigenen Set zu finden, nicht um sie komplett zu kopieren.",
+  },
+  {
+    q: "Warum zeigen manche Videos keine Tags?",
+    a: "Manche Ersteller fügen keine Tags hinzu, und YouTube entfernt Keyword-Metadaten bei bestimmten nicht verfügbaren oder altersbeschränkten Videos. Zeigt ein Video keine Tags, hat der Ersteller meist einfach keine hinzugefügt.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank YouTube Tag Extractor",
+  url: "https://vidrank.tech/de/tools/youtube-tag-extractor",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-26",
+};
+---
+
+<Layout title={title} description={description} lang="de" altPaths={{ en: "/tools/youtube-tag-extractor", "pt-BR": "/pt-br/tools/youtube-tag-extractor" }}>
+  <Navbar />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Kostenlos · Keine Anmeldung
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        YouTube Tag Extractor &amp; Checker
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Du willst die Tags eines YouTube-Videos sehen? YouTube versteckt sie — dieses kostenlose Tool zeigt sie dir. Füge eine beliebige YouTube-URL ein, um genau die Tags zu sehen, die das Video verwendet, in der Reihenfolge des Erstellers, mit einem Klick kopierbar. Generiere danach dein eigenes gerangtes Set mit <a href="/de/#pricing" class="text-cyan hover:underline">VidRanks KI-Tag-Generator</a>.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="extractForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="videoUrl"
+          type="url"
+          required
+          placeholder="https://www.youtube.com/watch?v=..."
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="YouTube-Video-URL"
+        />
+        <button
+          type="submit"
+          id="extractBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Tags extrahieren
+        </button>
+      </form>
+
+      <p id="status" class="hidden mt-3 text-[13px]" role="status"></p>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 id="videoTitle" class="text-white font-semibold text-[15px]"></h2>
+          <button id="copyAllBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/10 text-white text-[12px] border border-white/10 transition-all cursor-pointer">
+            <Icon name="check" /> <span id="copyAllText">Alle Tags kopieren</span>
+          </button>
+        </div>
+        <ol id="tagList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 list-none p-0 m-0"></ol>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first (AEO/GEO capsules) -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Was sind YouTube-Tags?</h2>
+        <p>
+          YouTube-Tags sind Keywords in den Metadaten eines Videos, die YouTube helfen, das Thema zu verstehen — besonders Synonyme, Tippfehler und alternative Formulierungen, die nicht in den Titel passen. Sie sind ein kleines Ranking-Signal: Tags helfen YouTube vor allem bei Einordnung und Abgrenzung, sie pushen kein schwaches Video nach oben.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Warum einen YouTube Tag Extractor nutzen?</h2>
+        <p>
+          YouTube versteckt Tags auf der sichtbaren Seite, daher ist ein Tool, das die Metadaten des Videos für dich abruft, der einzige Weg, die Tag-Liste eines Konkurrenten zu lesen. Ein Extractor zeigt dir genau, welche Keyword-Varianten die Top-Videos in deiner Nische für wichtig genug hielten — das macht aus Tag-Recherche eine Checkliste statt Raten.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Konkurrenz-Tags in 4 Schritten recherchieren</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li>Suche das genaue Thema deines Videos auf YouTube und öffne die Top-3-Ergebnisse.</li>
+          <li>Füge jede URL oben ein und kopiere die Tag-Liste — das Tool funktioniert mit jedem Video- oder Shorts-Link.</li>
+          <li>Notiere, welche Tags bei mehreren Top-Videos vorkommen. Diese Wiederholungen sind die Kern-Keyword-Varianten der Nische.</li>
+          <li>Füge die hinzu, die wirklich zu deinem Video passen, und fülle Lücken mit Synonymen und Tippfehlern, die den Top-Videos fehlten.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">5 Regeln für die Wahl von YouTube-Tags</h2>
+        <ul class="space-y-2 pl-5 list-disc">
+          <li>Beginne mit deinem genauen Thema, so formuliert, wie Nutzer wirklich suchen.</li>
+          <li>Füge danach enge Varianten und Synonyme hinzu — nicht 20 Beinahe-Duplikate.</li>
+          <li>Nimm häufige Tippfehler mit auf; YouTubes eigene Richtlinien empfehlen das.</li>
+          <li>Halte die Liste bei 15–30 Tags. Nicht die Menge zählt, sondern die Abdeckung.</li>
+          <li>Füge niemals Promi-Namen oder unpassende Trend-Begriffe hinzu — das verstößt gegen YouTubes Tag-Richtlinien.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Sind YouTube-Tags 2026 noch wichtig?</h2>
+        <p>
+          Ja — aber weniger als Titel, Thumbnails und Wiedergabezeit. YouTube beschreibt Tags als vor allem nützlich für Tippfehler und Abgrenzung. Behandle sie als kleinen, kostenlosen Vorteil: Eine gut gebaute Tag-Liste dauert etwa 5 Minuten und hilft dem Algorithmus, dein Video einzuordnen, aber kein Tag-Set rettet schwachen Content. Das Extrahieren von Konkurrenz-Tags zeigt dir die Basislinie; das Ranking kommt von allem, was du zusätzlich tust.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Häufig gestellte Fragen</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke per pSEO research -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Weitere kostenlose YouTube-SEO-Guides von VidRank</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/de/tools/youtube-tag-generator" class="text-cyan hover:underline">YouTube Tag Generator — Kostenloser Tag-Listen-Ersteller</a></li>
+        <li><a href="/de/tools/youtube-title-generator" class="text-cyan hover:underline">YouTube Titel Generator — Kostenlose klickstarke Titel</a></li>
+        <li><a href="/de/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Video-Rankings kostenlos prüfen</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Zuletzt aktualisiert: 26. September 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("extractForm");
+    const input = document.getElementById("videoUrl");
+    const btn = document.getElementById("extractBtn");
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+    let currentTags = [];
+
+    function setStatus(msg, isError) {
+      status.textContent = msg;
+      status.className = "mt-3 text-[13px] " + (isError ? "text-red-400" : "text-cyan");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Wird extrahiert…";
+      setStatus("Tags werden abgerufen…", false);
+      try {
+        const res = await fetch("/api/extract-tags?url=" + encodeURIComponent(input.value));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Extraktion fehlgeschlagen");
+        currentTags = data.tags || [];
+        document.getElementById("videoTitle").textContent = data.title || ("Video " + data.videoId);
+        const list = document.getElementById("tagList");
+        list.innerHTML = "";
+        if (!currentTags.length) {
+          setStatus("Dieses Video hat keine Tags — der Ersteller hat keine hinzugefügt.", true);
+        } else {
+          results.classList.remove("hidden");
+          currentTags.forEach((tag, i) => {
+            const li = document.createElement("li");
+            li.className = "flex items-center gap-2 py-2 px-3 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-[13px]";
+            li.innerHTML = '<span class="text-[#5a6b80] font-mono text-[11px] w-6 shrink-0">' + (i + 1) + '</span><span class="text-cyan font-mono truncate">' + tag.replace(/</g, "&lt;") + '</span>';
+            list.appendChild(li);
+          });
+          setStatus(currentTags.length + " Tags gefunden.", false);
+        }
+      } catch (err) {
+        setStatus(err.message, true);
+        results.classList.add("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Tags extrahieren";
+      }
+    });
+
+    document.getElementById("copyAllBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(currentTags.join(", ")).then(() => {
+        const t = document.getElementById("copyAllText");
+        t.textContent = "Kopiert!";
+        setTimeout(() => (t.textContent = "Alle Tags kopieren"), 2000);
+      });
+    });
+  </script>
+</Layout>

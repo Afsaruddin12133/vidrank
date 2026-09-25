@@ -1,0 +1,294 @@
+---
+/**
+ * Pricing.astro — Free + Pro pricing (VidRank original structure)
+ *
+ * Sandbox mode: uses sandbox token + sandbox price IDs from .env
+ * To go live: flip env vars in .env (see comments there)
+ */
+import Icon from "../Icon.astro";
+
+const sec = "py-[100px] px-[6vw] mx-auto max-w-[1440px] max-[900px]:py-[70px] max-[620px]:py-[50px]";
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const h2c = `${h2} text-center`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const introP = "max-w-[500px] text-muted text-[15px] leading-[1.7]";
+const btn = "inline-flex items-center justify-center gap-[9px] min-h-[45px] px-5 font-bold text-[13px] text-white transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-[2px] rounded-lg";
+const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_8px_30px_rgba(0,102,238,.4)] hover:shadow-[0_10px_34px_rgba(0,102,238,.6)]`;
+const btnOutline = `${btn} bg-white/[0.04] border border-white/[0.15] hover:bg-white/[0.08] text-white`;
+
+const freeFeatures = [
+  "10 Generierungen pro Tag",
+  "YouTube-Tag-Generierung",
+  "YouTube-Beschreibungs-Generierung",
+  "Basis-SEO-Optimierung",
+  "Automatisches Ausfüllen von Tags & Beschreibungen",
+  "Generierung mit einem Klick",
+];
+
+const proFeatures = [
+  "Unbegrenzte Generierungen",
+  "Erweiterte SEO-Optimierung",
+  "Premium-KI-Beschreibungen & Tags",
+  "Erweitertes Keyword-Targeting",
+  "Bessere Optimierung der Auffindbarkeit",
+  "Schnellere Verarbeitung",
+  "Früher Zugriff auf neue Funktionen",
+  "Priorisierter Support",
+];
+
+// Price IDs from env (sandbox or live depending on PUBLIC_PADDLE_ENVIRONMENT)
+const priceMonthly = import.meta.env.PUBLIC_PADDLE_PRO_PRICE_ID_MONTHLY;
+const priceYearly  = import.meta.env.PUBLIC_PADDLE_PRO_PRICE_ID_YEARLY;
+---
+
+<section id="pricing" class={`${sec} text-center`}>
+  <div class="section-intro centered text-center" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>EINFACHE, CREATOR-FREUNDLICHE PREISE</span>
+    <h2 class={h2c}>Was kostet <span>VidRank</span>?</h2>
+    <p class={`${introP} mx-auto`}>
+      VidRank kostet $0 im Free-Plan (10 Generierungen pro Tag) und
+      <span id="pricingTagline">$3.99/Monat</span> im Pro-Plan mit unbegrenzten Generierungen.
+      Upgrade, wenn dein Veröffentlichungsrhythmus mehr Raum braucht.
+    </p>
+  </div>
+
+  <!-- Billing toggle -->
+  <div class="inline-flex gap-1 mt-8 p-1.5 bg-[#0c111c] border border-line rounded-xl" data-reveal>
+    <button
+      id="billMonthly"
+      class="bill px-4 py-2 text-white bg-[#1d2735] border-0 text-[12px] font-semibold rounded-lg cursor-pointer"
+      data-bill="monthly"
+      aria-pressed="true"
+    >Monatlich</button>
+    <button
+      id="billYearly"
+      class="bill px-4 py-2 text-[#94a3b8] bg-transparent border-0 text-[12px] font-semibold rounded-lg cursor-pointer hover:text-white"
+      data-bill="yearly"
+      aria-pressed="false"
+    >Jährlich <small class="ml-1 text-[#3df2a4] font-bold">20% sparen</small></button>
+  </div>
+
+  <div class="max-w-[880px] mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+
+    <!-- Free Card -->
+    <div class="relative p-8 rounded-2xl border border-line bg-[#0c111c]/90 backdrop-blur-md shadow-lg flex flex-col justify-between" data-reveal>
+      <div>
+        <span class="text-[#94a3b8] font-inter font-semibold text-[11px] tracking-[0.14em] uppercase">GRATIS</span>
+        <h3 class="my-3 font-outfit font-extrabold text-[44px] text-white">$0</h3>
+        <p class="text-[#cbd5e1] text-[13px]">Perfekt für neue Creator.</p>
+        <div class="h-px my-6 bg-line"></div>
+        {freeFeatures.map((f) => (
+          <div class="flex gap-2.5 items-center my-3.5 text-[#cbd5e1] text-[13px]">
+            <span class="text-[#3df2a4]"><Icon name="check" /></span> {f}
+          </div>
+        ))}
+      </div>
+      <button id="pricingFreeBtn" type="button" class={`${btnOutline} w-full mt-8 cursor-pointer`}>
+        Kostenlos starten
+      </button>
+    </div>
+
+    <!-- Pro Card -->
+    <div class="relative p-8 rounded-2xl border border-[rgba(0,119,255,.65)] bg-[linear-gradient(140deg,rgba(0,119,255,.14),#0c111c_40%)] shadow-[0_20px_50px_rgba(0,119,255,0.15)] flex flex-col justify-between" data-reveal>
+      <div>
+        <span class="absolute right-6 top-6 px-2.5 py-1 text-[#3898ff] bg-[rgba(0,119,255,.18)] border border-[rgba(0,119,255,0.3)] rounded-full font-inter font-bold text-[10px] tracking-wider uppercase">EMPFOHLEN</span>
+        <span class="text-[#94a3b8] font-inter font-semibold text-[11px] tracking-[0.14em] uppercase">PRO</span>
+        <h3 class="my-3 font-outfit font-extrabold text-[44px] text-white">
+          <span id="proPrice">$3.99</span>
+          <small id="proPeriod" class="text-[#94a3b8] font-inter font-normal text-[13px]">/Monat</small>
+        </h3>
+        <p class="text-[#cbd5e1] text-[13px]">Für Creator, die gezielt wachsen wollen.</p>
+        <div class="h-px my-6 bg-line"></div>
+        {proFeatures.map((f) => (
+          <div class="flex gap-2.5 items-center my-3.5 text-[#cbd5e1] text-[13px]">
+            <span class="text-[#3df2a4]"><Icon name="check" /></span> {f}
+          </div>
+        ))}
+      </div>
+      <button id="pricingProBtn" type="button" class={`${btnPrimary} w-full mt-8 cursor-pointer`}>
+        Auf Pro upgraden
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { loginWithGoogle, getCachedUser, type VidRankUser } from "../../lib/firebase";
+  import { initPaddle, openPaddleCheckout } from "../../lib/paddle-sdk";
+
+  const PRICE_MONTHLY = import.meta.env.PUBLIC_PADDLE_PRO_PRICE_ID_MONTHLY as string;
+  const PRICE_YEARLY  = import.meta.env.PUBLIC_PADDLE_PRO_PRICE_ID_YEARLY  as string;
+
+  const freeBtn    = document.getElementById("pricingFreeBtn") as HTMLButtonElement;
+  const proBtn     = document.getElementById("pricingProBtn")  as HTMLButtonElement;
+  const proPrice   = document.getElementById("proPrice")       as HTMLElement;
+  const proPeriod  = document.getElementById("proPeriod")      as HTMLElement;
+  const tagline    = document.getElementById("pricingTagline") as HTMLElement;
+  const billBtns   = document.querySelectorAll<HTMLButtonElement>(".bill");
+
+  let billing: "monthly" | "yearly" = "monthly";
+
+  // Pre-init Paddle SDK on page load
+  initPaddle();
+
+  // ── Billing toggle ─────────────────────────────────────────────────────────
+  billBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      billing = btn.dataset.bill as "monthly" | "yearly";
+
+      billBtns.forEach((b) => {
+        const isActive = b.dataset.bill === billing;
+        b.classList.toggle("text-white",      isActive);
+        b.classList.toggle("bg-[#1d2735]",    isActive);
+        b.classList.toggle("text-[#94a3b8]",  !isActive);
+        b.classList.toggle("bg-transparent",  !isActive);
+        b.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      if (billing === "yearly") {
+        proPrice.textContent  = "$38.30";
+        proPeriod.textContent = "/Jahr";
+        if (tagline) tagline.textContent = "$38.30/Jahr";
+      } else {
+        proPrice.textContent  = "$3.99";
+        proPeriod.textContent = "/Monat";
+        if (tagline) tagline.textContent = "$3.99/Monat";
+      }
+      updateButtons(getCachedUser());
+    });
+  });
+
+  // ── Auth-aware button state ────────────────────────────────────────────────
+  function updateButtons(user: VidRankUser | null) {
+    if (!freeBtn || !proBtn) return;
+    if (user) {
+      const isPro = user.tier === "pro";
+      freeBtn.textContent = isPro ? "Free-Plan" : "Aktueller Plan";
+      freeBtn.disabled    = true;
+      freeBtn.classList.add("opacity-50", "cursor-default");
+
+      if (!isPro) {
+        proBtn.textContent = "Auf Pro upgraden";
+        proBtn.disabled    = false;
+        proBtn.classList.remove("opacity-75", "opacity-80", "cursor-default");
+      } else {
+        // Billing-period aware: only the user's CURRENT period shows Active.
+        // The other period offers a switch, so one plan never looks like two.
+        const currentPriceId = user.billing_price_id || null;
+        const viewingOwn = currentPriceId
+          ? currentPriceId === (billing === "yearly" ? PRICE_YEARLY : PRICE_MONTHLY)
+          : billing === "monthly"; // no sub record → assume monthly default
+
+        if (viewingOwn) {
+          proBtn.textContent = "Aktueller Plan (Aktiv)";
+          proBtn.disabled    = true;
+          proBtn.classList.add("opacity-80", "cursor-default");
+        } else {
+          proBtn.textContent = billing === "yearly"
+            ? "Zu Jährlich wechseln — 20% sparen"
+            : "Zu Monatlich wechseln";
+          proBtn.disabled    = false;
+          proBtn.classList.remove("opacity-75", "opacity-80", "cursor-default");
+        }
+      }
+    } else {
+      freeBtn.textContent = "Kostenlos starten";
+      freeBtn.disabled    = false;
+      freeBtn.classList.remove("opacity-50", "cursor-default");
+      proBtn.textContent  = "Auf Pro upgraden";
+      proBtn.disabled     = false;
+      proBtn.classList.remove("opacity-75", "opacity-80", "cursor-default");
+    }
+  }
+
+  updateButtons(getCachedUser());
+
+  window.addEventListener("vidrank:auth:change", ((e: CustomEvent<{ user: VidRankUser | null }>) => {
+    updateButtons(e.detail?.user ?? null);
+    if (e.detail?.user) initPaddle();
+  }) as EventListener);
+
+  // ── Free button ────────────────────────────────────────────────────────────
+  freeBtn?.addEventListener("click", async () => {
+    const user = getCachedUser();
+    if (!user) {
+      try {
+        freeBtn.textContent = "Anmeldung…";
+        await loginWithGoogle();
+      } catch (e) {
+        console.error(e);
+        updateButtons(getCachedUser());
+      }
+    } else {
+      window.open(
+        "https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk",
+        "_blank"
+      );
+    }
+  });
+
+  // ── Pro button ─────────────────────────────────────────────────────────────
+  proBtn?.addEventListener("click", async () => {
+    let user = getCachedUser();
+    if (!user) {
+      try {
+        proBtn.textContent = "Anmeldung…";
+        user = await loginWithGoogle();
+      } catch (e) {
+        console.error(e);
+        updateButtons(getCachedUser());
+        return;
+      }
+    }
+
+    if (!user) return;
+
+    const targetPriceId = billing === "yearly" ? PRICE_YEARLY : PRICE_MONTHLY;
+
+    if (user.tier === "pro" && user.billing_price_id && user.billing_price_id !== targetPriceId) {
+      // Existing subscriber switching billing period — PATCH the same
+      // subscription server-side; a second checkout would double-bill.
+      try {
+        proBtn.textContent = "Wird gewechselt…";
+        proBtn.disabled    = true;
+        const idToken = await (await import("../../lib/firebase")).getCurrentIdToken();
+        const { BACKEND_URL } = await import("../../lib/firebase");
+        await fetch(`${BACKEND_URL}/billing/switch-plan`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ price_id: targetPriceId }),
+        });
+        alert("Abrechnungszeitraum gewechselt! Dein Abo wurde aktualisiert.");
+        window.location.reload();
+      } catch (err) {
+        console.error("Switch failed:", err);
+        alert("Abrechnungszeitraum konnte nicht gewechselt werden. Bitte versuche es erneut.");
+      } finally {
+        updateButtons(getCachedUser());
+      }
+      return;
+    }
+
+    if (user.tier !== "pro") {
+      try {
+        proBtn.textContent = "Checkout wird geöffnet…";
+        proBtn.disabled    = true;
+        const priceId = billing === "yearly" ? PRICE_YEARLY : PRICE_MONTHLY;
+        await openPaddleCheckout({
+          priceId,
+          userEmail:   user.email,
+          firebaseUid: user.uid,
+        });
+      } catch (err) {
+        console.error("Checkout failed:", err);
+        alert("Checkout konnte nicht geöffnet werden. Bitte versuche es erneut.");
+      } finally {
+        updateButtons(getCachedUser());
+      }
+    }
+  });
+</script>

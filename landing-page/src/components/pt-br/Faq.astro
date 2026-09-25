@@ -1,0 +1,67 @@
+---
+import Icon from "../Icon.astro";
+
+const secFull = (bg: string) => `py-[100px] px-[6vw] max-w-none ${bg} max-[900px]:py-[70px] max-[620px]:py-[50px]`;
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const introP = "max-w-[480px] text-muted text-[15px] leading-[1.7]";
+
+const faqs = [
+  ["O que é o VidRank?", "O VidRank é um mecanismo de otimização para YouTube com inteligência artificial que ajuda criadores a gerar automaticamente títulos, descrições, palavras-chave e tags com alto potencial de ranqueamento."],
+  ["O VidRank tem extensão para Chrome?", "Sim. O VidRank tem uma extensão gratuita para Chrome que gera títulos, descrições e tags otimizadas para o YouTube em um clique. Instale na Chrome Web Store."],
+  ["Como o VidRank gera meu SEO?", "O VidRank gera tudo direto a partir do título do seu vídeo ou do nome do arquivo de vídeo renomeado. Basta renomear o arquivo (por exemplo, basquete_camlenta.mp4) ou digitar seu título — nossa IA extrai automaticamente o nicho, a intenção de busca e as palavras-chave."],
+  ["O VidRank gera tags para o YouTube?", "Sim. O VidRank gera tags relevantes e variações de palavras-chave que você pode revisar e copiar direto para o seu fluxo de upload."],
+  ["Posso usar o VidRank de graça?", "Sim. O plano Gratuito inclui 10 gerações por dia e as ferramentas essenciais de otimização de SEO."],
+  ["O VidRank é útil para canais pequenos do YouTube?", "Com certeza. O VidRank dá a qualquer criador um ponto de partida mais claro, seja para publicar o primeiro vídeo ou para expandir um catálogo já existente."],
+  ["O VidRank garante mais visualizações?", "O VidRank ajuda a melhorar o SEO e os sinais de descoberta do seu vídeo, mas nenhuma ferramenta pode garantir um número específico de visualizações ou posições de ranqueamento."],
+];
+
+// FAQPage structured data — parsed by AI answer engines (ChatGPT, Perplexity, Google AI Overviews)
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map(([question, answer]) => ({
+    "@type": "Question",
+    name: question,
+    acceptedAnswer: { "@type": "Answer", text: answer },
+  })),
+};
+---
+
+<section class={`${secFull("bg-[#0a0e16]")} grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-12 lg:gap-16 max-w-[1440px] mx-auto`}>
+  <div class="section-intro" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>SOBRE O VIDRANK</span>
+    <h2 class={h2}>Perguntas <span>frequentes.</span></h2>
+    <p class={introP}>Tudo o que você precisa saber para decidir se o VidRank combina com o seu fluxo de trabalho.</p>
+  </div>
+  <div class="border-t border-line" data-reveal>
+    {faqs.map(([q, a], i) => (
+      <div class={`faq-item border-b border-line [&>p]:hidden [&.open>p]:block [&.open_.chev]:rotate-180 [&.open_.chev]:text-cyan ${i === 0 ? "open" : ""}`}>
+        <h3 class="my-0">
+          <button class="w-full flex justify-between items-center py-5 text-white hover:text-cyan transition-colors border-0 bg-transparent text-left font-outfit font-semibold text-[17px] cursor-pointer">
+            {q}
+            <span class="chev text-[#94a3b8] transition-transform duration-200"><Icon name="chevron-down" /></span>
+          </button>
+        </h3>
+        <p class="max-w-[650px] -mt-1 mb-5 text-[#cbd5e1] text-[14px] leading-[1.7]">{a}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+
+<script>
+  document.querySelectorAll(".faq-item button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = btn.closest(".faq-item");
+      if (!item) return;
+      const isOpen = item.classList.contains("open");
+      document.querySelectorAll(".faq-item").forEach((el) => el.classList.remove("open"));
+      if (!isOpen) {
+        item.classList.add("open");
+      }
+    });
+  });
+</script>

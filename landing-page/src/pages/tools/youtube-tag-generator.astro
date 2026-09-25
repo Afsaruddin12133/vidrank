@@ -3,9 +3,10 @@ import Layout from "../../layouts/Layout.astro";
 import Navbar from "../../components/Navbar.astro";
 import Footer from "../../components/Footer.astro";
 import Icon from "../../components/Icon.astro";
+import GeoBanner from "../../components/GeoBanner.astro";
 
 const title = "YouTube Tag Generator — Free Tag List Maker (500 Char)";
-const description = "Free YouTube tag generator: type your video topic and get a ready-to-paste tag set — variants, long-tails, misspellings — with a live 500-character counter. No signup.";
+const description = "Free YouTube tag generator: enter your topic, get a ready-to-paste tag set with variants, long-tails, and misspellings. Live 500-char counter. No signup.";
 
 const faqs = [
   {
@@ -52,8 +53,9 @@ const appSchema = {
 };
 ---
 
-<Layout title={title} description={description}>
+<Layout title={title} description={description} altPaths={{ "pt-BR": "/pt-br/tools/youtube-tag-generator", de: "/de/tools/youtube-tag-generator" }}>
   <Navbar />
+  <GeoBanner />
 
   <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
     <header class="text-center mb-10">
@@ -161,6 +163,7 @@ const appSchema = {
     <section class="mb-6">
       <h2 class="font-outfit font-bold text-[22px] text-white mb-4">More free YouTube SEO tools &amp; guides</h2>
       <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/tools/youtube-title-generator" class="text-cyan hover:underline">YouTube Title Generator — Free Click-Worthy Titles</a></li>
         <li><a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — See Any Video's Tags</a></li>
         <li><a href="/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Track Your Position</a></li>
         <li><a href="/blog/how-many-tags-can-you-have-on-youtube" class="text-cyan hover:underline">How Many Tags Can You Have on YouTube?</a></li>

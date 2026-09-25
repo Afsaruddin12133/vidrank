@@ -1,0 +1,77 @@
+---
+import Icon from "../Icon.astro";
+
+const sec = "py-[100px] px-[6vw] mx-auto max-w-[1440px] max-[900px]:py-[70px] max-[620px]:py-[50px]";
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const h2c = `${h2} text-center`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const eyebrowMini = "block text-[#8ea0b5] font-inter font-semibold text-[9px] tracking-[0.14em]";
+const introP = "max-w-[500px] text-muted text-[15px] leading-[1.7]";
+
+const keywords = [
+  ["01", "basketball slow motion"], ["02", "cinematic basketball"], ["03", "basketball highlights"],
+  ["04", "sports slow motion"], ["05", "basketball video"],
+];
+const heroTags = ["basketball", "slow motion", "basketball highlights", "cinematic basketball", "sports highlights", "viral sports"];
+const showcaseTags = [...heroTags, "trending basketball", "sports slow mo"];
+---
+
+<section id="showcase" class={`${sec} bg-[radial-gradient(circle_at_45%_50%,rgba(0,240,255,.04),transparent_34rem)]`}>
+  <div class="section-intro centered text-center" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>DIE VIDRANK-ENGINE</span>
+    <h2 class={h2c}>Deine Metadaten,<br /><span>mit klarer Haltung.</span></h2>
+    <p class={`${introP} mx-auto`}>Sieh genau, was du vor der Veröffentlichung verbessern solltest. VidRank macht aus komplexen SEO-Signalen einen klaren nächsten Schritt.</p>
+  </div>
+
+  <div class="mt-14 grid grid-cols-1 lg:grid-cols-[200px_1fr] border border-[rgba(137,190,255,0.18)] bg-[#0c121e]/90 backdrop-blur-md shadow-[0_30px_80px_rgba(0,0,0,0.6)] rounded-2xl overflow-hidden" data-reveal>
+    <aside class="p-6 border-r border-[rgba(137,190,255,0.14)] bg-[#080d17]/70 hidden lg:block">
+      <div class="inline-flex items-center gap-2.5 font-outfit font-extrabold text-[13px] tracking-[0.12em] text-white mb-10">
+        <img src="/logo.svg" alt="VidRank Logo" width="26" height="26" loading="lazy" decoding="async" class="w-[26px] h-[26px] object-contain rounded-md" /> VIDRANK
+      </div>
+      <div class="flex flex-col gap-1">
+        {["Video optimieren", "Keyword-Recherche", "Content-Ideen", "Kanal-Audit"].map((s, i) => (
+          <div class={`py-2.5 px-3 flex gap-2.5 items-center text-[11px] font-medium rounded-lg transition-colors ${i === 0 ? "text-white bg-blue-500/15 border-l-2 border-red" : "text-[#8ea0b5] hover:text-white"}`}>
+            <Icon name={["wand-sparkles", "search", "lightbulb", "chart-column"][i] as any} /> {s}
+          </div>
+        ))}
+      </div>
+    </aside>
+
+    <div class="p-8 sm:p-10 md:p-12">
+      <div class="flex justify-between items-start mb-8 gap-4">
+        <div>
+          <span class={eyebrowMini}>OPTIMIERE DEIN VIDEO</span>
+          <h3 class="my-1.5 font-outfit font-bold text-[24px] max-[620px]:text-[19px] text-white">Cinematic Basketball Slow Motion</h3>
+        </div>
+        <div class="text-[#50f1c0] font-outfit font-bold text-[36px] shrink-0 bg-[#50f1c0]/10 px-4 py-1.5 rounded-xl border border-[#50f1c0]/20">
+          <span class="js-count" data-to="92">92</span><span class="text-[#8ea0b5] text-[13px] font-normal">/100</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div>
+          <span class={eyebrowMini}>KEYWORD-CHANCEN</span>
+          <div class="mt-2 divide-y divide-white/[0.06]">
+            {keywords.map(([n, k]) => (
+              <div class="flex items-center gap-3 py-3 text-[#cbd5e1] text-[13px]">
+                <span class="text-red font-outfit font-bold text-[11px] font-mono">{n}</span>
+                <span>{k}</span>
+                <span class="ml-auto text-[#8ea0b5]"><Icon name="arrow-right" /></span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <span class={eyebrowMini}>GENERIERTE TAGS</span>
+          <div class="tag-cloud mt-3 flex flex-wrap gap-2 [&_span]:bg-[#141a25] [&_span]:border-[#26303f] [&_span]:text-[#cbd5e1] [&_span]:rounded-md">
+            {showcaseTags.map((t) => <span class="inline-flex py-1.5 px-2.5 border text-[11px] font-medium">{t}</span>)}
+          </div>
+          <span class={`${eyebrowMini} mt-8`}>GENERIERTE BESCHREIBUNG</span>
+          <p class="mt-2 text-[#94a3b8] text-[13px] leading-[1.7] p-3 rounded-lg bg-black/20 border border-white/[0.04]">
+            Experience basketball in a new way with this cinematic slow motion edit showcasing high-flying dunks and intense court action...
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,42 @@
+---
+---
+
+<footer class="pt-[55px] px-[8vw] pb-[25px] grid grid-cols-[1fr_1.5fr] gap-[60px] border-t border-line text-[#828d9a] max-[620px]:grid-cols-1 max-[620px]:gap-[35px]">
+  <div>
+    <a href="/pt-br/" class="inline-flex items-center gap-[10px] font-outfit font-extrabold text-[17px] tracking-[0.12em] text-white no-underline">
+      <img src="/logo.svg" alt="Logo da VidRank" width="27" height="27" loading="lazy" decoding="async" class="w-[27px] h-[27px] object-contain rounded-md" /> VIDRANK
+    </a>
+    <p class="mt-[15px] text-[12px] leading-[1.7]">Crescimento no YouTube com IA, sem achismo.</p>
+  </div>
+  <div class="grid grid-cols-3 gap-[30px] max-[620px]:gap-3">
+    <div class="flex flex-col gap-[13px] text-[11px]">
+      <b class="text-white font-outfit font-semibold text-[12px] mb-[5px]">Produto</b>
+      <a href="/pt-br/#features" class="hover:text-white transition-colors no-underline">SEO com IA</a>
+      <a href="/pt-br/#features" class="hover:text-white transition-colors no-underline">Pesquisa de Palavras-chave</a>
+      <a href="/pt-br/#features" class="hover:text-white transition-colors no-underline">Ideias de Conteúdo</a>
+      <a href="/pt-br/#features" class="hover:text-white transition-colors no-underline">Auditoria de Canal</a>
+      <a href="/blog" class="hover:text-white transition-colors no-underline">Blog e Guias</a>
+      <a href="/pt-br/#pricing" class="hover:text-white transition-colors no-underline">Preços</a>
+    </div>
+    <div class="flex flex-col gap-[13px] text-[11px]">
+      <b class="text-white font-outfit font-semibold text-[12px] mb-[5px]">Empresa</b>
+      <a href="/pt-br/#how" class="hover:text-white transition-colors no-underline">Sobre</a>
+      <a href="#" data-mail-user="support" data-mail-host="vidrank.tech" class="js-mailto hover:text-white transition-colors no-underline">Contato</a>
+    </div>
+    <div class="flex flex-col gap-[13px] text-[11px]">
+      <b class="text-white font-outfit font-semibold text-[12px] mb-[5px]">Legal</b>
+      <a href="/privacy" class="hover:text-white transition-colors no-underline">Política de Privacidade</a>
+      <a href="/terms" class="hover:text-white transition-colors no-underline">Termos de Serviço</a>
+      <a href="/refund" class="hover:text-white transition-colors no-underline">Política de Reembolso</a>
+    </div>
+  </div>
+  <div class="col-span-full pt-[25px] text-[#8ea0b5] border-t border-line text-[10px] max-[620px]:col-span-auto">© 2026 VidRank. Todos os direitos reservados.</div>
+</footer>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>("a.js-mailto").forEach((link) => {
+    const user = link.dataset.mailUser;
+    const host = link.dataset.mailHost;
+    if (user && host) link.href = `mailto:${user}@${host}`;
+  });
+</script>

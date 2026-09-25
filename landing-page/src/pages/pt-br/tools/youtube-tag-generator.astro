@@ -1,0 +1,259 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/pt-br/Navbar.astro";
+import Footer from "../../../components/pt-br/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+import GeoBanner from "../../../components/GeoBanner.astro";
+
+const title = "Gerador de Tags do YouTube — Grátis (Limite de 500 Caracteres)";
+const description = "Gerador de tags do YouTube grátis: digite o tema do vídeo e receba tags prontas pra colar, com variações, cauda longa e erros comuns. Sem cadastro.";
+
+const faqs = [
+  {
+    q: "Como funciona esse gerador de tags do YouTube?",
+    a: "Ele monta um conjunto de tags a partir do seu tema usando padrões comprovados: sua frase exata primeiro, depois variações (como fazer, para iniciantes, 2026), formas de cauda longa em pergunta, erros de digitação comuns e tags amplas de categoria. Tudo roda no seu navegador — nada é enviado a lugar nenhum. Revise a lista e apague qualquer tag que não descreva de verdade o seu vídeo.",
+  },
+  {
+    q: "Esse gerador de tags é gratuito?",
+    a: "Sim — uso ilimitado, sem login. Para tags pontuadas e ranqueadas (quais das suas tags importam mais), o plano gratuito do VidRank gera um conjunto ranqueado para o seu vídeo exato. Você também pode extrair as tags reais que os vídeos do topo usam com o extrator de tags do YouTube e juntá-las ao seu conjunto.",
+  },
+  {
+    q: "Quantas tags eu devo gerar?",
+    a: "Busque entre 15 e 30 tags dentro do limite de 500 caracteres do YouTube — o contador acima fica vermelho conforme você se aproxima do limite. Relevância vale mais que volume: uma lista de 15 tags em que todas combinam com o seu vídeo supera 40 tags vagamente relacionadas. Veja o detalhamento completo no nosso guia sobre o limite de tags do YouTube.",
+  },
+  {
+    q: "As tags geradas já são suficientes por si só?",
+    a: "Elas são um bom rascunho inicial, não uma lista final. O gerador cobre os padrões que o YouTube espera (tema exato, variações, erros de digitação). Para afinar, extraia as tags que os 3 vídeos mais bem posicionados do seu tema realmente usam e junte as variações que você deixou passar — isso transforma a lista de genérica em específica do seu nicho.",
+  },
+  {
+    q: "O gerador inclui erros de digitação de propósito?",
+    a: "Sim. A própria orientação do YouTube diz que as tags são mais úteis para erros de digitação, sinônimos e variações de escrita — elas ajudam o algoritmo a casar buscas que o seu título não contém literalmente. Mantenha só os erros que são realmente comuns; dois ou três já bastam.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank Gerador de Tags do YouTube",
+  url: "https://vidrank.tech/tools/youtube-tag-generator",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-25",
+};
+---
+
+<Layout title={title} description={description} lang="pt-BR" altPaths={{ en: "/tools/youtube-tag-generator", de: "/de/tools/youtube-tag-generator" }}>
+  <Navbar />
+  <GeoBanner />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Grátis · Sem Login · Funciona no Seu Navegador
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Gerador de Tags do YouTube Grátis
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Digite o tema do seu vídeo e receba um conjunto de tags do YouTube pronto para colar — tema exato primeiro, variações, cauda longa e erros comuns — com um contador de 500 caracteres ao vivo para você nunca ultrapassar o limite de tags do YouTube.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="genForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="topic"
+          type="text"
+          required
+          placeholder="ex: como editar vídeos do youtube"
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="Tema do vídeo"
+        />
+        <button
+          type="submit"
+          id="genBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Gerar Tags
+        </button>
+      </form>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 class="text-white font-semibold text-[15px]">Seu conjunto de tags</h2>
+          <div class="flex items-center gap-3">
+            <span id="charCount" class="font-mono text-[12px] text-[#8ea0b5]">0 / 500</span>
+            <button id="copyAllBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/10 text-white text-[12px] border border-white/10 transition-all cursor-pointer">
+              <Icon name="check" /> <span id="copyAllText">Copiar todas as tags</span>
+            </button>
+          </div>
+        </div>
+        <div id="tagList" class="flex flex-wrap gap-2"></div>
+        <p class="mt-4 text-[#5a6b80] text-[12px]">Revise antes de colar: apague qualquer tag que não descreva de verdade o seu vídeo. O YouTube dá mais peso à primeira tag.</p>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">O que esse gerador cria (e por quê)</h2>
+        <p>
+          Um bom conjunto de tags do YouTube tem cinco camadas, e esse gerador produz todas elas a partir do seu tema:
+        </p>
+        <ul class="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong>Tema exato</strong> — tag nº 1, escrita do jeito que as pessoas buscam. O YouTube dá mais peso à primeira tag.</li>
+          <li><strong>Variações com modificadores</strong> — "seu tema para iniciantes", "seu tema 2026", "melhor seu tema". Elas capturam buscas relacionadas.</li>
+          <li><strong>Cauda longa em forma de pergunta</strong> — frases como "como + seu tema" que combinam com buscas por voz e por texto.</li>
+          <li><strong>Erros de digitação comuns</strong> — a própria orientação do YouTube diz que essa é a principal função das tags. O gerador adiciona os padrões de erro mais frequentes.</li>
+          <li><strong>Tags amplas de categoria</strong> — uma ou duas âncoras para dar contexto. Mais que isso vira ruído.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">A regra dos 500 caracteres</h2>
+        <p>
+          O YouTube permite 500 caracteres de tags por vídeo — não há limite de quantidade de tags, mas de 15 a 30 tags é o ponto ideal na prática. O contador acima acompanha seu orçamento em tempo real. Quando ele ficar vermelho, corte as variações mais fracas, nunca a tag do tema exato. Menos é mais: um tema exato bem escolhido pesa mais do que dezenas de variações genéricas.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Tags geradas vs. tags reais da concorrência</h2>
+        <p>
+          O gerador cobre os padrões; o seu nicho fornece as especificidades. Os melhores conjuntos de tags combinam os dois: gere um rascunho aqui e depois cole os 3 vídeos mais bem posicionados do seu tema no <a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">extrator de tags do YouTube gratuito</a> e traga as variações comprovadas que você deixou passar. Dez minutos assim valem mais que uma hora de tentativa e erro. Para tags pontuadas e ranqueadas por peso no seu vídeo exato, o <a href="/pt-br/#pricing" class="text-cyan hover:underline">plano gratuito do VidRank</a> faz essa pontuação por você.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Depois de publicar: veja se as tags te moveram</h2>
+        <p>
+          Tags são um sinal de apoio, então avalie-as como parte do todo. Atualize suas tags e depois use o <a href="/pt-br/tools/youtube-rank-checker" class="text-cyan hover:underline">método do verificador de ranking do YouTube</a> para comparar sua posição semana a semana. Se as impressões subirem no YouTube Studio mas os cliques não, o problema está no seu título e na sua thumbnail, não nas suas tags.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Perguntas frequentes</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Mais ferramentas e guias gratuitos de SEO para YouTube</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/pt-br/tools/youtube-title-generator" class="text-cyan hover:underline">Gerador de Títulos do YouTube — Títulos Grátis que Geram Cliques</a></li>
+        <li><a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">Extrator de Tags do YouTube — Veja as Tags de Qualquer Vídeo</a></li>
+        <li><a href="/pt-br/tools/youtube-rank-checker" class="text-cyan hover:underline">Verificador de Ranking do YouTube — Acompanhe sua Posição</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Última atualização: 25 de setembro de 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("genForm");
+    const input = document.getElementById("topic");
+    const btn = document.getElementById("genBtn");
+    const results = document.getElementById("results");
+    const list = document.getElementById("tagList");
+    const counter = document.getElementById("charCount");
+    let currentTags = [];
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    function misspell(t) {
+      const m = new Map([
+        ["vídeo", "video"], ["não", "nao"], ["câmera", "camera"],
+        ["configuração", "configuracao"], ["fácil", "facil"], ["edição", "edicao"],
+      ]);
+      let out = t, hit = false;
+      for (const [k, v] of m) { if (out.includes(k)) { out = out.replace(k, v); hit = true; break; } }
+      return hit ? out : null;
+    }
+
+    function generate(topic) {
+      const t = topic.trim().toLowerCase();
+      const capT = cap(t);
+      const year = new Date().getFullYear();
+      const tags = [
+        t,
+        t + " " + year,
+        "como " + t,
+        capT,
+        "melhor " + t,
+        t + " para iniciantes",
+        t + " tutorial",
+        "fácil " + t,
+        t + " dicas",
+        "o que é " + t,
+        "guia de " + t,
+        t + " profissional",
+        t + " passo a passo",
+        misspell(t),
+        t.split(" ").length > 1 ? t.split(" ")[0] : "youtube",
+        t.includes("youtube") ? "youtube" : "youtube " + t.split(" ").slice(-1)[0],
+      ];
+      return [...new Set(tags.filter(Boolean))].slice(0, 20);
+    }
+
+    function render(tags) {
+      currentTags = tags;
+      list.innerHTML = "";
+      tags.forEach((tag, i) => {
+        const span = document.createElement("span");
+        span.className = "flex items-center gap-2 py-1.5 px-3 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-[13px]" + (i === 0 ? " border-cyan/40" : "");
+        span.innerHTML = (i === 0 ? '<span class="text-emerald-300 text-[10px] font-bold">#1</span>' : "") + '<span class="text-cyan font-mono">' + tag.replace(/</g, "&lt;") + "</span>";
+        list.appendChild(span);
+      });
+      const len = tags.join(",").length + Math.max(tags.length - 1, 0);
+      counter.textContent = len + " / 500";
+      counter.className = "font-mono text-[12px] " + (len > 500 ? "text-red-400" : "text-[#8ea0b5]");
+      results.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Gerando…";
+      setTimeout(() => {
+        render(generate(input.value));
+        btn.disabled = false;
+        btn.textContent = "Gerar Tags";
+      }, 250);
+    });
+
+    document.getElementById("copyAllBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(currentTags.join(", ")).then(() => {
+        const t = document.getElementById("copyAllText");
+        t.textContent = "Copiado!";
+        setTimeout(() => (t.textContent = "Copiar todas as tags"), 2000);
+      });
+    });
+  </script>
+</Layout>

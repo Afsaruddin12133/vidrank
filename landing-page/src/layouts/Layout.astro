@@ -4,14 +4,28 @@ import "../styles/global.css";
 interface Props {
   title?: string;
   description?: string;
+  /** BCP47 code for THIS page: "en", "pt-BR", "de", etc. */
+  lang?: string;
+  /** Map of other language codes to this same page's path in that language (no domain), e.g. {"pt-BR": "/pt-br/tools/x", "de": "/de/tools/x"}. Omit languages with no translation of this page yet. */
+  altPaths?: Record<string, string>;
 }
 
 const {
   title = "VidRank — AI-Powered YouTube SEO",
-  description = "VidRank is an AI YouTube SEO tool that generates high-ranking titles, descriptions, keywords, and tags to maximize video views and search reach."
+  description = "VidRank is an AI YouTube SEO tool that generates high-ranking titles, descriptions, keywords, and tags to maximize video views and search reach.",
+  lang = "en",
+  altPaths = {},
 } = Astro.props;
 
-const canonicalUrl = `https://vidrank.tech${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
+const normalizePath = (p: string) => p.replace(/\/$/, "") || "/";
+const canonicalUrl = `https://vidrank.tech${normalizePath(Astro.url.pathname)}`;
+// Full set of language variants for this page: self (from canonicalUrl) plus every provided alternate.
+const hreflangMap: Record<string, string> = { [lang]: canonicalUrl };
+for (const [l, p] of Object.entries(altPaths)) {
+  hreflangMap[l] = `https://vidrank.tech${normalizePath(p)}`;
+}
+// x-default always points at the English version — falls back to this page if this page IS English.
+const xDefaultUrl = hreflangMap.en || canonicalUrl;
 
 // Organization structured data — site-level entity for AI answer engines
 // ponytail: sameAs links teach AI engines what VidRank is and where it exists (AEO/GEO entity consistency)
@@ -48,7 +62,7 @@ const appSchema = {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -56,6 +70,8 @@ const appSchema = {
   <meta name="description" content={description} />
   <meta name="msvalidate.01" content="59979AB498D2A468988723DF6FD66025" />
   <link rel="canonical" href={canonicalUrl} />
+  {Object.entries(hreflangMap).map(([l, url]) => <link rel="alternate" hreflang={l} href={url} />)}
+  <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
 
   <!-- Open Graph / Facebook / Bing -->
   <meta property="og:type" content="website" />

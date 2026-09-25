@@ -1,0 +1,41 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/pt-br/Navbar.astro";
+import Hero from "../../components/pt-br/Hero.astro";
+import TrustStrip from "../../components/pt-br/TrustStrip.astro";
+import Problem from "../../components/pt-br/Problem.astro";
+import HowItWorks from "../../components/pt-br/HowItWorks.astro";
+import Showcase from "../../components/pt-br/Showcase.astro";
+import ScoreSection from "../../components/pt-br/ScoreSection.astro";
+import Features from "../../components/pt-br/Features.astro";
+import Comparison from "../../components/pt-br/Comparison.astro";
+import Workflow from "../../components/pt-br/Workflow.astro";
+import Pricing from "../../components/pt-br/Pricing.astro";
+import Faq from "../../components/pt-br/Faq.astro";
+import FinalCta from "../../components/pt-br/FinalCta.astro";
+import Footer from "../../components/pt-br/Footer.astro";
+---
+
+<Layout
+  title="VidRank — SEO para YouTube com Inteligência Artificial"
+  description="VidRank é uma ferramenta de SEO para YouTube com IA que gera títulos, descrições, palavras-chave e tags para maximizar visualizações e alcance."
+  lang="pt-BR"
+  altPaths={{ en: "/", de: "/de/" }}
+>
+  <Navbar />
+  <main id="main-content">
+    <Hero />
+    <TrustStrip />
+    <Problem />
+    <HowItWorks />
+    <Showcase />
+    <ScoreSection />
+    <Features />
+    <Comparison />
+    <Workflow />
+    <Pricing />
+    <Faq />
+    <FinalCta />
+  </main>
+  <Footer />
+</Layout>

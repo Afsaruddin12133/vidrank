@@ -1,0 +1,67 @@
+---
+// Shared by every locale's Navbar — computes the equivalent URL in every
+// other language for pages that have a translation, falling back to that
+// language's homepage otherwise. Never auto-redirects; always a choice.
+const TRANSLATED_PATHS = [
+  "/",
+  "/tools/youtube-tag-generator",
+  "/tools/youtube-tag-extractor",
+  "/tools/youtube-rank-checker",
+  "/tools/youtube-title-generator",
+];
+
+// Add a new language here (prefix, display label, flag) and every Navbar
+// picks it up automatically — no per-Navbar changes needed.
+const LOCALES = [
+  { code: "en", prefix: "", flag: "🇺🇸", label: "English" },
+  { code: "pt-BR", prefix: "/pt-br", flag: "🇧🇷", label: "Português (BR)" },
+  { code: "de", prefix: "/de", flag: "🇩🇪", label: "Deutsch" },
+];
+
+const pathname = Astro.url.pathname;
+const current = LOCALES.find((l) => l.prefix && pathname.startsWith(l.prefix)) || LOCALES[0];
+const basePath = current.prefix ? (pathname.replace(current.prefix, "") || "/") : pathname;
+const hasTranslation = TRANSLATED_PATHS.includes(basePath);
+
+const links = LOCALES.map((l) => ({
+  ...l,
+  href: l.code === current.code ? pathname : (hasTranslation ? l.prefix + (basePath === "/" ? "/" : basePath) : (l.prefix || "/")),
+}));
+---
+
+<div class="relative lang-switcher">
+  <button
+    type="button"
+    class="lang-switcher-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[#cbd5e1] hover:text-white text-[12px] font-medium transition-all cursor-pointer"
+    aria-expanded="false"
+    aria-label="Change language"
+  >
+    <span>{current.flag} {current.code === "pt-BR" ? "PT" : current.code.toUpperCase()}</span>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg>
+  </button>
+  <div
+    class="lang-switcher-menu hidden absolute right-0 top-[calc(100%+6px)] w-44 py-1.5 rounded-lg bg-[#0c121e] border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] z-50"
+  >
+    {links.map((l) => (
+      <a href={l.href} class={`block px-3.5 py-2 text-[12.5px] no-underline transition-colors ${l.code === current.code ? "text-white font-semibold bg-white/5" : "text-[#8ea0b5] hover:text-white hover:bg-white/5"}`}>{l.flag} {l.label}</a>
+    ))}
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".lang-switcher").forEach((wrap) => {
+    const btn = wrap.querySelector(".lang-switcher-btn");
+    const menu = wrap.querySelector(".lang-switcher-menu");
+    btn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu?.classList.toggle("hidden");
+    });
+  });
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".lang-switcher").forEach((wrap) => {
+      if (!wrap.contains(e.target as Node)) {
+        wrap.querySelector(".lang-switcher-menu")?.classList.add("hidden");
+      }
+    });
+  });
+</script>

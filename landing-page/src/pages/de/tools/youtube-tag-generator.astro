@@ -1,0 +1,257 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/de/Navbar.astro";
+import Footer from "../../../components/de/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+
+const title = "YouTube Tag Generator — Kostenloser Tag-Listen-Ersteller (500 Zeichen)";
+const description = "Kostenloser YouTube Tag Generator: Thema eingeben, sofort ein fertiges Tag-Set mit Varianten und Tippfehlern erhalten. Live-Zähler bis 500 Zeichen.";
+
+const faqs = [
+  {
+    q: "Wie funktioniert dieser YouTube Tag Generator?",
+    a: "Er erstellt ein Tag-Set aus deinem Thema nach bewährten Mustern: zuerst deine genaue Phrase, dann Modifikator-Varianten (Anleitung, für Anfänger, 2026), Long-Tail-Fragen, häufige Tippfehler und breite Kategorie-Tags. Alles läuft direkt in deinem Browser — es wird nichts gesendet. Prüfe die Liste und lösche jeden Tag, der dein Video nicht wirklich beschreibt.",
+  },
+  {
+    q: "Ist dieser Tag Generator kostenlos?",
+    a: "Ja — unbegrenzte Nutzung, keine Anmeldung nötig. Für bewertete und gerankte Tags (welche deiner Tags am wichtigsten sind) erstellt VidRanks kostenloser Tarif ein gerangtes Set für dein genaues Video. Du kannst auch mit dem YouTube Tag Extractor die echten Tags der Top-Videos extrahieren und sie in dein Set übernehmen.",
+  },
+  {
+    q: "Wie viele Tags sollte ich generieren?",
+    a: "Ziel: 15–30 Tags innerhalb des 500-Zeichen-Limits von YouTube — der Zähler oben wird rot, sobald du dich näherst. Relevanz schlägt Menge: eine 15-Tag-Liste, bei der jeder Tag zu deinem Video passt, schlägt 40 lose verwandte Tags.",
+  },
+  {
+    q: "Reichen generierte Tags allein aus?",
+    a: "Sie sind ein starker erster Entwurf, keine endgültige Liste. Der Generator deckt die Muster ab, die YouTube erwartet (genaues Thema, Varianten, Tippfehler). Um ihn zu schärfen, extrahiere die Tags der Top-3-Videos zu deinem Thema und übernimm alle Varianten, die dir fehlen — das macht aus der Liste eine nischenspezifische.",
+  },
+  {
+    q: "Enthält der Generator absichtlich Tippfehler?",
+    a: "Ja. YouTubes eigene Richtlinien besagen, dass Tags vor allem für Tippfehler, Synonyme und alternative Formulierungen nützlich sind — sie helfen dem Algorithmus, Suchanfragen zuzuordnen, die dein Titel nicht wörtlich enthält. Behalte nur Tippfehler, die wirklich häufig vorkommen; zwei oder drei reichen.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank YouTube Tag Generator",
+  url: "https://vidrank.tech/de/tools/youtube-tag-generator",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-26",
+};
+---
+
+<Layout title={title} description={description} lang="de" altPaths={{ en: "/tools/youtube-tag-generator", "pt-BR": "/pt-br/tools/youtube-tag-generator" }}>
+  <Navbar />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Kostenlos · Keine Anmeldung · Läuft in deinem Browser
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Kostenloser YouTube Tag Generator
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Gib das Thema deines Videos ein und erhalte ein fertiges YouTube-Tag-Set — zuerst das genaue Thema, dann Varianten, Long-Tails und Tippfehler — mit einem Live-Zähler bis 500 Zeichen, damit du YouTubes Tag-Limit nie überschreitest.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="genForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="topic"
+          type="text"
+          required
+          placeholder="z. B. youtube videos bearbeiten"
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="Video-Thema"
+        />
+        <button
+          type="submit"
+          id="genBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Tags generieren
+        </button>
+      </form>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 class="text-white font-semibold text-[15px]">Dein Tag-Set</h2>
+          <div class="flex items-center gap-3">
+            <span id="charCount" class="font-mono text-[12px] text-[#8ea0b5]">0 / 500</span>
+            <button id="copyAllBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/10 text-white text-[12px] border border-white/10 transition-all cursor-pointer">
+              <Icon name="check" /> <span id="copyAllText">Alle Tags kopieren</span>
+            </button>
+          </div>
+        </div>
+        <div id="tagList" class="flex flex-wrap gap-2"></div>
+        <p class="mt-4 text-[#5a6b80] text-[12px]">Vor dem Einfügen prüfen: Lösche jeden Tag, der dein Video nicht wirklich beschreibt. YouTube gewichtet den ersten Tag am stärksten.</p>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Was dieser Generator erstellt (und warum)</h2>
+        <p>
+          Ein starkes YouTube-Tag-Set hat fünf Ebenen, und dieser Generator erzeugt sie alle aus deinem Thema:
+        </p>
+        <ul class="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong>Genaues Thema</strong> — Tag #1, so formuliert, wie Nutzer suchen. YouTube gewichtet den ersten Tag am stärksten.</li>
+          <li><strong>Modifikator-Varianten</strong> — „dein Thema für Anfänger", „dein Thema 2026", „beste dein Thema". Diese decken angrenzende Suchanfragen ab.</li>
+          <li><strong>Long-Tail-Fragen</strong> — „Anleitung für + dein Thema"-Formulierungen, die Sprach- und Suchanfragen entsprechen.</li>
+          <li><strong>Häufige Tippfehler</strong> — YouTubes eigene Richtlinien sagen, das sei die Hauptaufgabe von Tags. Der Generator fügt die häufigsten Tippfehler-Muster hinzu.</li>
+          <li><strong>Breite Kategorie-Tags</strong> — ein oder zwei Anker für Kontext. Mehr als das ist Rauschen.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Die 500-Zeichen-Regel</h2>
+        <p>
+          YouTube erlaubt 500 Zeichen an Tags pro Video — es gibt kein Limit für die Anzahl der Tags, aber 15–30 Tags sind der effektive Sweet Spot. Der Zähler oben verfolgt dein Budget live. Wird er rot, kürze die schwächsten Varianten, niemals den genauen Themen-Tag.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Generierte Tags vs. echte Konkurrenz-Tags</h2>
+        <p>
+          Der Generator deckt die Muster ab; deine Nische liefert die Details. Die schärfsten Tag-Sets kombinieren beides: Erstelle hier einen Entwurf, füge dann die Top-3-Videos zu deinem Thema in den <a href="/de/tools/youtube-tag-extractor" class="text-cyan hover:underline">kostenlosen YouTube Tag Extractor</a> ein und übernimm bewährte Varianten, die dir gefehlt haben. Zehn Minuten davon schlagen eine Stunde Raten. Für gewichtete Tags speziell für dein Video übernimmt <a href="/de/#pricing" class="text-cyan hover:underline">VidRanks kostenloser Tarif</a> die Bewertung für dich.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Nach dem Hochladen: Prüfe, ob die Tags etwas gebracht haben</h2>
+        <p>
+          Tags sind ein unterstützendes Signal, beurteile sie also als Teil des Ganzen. Aktualisiere deine Tags und nutze dann die <a href="/de/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube-Ranking-Methode</a>, um deine Position wöchentlich zu vergleichen. Steigen die Impressionen in YouTube Studio, aber nicht die Klicks, liegt das Problem an Titel und Thumbnail, nicht an deinen Tags.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Häufig gestellte Fragen</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Weitere kostenlose YouTube-SEO-Tools</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/de/tools/youtube-title-generator" class="text-cyan hover:underline">YouTube Titel Generator — Kostenlose klickstarke Titel</a></li>
+        <li><a href="/de/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — Tags jedes Videos ansehen</a></li>
+        <li><a href="/de/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Deine Position verfolgen</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Zuletzt aktualisiert: 26. September 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("genForm");
+    const input = document.getElementById("topic");
+    const btn = document.getElementById("genBtn");
+    const results = document.getElementById("results");
+    const list = document.getElementById("tagList");
+    const counter = document.getElementById("charCount");
+    let currentTags = [];
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    function misspell(t) {
+      const m = new Map([
+        ["youtube", "youtub"], ["video", "vidoe"], ["anfänger", "anfaenger"],
+        ["tutorial", "tutorail"], ["anleitung", "anleitng"], ["shorts", "shorst"],
+      ]);
+      let out = t, hit = false;
+      for (const [k, v] of m) { if (out.includes(k)) { out = out.replace(k, v); hit = true; break; } }
+      return hit ? out : null;
+    }
+
+    function generate(topic) {
+      const t = topic.trim().toLowerCase();
+      const capT = cap(t);
+      const year = new Date().getFullYear();
+      const tags = [
+        t,
+        t + " " + year,
+        "anleitung " + t,
+        capT,
+        "beste " + t,
+        t + " für anfänger",
+        t + " tutorial",
+        "einfach " + t,
+        t + " tipps",
+        "was ist " + t,
+        t + " anleitung",
+        "profi " + t,
+        t + " schritt für schritt",
+        misspell(t),
+        t.split(" ").length > 1 ? t.split(" ")[0] : "youtube",
+        t.includes("youtube") ? "youtube" : "youtube " + t.split(" ").slice(-1)[0],
+      ];
+      return [...new Set(tags.filter(Boolean))].slice(0, 20);
+    }
+
+    function render(tags) {
+      currentTags = tags;
+      list.innerHTML = "";
+      tags.forEach((tag, i) => {
+        const span = document.createElement("span");
+        span.className = "flex items-center gap-2 py-1.5 px-3 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-[13px]" + (i === 0 ? " border-cyan/40" : "");
+        span.innerHTML = (i === 0 ? '<span class="text-emerald-300 text-[10px] font-bold">#1</span>' : "") + '<span class="text-cyan font-mono">' + tag.replace(/</g, "&lt;") + "</span>";
+        list.appendChild(span);
+      });
+      const len = tags.join(",").length + Math.max(tags.length - 1, 0);
+      counter.textContent = len + " / 500";
+      counter.className = "font-mono text-[12px] " + (len > 500 ? "text-red-400" : "text-[#8ea0b5]");
+      results.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Wird generiert…";
+      setTimeout(() => {
+        render(generate(input.value));
+        btn.disabled = false;
+        btn.textContent = "Tags generieren";
+      }, 250);
+    });
+
+    document.getElementById("copyAllBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(currentTags.join(", ")).then(() => {
+        const t = document.getElementById("copyAllText");
+        t.textContent = "Kopiert!";
+        setTimeout(() => (t.textContent = "Alle Tags kopieren"), 2000);
+      });
+    });
+  </script>
+</Layout>

@@ -6,11 +6,12 @@
     "status": "running"
   },
   "gsc": {
-    "connected": true
+    "connected": false
   },
+  "build_cmd": "npm run build",
   "phases": {
     "setup": "done",
-    "audit": "pending",
+    "audit": "done",
     "measure": "done",
     "ai_visibility": "pending",
     "schedule": "pending"

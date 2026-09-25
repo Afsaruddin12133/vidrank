@@ -1,0 +1,41 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/de/Navbar.astro";
+import Hero from "../../components/de/Hero.astro";
+import TrustStrip from "../../components/de/TrustStrip.astro";
+import Problem from "../../components/de/Problem.astro";
+import HowItWorks from "../../components/de/HowItWorks.astro";
+import Showcase from "../../components/de/Showcase.astro";
+import ScoreSection from "../../components/de/ScoreSection.astro";
+import Features from "../../components/de/Features.astro";
+import Comparison from "../../components/de/Comparison.astro";
+import Workflow from "../../components/de/Workflow.astro";
+import Pricing from "../../components/de/Pricing.astro";
+import Faq from "../../components/de/Faq.astro";
+import FinalCta from "../../components/de/FinalCta.astro";
+import Footer from "../../components/de/Footer.astro";
+---
+
+<Layout
+  title="VidRank — KI-gestütztes YouTube-SEO"
+  description="VidRank ist ein KI-gestütztes YouTube-SEO-Tool, das leistungsstarke Titel, Beschreibungen, Keywords und Tags generiert, um Aufrufe und Reichweite zu maximieren."
+  lang="de"
+  altPaths={{ en: "/", "pt-BR": "/pt-br/" }}
+>
+  <Navbar />
+  <main id="main-content">
+    <Hero />
+    <TrustStrip />
+    <Problem />
+    <HowItWorks />
+    <Showcase />
+    <ScoreSection />
+    <Features />
+    <Comparison />
+    <Workflow />
+    <Pricing />
+    <Faq />
+    <FinalCta />
+  </main>
+  <Footer />
+</Layout>

@@ -1,0 +1,156 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/pt-br/Navbar.astro";
+import Footer from "../../../components/pt-br/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+import GeoBanner from "../../../components/GeoBanner.astro";
+
+const title = "Verificador de Ranking do YouTube — Cheque suas Posições Grátis";
+const description = "Verificador de ranking do YouTube grátis: veja onde seu vídeo aparece pra qualquer palavra-chave em 2 minutos e como corrigir vídeos presos na página 2.";
+
+const faqs = [
+  {
+    q: "Como eu verifico o ranking do meu vídeo no YouTube?",
+    a: "Abra uma janela anônima (assim seu histórico de exibição não personaliza os resultados), busque sua palavra-chave exata no YouTube e conte em que posição o seu vídeo aparece. Anote a posição e se ele aparece na grade principal ou só em 'Filtros'. Repita depois de 7 dias para ver a movimentação. Esse método manual é o que a maioria dos rastreadores pagos automatiza.",
+  },
+  {
+    q: "O que é um verificador de ranking do YouTube?",
+    a: "Um verificador de ranking mostra a posição que o seu vídeo ocupa nos resultados de busca do YouTube para uma palavra-chave específica. As ferramentas automatizam o método de busca em anônimo em várias palavras-chave e datas para você ver tendências — por exemplo, se uma mudança de título te levou da posição 18 para a posição 9.",
+  },
+  {
+    q: "Por que meu vídeo não está ranqueando no YouTube?",
+    a: "As causas mais comuns, em ordem: o título não combina com o que as pessoas buscam, a taxa de cliques (CTR) da thumbnail é baixa (o YouTube para de mostrar vídeos que ninguém clica), o vídeo é novo (a maioria precisa de 2 a 6 semanas para se estabilizar), ou o tema é dominado por canais com muito mais autoridade nele. Tags são um fator menor — elas ajudam o YouTube a classificar o vídeo, não empurram um vídeo fraco para cima.",
+  },
+  {
+    q: "Quanto tempo as tags do YouTube levam para afetar o ranking?",
+    a: "Mudanças de tags geralmente refletem na busca em poucos dias, mas a movimentação de ranking só com tags é pequena porque tags são um sinal menor. Ganhos reais de ranking vêm de ajustar o título para combinar com as frases de busca, melhorar o CTR da thumbnail e segurar o tempo de exibição. Verifique sua posição de novo 7 dias depois de qualquer mudança.",
+  },
+  {
+    q: "Como eu verifico se minhas tags do YouTube estão ranqueando?",
+    a: "Trate o método manual como um verificador de ranking de tags do YouTube: depois de mudar as tags, busque a frase exata do seu tema em uma janela anônima e compare a posição do seu vídeo com a anotação da semana anterior. Mudanças só de tags geralmente causam movimentos pequenos — tags ajudam principalmente o YouTube a classificar o vídeo, então combine as mudanças de tags com melhorias de título e thumbnail e acompanhe o efeito combinado por 2 a 3 semanas.",
+  },
+  {
+    q: "As tags do YouTube ainda importam para o ranking em 2026?",
+    a: "Sim, mas como um sinal de apoio. A própria orientação do YouTube diz que as tags ajudam principalmente com erros de digitação, sinônimos e desambiguação. Um conjunto de tags limpo (15 a 30 tags relevantes, tema exato primeiro) remove ambiguidade para o algoritmo. Nenhuma lista de tags salva um conteúdo fraco — extraia as tags da concorrência para cobrir as variações que eles usam e depois compita no título e na thumbnail.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: "Verificador de Ranking do YouTube: Como Checar o Ranking dos Seus Vídeos Grátis",
+  description,
+  author: { "@type": "Organization", name: "VidRank" },
+  datePublished: "2026-09-25",
+  dateModified: "2026-09-25",
+};
+---
+
+<Layout title={title} description={description} lang="pt-BR" altPaths={{ en: "/tools/youtube-rank-checker", de: "/de/tools/youtube-rank-checker" }}>
+  <Navbar />
+  <GeoBanner />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> Método Grátis · 2 Minutos
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Verificador de Ranking do YouTube Grátis
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Quer saber onde o seu vídeo realmente ranqueia no YouTube? Aqui está o método de verificação de ranking que funciona em qualquer navegador — sem cadastro, sem extensão — além do que fazer quando o seu vídeo fica preso na página 2.
+      </p>
+    </header>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Verifique seu ranking no YouTube em 2 minutos (método manual)</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li>Abra uma <strong>janela anônima/privada</strong>. Isso importa: o YouTube personaliza os resultados pelo seu histórico de exibição, então seu navegador normal pode mostrar o seu próprio vídeo mais alto do que o público realmente vê.</li>
+          <li>Vá ao YouTube e busque sua <strong>palavra-chave alvo exata</strong> — a frase que um espectador digitaria, não o título criativo do seu vídeo.</li>
+          <li>Conte a posição do seu vídeo na grade de resultados. Anote junto com a data.</li>
+          <li>Repita a mesma busca a cada 7 dias, nas mesmas condições. A <em>tendência</em> é o sinal que importa — uma posição pra cima ou pra baixo é ruído; três posições ao longo de um mês é uma movimentação real.</li>
+        </ol>
+        <p class="mt-3">
+          Esse método manual de verificação de ranking do YouTube é o mesmo que a maioria dos rastreadores pagos automatiza. Para uma a três palavras-chave, fazer isso na mão toda semana vale mais que pagar por uma ferramenta.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">O que uma posição de ranking realmente te diz</h2>
+        <p>
+          O ranking de busca do YouTube é um indicador defasado. Um vídeo na posição 4–10 com uma taxa de cliques baixa vai cair; um vídeo na posição 15 que ganha cliques quando é mostrado vai subir. Por isso checar só o ranking é metade do quadro — combine sua verificação semanal de ranking com os números de impressões e CTR do YouTube Studio → Análises → Alcance. O ranking mostra onde você está; o CTR mostra se você merece subir.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Use como verificador de ranking de tags do YouTube</h2>
+        <p>
+          O mesmo método funciona como um <strong>verificador de ranking de tags do YouTube</strong>: depois de atualizar as tags de um vídeo, busque a frase que um espectador digitaria e anote se o seu vídeo subiu. Tags são um sinal menor, então espere movimentos pequenos — mas checar a mesma palavra-chave toda semana, nas mesmas condições de anônimo, mostra se as mudanças de tags (mais o trabalho de título e thumbnail) estão se somando. Extraia os conjuntos de tags que a concorrência usa com o <a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">extrator de tags do YouTube</a>, atualize as suas e depois verifique a movimentação aqui.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Vídeo preso na página 2? Corrija estes itens, nesta ordem</h2>
+        <ol class="space-y-2 pl-5 list-decimal">
+          <li><strong>Título vs. frase de busca.</strong> Seu título deve conter a frase que as pessoas realmente buscam. "Viajei 9000km!!!" não ranqueia para nada; "Guia de Viagem ao Japão: 14 Dias em Tóquio e Kyoto" ranqueia para as frases que os espectadores digitam.</li>
+          <li><strong>Tags: cubra as variações.</strong> O YouTube usa tags para erros de digitação, sinônimos e desambiguação. Mantenha de 15 a 30 tags relevantes com o seu tema exato primeiro. Use o <a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">extrator de tags do YouTube</a> grátis para ver os conjuntos exatos de tags que os vídeos mais bem posicionados do seu nicho usam e depois cubra as variações que eles deixaram passar.</li>
+          <li><strong>CTR da thumbnail.</strong> Se o Studio mostra um CTR abaixo de ~3%, ajustar a thumbnail move o ranking mais que qualquer mudança de metadados.</li>
+          <li><strong>Tempo de exibição no tráfego que o YouTube já te dá.</strong> Verifique se os espectadores vindos da busca abandonam nos primeiros 30 segundos — o YouTube para de ranquear vídeos que decepcionam os cliques que conquistam.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Como o VidRank se encaixa nisso</h2>
+        <p>
+          O VidRank foi construído em torno da parte do ranking que você controla antes de publicar: os metadados. Ele gera títulos a partir do nome do seu arquivo, monta um conjunto de tags pontuado para o seu tema exato e escreve descrições — depois você usa o verificador manual de ranking acima para confirmar a movimentação. Extraia o que os vídeos do topo usam como tags com a <a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">ferramenta extratora gratuita</a>, ou <a href="/pt-br/#pricing" class="text-cyan hover:underline">comece com o plano gratuito do VidRank</a> para metadados gerados por IA nos seus próprios vídeos.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Perguntas frequentes</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Mais ferramentas e guias gratuitos de SEO para YouTube</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/pt-br/tools/youtube-tag-generator" class="text-cyan hover:underline">Gerador de Tags do YouTube — Criador de Tags Grátis</a></li>
+        <li><a href="/pt-br/tools/youtube-title-generator" class="text-cyan hover:underline">Gerador de Títulos do YouTube — Títulos Grátis que Geram Cliques</a></li>
+        <li><a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">Extrator de Tags do YouTube — Veja as Tags de Qualquer Vídeo</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Última atualização: 25 de setembro de 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+</Layout>

@@ -14,13 +14,16 @@ import Pricing from "../components/Pricing.astro";
 import Faq from "../components/Faq.astro";
 import FinalCta from "../components/FinalCta.astro";
 import Footer from "../components/Footer.astro";
+import GeoBanner from "../components/GeoBanner.astro";
 ---
 
 <Layout
   title="VidRank — AI-Powered YouTube SEO"
   description="VidRank is an AI YouTube SEO tool that generates high-ranking titles, descriptions, keywords, and tags to maximize video views and search reach."
+  altPaths={{ "pt-BR": "/pt-br/", de: "/de/" }}
 >
   <Navbar />
+  <GeoBanner />
   <main id="main-content">
     <Hero />
     <TrustStrip />

@@ -21,7 +21,7 @@
     <div class="flex flex-col gap-[13px] text-[11px]">
       <b class="text-white font-outfit font-semibold text-[12px] mb-[5px]">Company</b>
       <a href="/#how" class="hover:text-white transition-colors no-underline">About</a>
-      <a href="mailto:support@vidrank.tech" class="hover:text-white transition-colors no-underline">Contact</a>
+      <a href="#" data-mail-user="support" data-mail-host="vidrank.tech" class="js-mailto hover:text-white transition-colors no-underline">Contact</a>
     </div>
     <div class="flex flex-col gap-[13px] text-[11px]">
       <b class="text-white font-outfit font-semibold text-[12px] mb-[5px]">Legal</b>
@@ -32,3 +32,11 @@
   </div>
   <div class="col-span-full pt-[25px] text-[#8ea0b5] border-t border-line text-[10px] max-[620px]:col-span-auto">© 2026 VidRank. All Rights Reserved.</div>
 </footer>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>("a.js-mailto").forEach((link) => {
+    const user = link.dataset.mailUser;
+    const host = link.dataset.mailHost;
+    if (user && host) link.href = `mailto:${user}@${host}`;
+  });
+</script>

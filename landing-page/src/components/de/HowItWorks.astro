@@ -1,0 +1,37 @@
+---
+import Icon from "../Icon.astro";
+
+const secFull = (bg: string) => `py-[100px] px-[6vw] max-w-none ${bg} max-[900px]:py-[70px] max-[620px]:py-[50px]`;
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const h2c = `${h2} text-center`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+const introP = "max-w-[500px] text-muted text-[15px] leading-[1.7]";
+
+const steps = [
+  ["01", "Datei umbenennen oder Titel eingeben", "Benenne deine Videodatei einfach nach deinem Zielthema um (z. B. basketball_zeitlupe.mp4) oder gib deinen rohen Videotitel ein."],
+  ["02", "KI erkennt Intention & Kontext", "Die KI von VidRank liest deinen Dateinamen oder Titel und analysiert Suchvolumen, Nischenrelevanz und Rankings der Konkurrenz."],
+  ["03", "Komplettes SEO automatisch generieren", "Erhalte klickstarke Titel, keyword-dichte Beschreibungen und rankingfähige Tag-Cluster mit einem Klick."],
+];
+---
+
+<section id="how" class={`${secFull("bg-[#0a0e16]")} text-center`}>
+  <div class="section-intro centered text-center" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>SO FUNKTIONIERT VIDRANK</span>
+    <h2 class={h2c}>Wie funktioniert <span>VidRank</span>?</h2>
+    <p class={`${introP} mx-auto`}>VidRank erstellt dein komplettes YouTube-SEO-Paket in drei Schritten — benenne deine Videodatei um oder gib deinen Titel ein, unsere KI erkennt Nische und Suchintention, und du erhältst Titel, Beschreibungen, Keywords und Tags mit einem Klick.</p>
+  </div>
+  <div class="max-w-[1000px] mx-auto mt-14 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+    {steps.map(([n, title, body]) => (
+      <div class="p-7 rounded-2xl bg-[#0c121e]/80 border border-line flex flex-col justify-between" data-reveal>
+        <div>
+          <div class="text-red font-outfit font-extrabold text-[15px] flex items-center justify-between">
+            {n} <span class="text-cyan"><Icon name="arrow-right" /></span>
+          </div>
+          <h3 class="my-3 mt-6 font-outfit font-bold text-[22px] text-white">{title}</h3>
+          <p class="text-[#94a3b8] text-[14px] leading-[1.65]">{body}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

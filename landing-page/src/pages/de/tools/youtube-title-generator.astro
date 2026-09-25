@@ -1,0 +1,253 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/de/Navbar.astro";
+import Footer from "../../../components/de/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+
+const title = "YouTube Titel Generator — Kostenlose klickstarke Titel (2026)";
+const description = "Kostenloser YouTube Titel Generator: Thema eingeben, 12 bewährte Titel-Formeln erhalten — Neugier, Anleitung, Liste, Vergleich — mit Live-Zähler.";
+
+const faqs = [
+  {
+    q: "Wie funktioniert dieser YouTube Titel Generator?",
+    a: "Er baut Titel aus deinem Thema mit Formeln, die zuverlässig Klicks bringen: Neugier-Lücke, nummerierte Listen, direkte Anleitungen, ehrliche Reviews und suchphrasengetreue Formulierungen. Alles läuft direkt in deinem Browser — es wird nichts gesendet. Wähle die Option, die wirklich zu deinem Video passt; ein Titel, der zu viel verspricht, senkt die Wiedergabezeit und schadet dem Video.",
+  },
+  {
+    q: "Ist dieser Titel Generator kostenlos?",
+    a: "Ja — unbegrenzte Nutzung, keine Anmeldung. Für einen Titel, der aus deinem echten Dateinamen oder einer vollen KI-Analyse deines Videos generiert wird, erstellt VidRanks kostenloser Tarif Titel, Tags und Beschreibungen zusammen. Du kannst auch mit dem kostenlosen YouTube Tag Extractor die genauen Tags der Top-Videos abrufen.",
+  },
+  {
+    q: "Wie lang sollte ein YouTube-Titel sein?",
+    a: "YouTubes hartes Limit sind 100 Zeichen, aber die meisten Anzeigeflächen — Suchergebnisse, vorgeschlagene Videos, Mobilgeräte — schneiden bei etwa 60–70 Zeichen ab. Setze deine stärksten, spezifischsten Wörter zuerst, damit der Titel auch abgeschnitten noch Sinn ergibt. Der Zähler oben wird ab 60 gelb und ab 70 rot.",
+  },
+  {
+    q: "Sollte mein Titel zur Suchanfrage passen?",
+    a: "Ja — das zählt mehr als Cleverness. Ein Titel braucht die Phrase, die ein Zuschauer wirklich eintippen würde, sonst hat YouTube nichts zum Abgleichen. Generisches Clickbait wie „Das wirst du nicht glauben!!!“ rankt für nichts. Wähle die generierte Option, die deiner echten Suchphrase am nächsten kommt, und füge dann den Neugier- oder Nutzen-Haken drumherum hinzu.",
+  },
+  {
+    q: "Helfen Emojis oder GROSSBUCHSTABEN bei einem YouTube-Titel?",
+    a: "Sparsam eingesetzt kann ein Emoji oder ein großgeschriebenes Wort in einer vollen Ergebnisliste den Blick anziehen — übertrieben wirkt beides wie Spam und kann die CTR senken. Keiner der hier generierten Titel fügt sie standardmäßig hinzu; behandle das als bewussten, gelegentlichen Akzent, nicht als Standard.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank YouTube Title Generator",
+  url: "https://vidrank.tech/de/tools/youtube-title-generator",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-26",
+};
+---
+
+<Layout title={title} description={description} lang="de" altPaths={{ en: "/tools/youtube-title-generator", "pt-BR": "/pt-br/tools/youtube-title-generator" }}>
+  <Navbar />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Kostenlos · Keine Anmeldung · Läuft in deinem Browser
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Kostenloser YouTube Titel Generator
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Gib das Thema deines Videos ein und erhalte 12 Titel, gebaut aus Formeln, die wirklich Klicks bringen — Neugier, Anleitung, Liste, ehrlicher Test — mit einem Live-Längenzähler, damit du weißt, was die Kürzung übersteht.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="genForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="topic"
+          type="text"
+          required
+          placeholder="z. B. youtube videos am handy bearbeiten"
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="Video-Thema"
+        />
+        <button
+          type="submit"
+          id="genBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Titel generieren
+        </button>
+      </form>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 class="text-white font-semibold text-[15px]">Deine Titel-Optionen</h2>
+          <span class="text-[#5a6b80] text-[11px]">Klicke auf einen Titel, um ihn zu kopieren</span>
+        </div>
+        <div id="titleList" class="flex flex-col gap-2"></div>
+        <p class="mt-4 text-[#5a6b80] text-[12px]">Wähle den, der ehrlich zu deinem Video passt. Ein Titel, der zu viel verspricht, senkt die Wiedergabezeit und schadet dem Video — YouTube erkennt das.</p>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Warum diese 12 Formeln (und keine zufällige Formulierung)</h2>
+        <p>
+          Jeder generierte Titel folgt einem Muster, das generische Formulierungen zuverlässig schlägt, aus einem bestimmten Grund:
+        </p>
+        <ul class="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong>Suchphrasen-Treffer</strong> — dein genaues Thema, klar formuliert. Gewinnt, wenn der Zuschauer schon weiß, was er will.</li>
+          <li><strong>Neugier-Lücke</strong> — „Die Wahrheit über…", „Was dir niemand sagt" — öffnet eine Frage, die der Klick schließt.</li>
+          <li><strong>Nummerierte Liste</strong> — „5 Dinge…" setzt eine konkrete, überfliegbare Erwartung.</li>
+          <li><strong>Geführte Anleitung</strong> — „Anfänger-Leitfaden zu X (Schritt für Schritt)" passt zur Tutorial-Absicht, ohne vorauszusetzen, dass dein Thema als Befehl formuliert ist.</li>
+          <li><strong>Ehrlicher Test / Experiment</strong> — „Ich habe X 30 Tage getestet", „Lohnt sich X?" — signalisiert eine echte Antwort, keine Werbung.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Die 60-Zeichen-Regel (100 ist das Limit, nicht das Ziel)</h2>
+        <p>
+          YouTubes Titelfeld akzeptiert bis zu 100 Zeichen, aber das sehen Zuschauer nicht. Suchergebnisse, vorgeschlagene Videos und Mobilgeräte schneiden alle bei etwa 60–70 Zeichen ab — danach wird dein Titel mit Auslassungspunkten abgeschnitten. Setze die spezifischen, suchbaren Wörter zuerst; die Verzierung kommt ans Ende, wo sie verloren gehen darf.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Generierte Titel vs. was bereits rankt</h2>
+        <p>
+          Diese Formeln geben dir eine starke Vorauswahl, nicht die endgültige Antwort. Bevor du dich festlegst, öffne ein Inkognito-Fenster, suche dein genaues Thema auf YouTube und sieh, welche Titel für diese Suchanfrage bereits den Klick gewinnen — die <a href="/de/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube-Ranking-Methode</a> zeigt genau wie. Nutzen zwei Top-Videos „Anleitung"-Formulierungen und keines eine Zahlenliste, ist das ein echtes Signal dafür, worauf dein Publikum bei diesem Thema reagiert.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Nach der Titelwahl: Tags und Beschreibung zählen noch</h2>
+        <p>
+          Ein Titel holt den Klick; Tags und Beschreibung helfen YouTube, das Video für Suchen einzuordnen, die sich nicht allein aus dem Titel ableiten lassen. Baue ein passendes Tag-Set mit dem <a href="/de/tools/youtube-tag-generator" class="text-cyan hover:underline">kostenlosen Tag Generator</a>, oder extrahiere, was deine Top-Konkurrenten nutzen, mit dem <a href="/de/tools/youtube-tag-extractor" class="text-cyan hover:underline">Tag Extractor</a>. Für KI-generierte Titel, Tags und Beschreibungen, gemeinsam aus deinem echten Video erstellt, übernimmt <a href="/de/#pricing" class="text-cyan hover:underline">VidRanks kostenloser Tarif</a> den ganzen Durchgang auf einmal.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Häufig gestellte Fragen</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Weitere kostenlose YouTube-SEO-Tools</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/de/tools/youtube-tag-generator" class="text-cyan hover:underline">YouTube Tag Generator — Kostenloser Tag-Listen-Ersteller</a></li>
+        <li><a href="/de/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — Tags jedes Videos ansehen</a></li>
+        <li><a href="/de/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Deine Position verfolgen</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Zuletzt aktualisiert: 26. September 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("genForm");
+    const input = document.getElementById("topic");
+    const btn = document.getElementById("genBtn");
+    const results = document.getElementById("results");
+    const list = document.getElementById("titleList");
+
+    function titleCase(s) {
+      const small = new Set(["der", "die", "das", "den", "dem", "des", "und", "oder", "für", "mit", "von", "zu", "im", "am", "an", "auf", "in"]);
+      return s
+        .split(" ")
+        .filter(Boolean)
+        .map((w, i) => (i > 0 && small.has(w.toLowerCase()) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(" ");
+    }
+
+    function generate(topic) {
+      const t = topic.trim().replace(/\s+/g, " ");
+      const tc = titleCase(t);
+      const year = new Date().getFullYear();
+      const titles = [
+        tc + ": Alles, Was Du Wissen Musst",
+        "Anfänger-Leitfaden: " + t + " (Schritt für Schritt)",
+        "5 Dinge, Die Dir Niemand Über " + t + " Erzählt",
+        tc + " Für Anfänger " + year,
+        "Ich Habe " + t + " 30 Tage Getestet — Das Ist Passiert",
+        "Die Wahrheit Über " + t,
+        tc + ": Der Komplette Leitfaden",
+        "Warum " + t + " Schwerer Ist Als Gedacht",
+        tc + " In Unter 10 Minuten",
+        tc + ": Fehler, Die Jeder Macht (Und Wie Du Sie Vermeidest)",
+        t + " Lohnt Sich Das? (Ehrlicher Test)",
+        tc + " — Was Ich Gerne Früher Gewusst Hätte",
+      ];
+      return [...new Set(titles)];
+    }
+
+    function lenClass(len) {
+      if (len > 70) return "text-red-400";
+      if (len > 60) return "text-amber-400";
+      return "text-[#8ea0b5]";
+    }
+
+    function render(titles) {
+      list.innerHTML = "";
+      titles.forEach((t) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "flex items-center justify-between gap-3 py-2.5 px-3.5 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-left hover:border-cyan/40 transition-colors cursor-pointer w-full";
+        const span = document.createElement("span");
+        span.className = "text-white text-[13.5px]";
+        span.textContent = t;
+        const count = document.createElement("span");
+        count.className = "font-mono text-[11px] shrink-0 " + lenClass(t.length);
+        count.textContent = t.length + " / 100";
+        row.appendChild(span);
+        row.appendChild(count);
+        row.addEventListener("click", () => {
+          navigator.clipboard.writeText(t).then(() => {
+            const original = span.textContent;
+            span.textContent = "Kopiert!";
+            setTimeout(() => (span.textContent = original), 1200);
+          });
+        });
+        list.appendChild(row);
+      });
+      results.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Wird generiert…";
+      setTimeout(() => {
+        render(generate(input.value));
+        btn.disabled = false;
+        btn.textContent = "Titel generieren";
+      }, 250);
+    });
+  </script>
+</Layout>

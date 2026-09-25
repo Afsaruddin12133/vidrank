@@ -1,0 +1,45 @@
+---
+const secFull = (bg: string) => `py-[100px] px-[6vw] max-w-none ${bg} max-[900px]:py-[70px] max-[620px]:py-[50px]`;
+const h2 = "font-outfit font-extrabold text-[clamp(32px,3.8vw,52px)] leading-[1.08] tracking-[-0.04em] mt-3 mb-4 [&_span]:text-[#2c8cff]";
+const h2c = `${h2} text-center`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+
+const heroTags = ["basketball", "zeitlupe", "basketball highlights", "cinematic basketball", "sport highlights"];
+---
+
+<section class={secFull("bg-[#0a0e16]")}>
+  <div class="section-intro centered text-center" data-reveal>
+    <span class={eyebrow}><i class={dot}></i>DIE TRANSFORMATION</span>
+    <h2 class={h2c}>Schluss mit der <span>leeren Metadaten-Box.</span></h2>
+  </div>
+  <div class="comparison max-w-[1050px] mx-auto mt-12 grid grid-cols-[1fr_55px_1fr] items-center gap-5 max-[768px]:grid-cols-1">
+    <div class="min-h-[350px] p-8 rounded-2xl border border-line bg-[#0c111c] shadow-lg" data-reveal>
+      <span class="text-[#94a3b8] font-inter font-semibold text-[11px] tracking-[0.14em] uppercase">VOR VIDRANK</span>
+      <h3 class="my-6 font-outfit font-bold text-[20px] leading-[1.3] text-white">Cinematic Basketball Zeitlupe</h3>
+      <div class="mt-5">
+        <span class="text-[#94a3b8] font-inter font-semibold text-[10px] uppercase tracking-wider block mb-1">BESCHREIBUNG</span>
+        <p class="text-[#cbd5e1] text-[13px] leading-[1.6]">Ein Basketball-Zeitlupenvideo.</p>
+      </div>
+      <div class="mt-5">
+        <span class="text-[#94a3b8] font-inter font-semibold text-[10px] uppercase tracking-wider block mb-1">TAGS</span>
+        <p class="text-[#cbd5e1] text-[13px] leading-[1.6]">basketball, video, sport</p>
+      </div>
+    </div>
+    <div class="versus grid place-items-center w-10 h-10 mx-auto text-red border border-[rgba(0,119,255,.35)] rounded-full text-[19px] max-[768px]:rotate-90 bg-white/[0.02]">→</div>
+    <div class="min-h-[350px] p-8 rounded-2xl border border-[rgba(0,240,255,.3)] bg-[linear-gradient(130deg,rgba(0,240,255,.05),#10161f)] shadow-lg" data-reveal>
+      <span class="text-[#3df2a4] font-inter font-semibold text-[11px] tracking-[0.14em] uppercase">NACH VIDRANK</span>
+      <h3 class="my-6 font-outfit font-bold text-[20px] leading-[1.3] text-white">Cinematic Basketball Zeitlupe <em class="text-cyan not-italic">| Irre Basketball Highlights</em></h3>
+      <div class="mt-5">
+        <span class="text-[#94a3b8] font-inter font-semibold text-[10px] uppercase tracking-wider block mb-1">BESCHREIBUNG</span>
+        <p class="text-[#cbd5e1] text-[13px] leading-[1.6]">Erlebe Basketball auf eine neue Art mit diesem cinematischen Zeitlupen-Edit...</p>
+      </div>
+      <div class="mt-5">
+        <span class="text-[#94a3b8] font-inter font-semibold text-[10px] uppercase tracking-wider block mb-1">RELEVANTE TAGS</span>
+        <div class="tag-cloud mt-2 flex flex-wrap gap-2">
+          {heroTags.map((t) => <span class="inline-flex py-1.5 px-2.5 rounded-md border border-[rgba(0,240,255,.18)] bg-[rgba(0,240,255,.06)] text-[#9deef1] text-[11px] font-medium">{t}</span>)}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

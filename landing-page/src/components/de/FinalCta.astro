@@ -1,0 +1,52 @@
+---
+import Icon from "../Icon.astro";
+
+const btn = "inline-flex items-center justify-center gap-[9px] min-h-[46px] px-6 font-bold text-[13px] text-white rounded-lg transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-[2px]";
+const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_8px_30px_rgba(0,102,238,.4)] hover:shadow-[0_10px_34px_rgba(0,102,238,.6)]`;
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.15em] inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+
+const particles = [
+  { text: "basketball", pos: "left-[15%] top-[25%] text-white/10" },
+  { text: "SEO", pos: "left-[8%] bottom-[27%] text-[rgba(0,240,255,0.14)]" },
+  { text: "keywords", pos: "right-[12%] top-[23%] text-white/10" },
+  { text: "youtube", pos: "right-[9%] bottom-[26%] text-[rgba(0,119,255,0.18)]" },
+  { text: "tags", pos: "left-[25%] bottom-[18%] text-white/10" },
+  { text: "auffindbarkeit", pos: "right-[25%] top-[18%] text-white/10" },
+  { text: "titel", pos: "left-[22%] top-[17%] text-white/10" },
+  { text: "content", pos: "right-[20%] bottom-[15%] text-white/10" },
+];
+---
+
+<section class="relative max-w-none py-[130px] px-[8vw] text-center bg-[radial-gradient(circle_at_50%_50%,rgba(0,119,255,.15),transparent_35rem)] max-[900px]:py-[90px] max-[900px]:px-[6vw] max-[620px]:py-[75px] max-[620px]:px-[5vw]">
+  <div class="keyword-particles absolute inset-0 max-[620px]:hidden pointer-events-none" aria-hidden="true">
+    {particles.map(({ text, pos }) => (
+      <span class={`absolute font-outfit font-semibold text-[12px] ${pos}`}>{text}</span>
+    ))}
+  </div>
+  <div class="relative z-[1]">
+    <span class={eyebrow} data-reveal><i class={dot}></i>BEREIT, WENN DU ES BIST</span>
+    <h2 class="my-[18px] mx-0 mb-3 font-outfit font-bold text-[clamp(38px,5vw,70px)] tracking-[-0.04em]" data-reveal>
+      Dein nächstes Video verdient <span class="text-[#2c8cff]">besseres SEO.</span>
+    </h2>
+    <p class="text-[#929daa] text-[15px] mb-[30px]" data-reveal>Erstelle das Video. Lass VidRank die Optimierung übernehmen.</p>
+    <div class="flex items-center justify-center gap-4 flex-wrap max-[620px]:flex-col max-[620px]:w-full max-[620px]:max-w-[320px] max-[620px]:mx-auto" data-reveal>
+      <a
+        href="https://chromewebstore.google.com/detail/vidrank/meafpgipnldknnbnmahbmbaakcmahogk"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center gap-3 min-h-[52px] px-8 font-bold text-[14px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-xl shadow-[0_8px_30px_rgba(0,102,238,.45)] hover:shadow-[0_10px_35px_rgba(0,102,238,.65)] transition-all hover:-translate-y-0.5 no-underline group max-[620px]:w-full"
+      >
+        <img src="/chrome-store-logo.svg" alt="Chrome Web Store" width="24" height="24" loading="lazy" decoding="async" class="w-6 h-6 object-contain" />
+        <div class="text-left">
+          <span class="block text-[10px] font-medium text-white/80 uppercase tracking-wider leading-none">Verfügbar im</span>
+          <span class="block text-[14px] font-bold text-white leading-tight">Chrome Web Store</span>
+        </div>
+        <span class="text-cyan group-hover:translate-x-1 transition-transform ml-1">→</span>
+      </a>
+      <a href="#how" class="inline-flex items-center justify-center gap-[10px] px-6 min-h-[52px] rounded-xl bg-white/[0.05] border border-white/10 text-[#cdd6e4] text-[13px] font-semibold transition-colors hover:bg-white/10 hover:text-white no-underline max-[620px]:w-full">
+        So funktioniert's
+      </a>
+    </div>
+  </div>
+</section>

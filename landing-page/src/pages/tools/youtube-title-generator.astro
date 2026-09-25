@@ -1,0 +1,258 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import Footer from "../../components/Footer.astro";
+import Icon from "../../components/Icon.astro";
+import GeoBanner from "../../components/GeoBanner.astro";
+
+const title = "YouTube Title Generator — Free Click-Worthy Titles (2026)";
+const description = "Free YouTube title generator: enter your topic, get 12 proven title formulas — curiosity, how-to, listicle, comparison — with a live length counter.";
+
+const faqs = [
+  {
+    q: "How does this YouTube title generator work?",
+    a: "It builds titles from your topic using formulas that consistently earn clicks: curiosity gap, numbered lists, direct how-to, honest review, and search-match phrasing. It runs entirely in your browser — nothing is sent anywhere. Pick the option that is actually true to your video; a title that overpromises tanks watch time and drags the video down.",
+  },
+  {
+    q: "Is this title generator free?",
+    a: "Yes — unlimited use, no login. For a title generated from your actual file name or a fuller AI pass on your specific video, VidRank's free tier generates titles, tags, and descriptions together. You can also pull the exact tags top-ranking videos use with the free YouTube tag extractor.",
+  },
+  {
+    q: "How long should a YouTube title be?",
+    a: "YouTube's hard limit is 100 characters, but most surfaces — search results, suggested videos, mobile — truncate around 60–70 characters. Put your strongest, most specific words first so the title still makes sense if it gets cut. The counter above turns amber past 60 and red past 70.",
+  },
+  {
+    q: "Should my title match what people search for?",
+    a: "Yes — this matters more than cleverness. A title needs the phrase a viewer would actually type, or YouTube has nothing to match it against. Generic clickbait like \"You Won't Believe This!!!\" ranks for nothing. Pick the generated option closest to your real search phrase, then add the curiosity or benefit hook around it.",
+  },
+  {
+    q: "Do emojis or ALL CAPS help a YouTube title?",
+    a: "Used sparingly, one emoji or a capitalized word can draw the eye in a crowded results page — overused, both read as spam and can suppress CTR. None of the generated titles here add them by default; treat that as a deliberate, occasional accent, not a default.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank YouTube Title Generator",
+  url: "https://vidrank.tech/tools/youtube-title-generator",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-25",
+};
+---
+
+<Layout title={title} description={description} altPaths={{ "pt-BR": "/pt-br/tools/youtube-title-generator", de: "/de/tools/youtube-title-generator" }}>
+  <Navbar />
+  <GeoBanner />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Free · No Login · Works in Your Browser
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Free YouTube Title Generator
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Type your video's topic and get 12 titles built from formulas that actually earn clicks — curiosity, how-to, listicle, honest review — with a live length counter so you know what survives truncation.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="genForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="topic"
+          type="text"
+          required
+          placeholder="e.g. editing youtube videos on a phone"
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="Video topic"
+        />
+        <button
+          type="submit"
+          id="genBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Generate Titles
+        </button>
+      </form>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 class="text-white font-semibold text-[15px]">Your title options</h2>
+          <span class="text-[#5a6b80] text-[11px]">Click any title to copy it</span>
+        </div>
+        <div id="titleList" class="flex flex-col gap-2"></div>
+        <p class="mt-4 text-[#5a6b80] text-[12px]">Pick the one that is honestly true to your video. A title that overpromises kills watch time and drags the video down — YouTube tracks that.</p>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Why these 12 formulas (and not random phrasing)</h2>
+        <p>
+          Every generated title comes from a pattern that repeatedly outperforms generic phrasing, for a specific reason:
+        </p>
+        <ul class="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong>Search-match</strong> — your exact topic, plainly stated. Wins when the viewer already knows what they want.</li>
+          <li><strong>Curiosity gap</strong> — "The Truth About…", "What Nobody Tells You" — opens a question the click closes.</li>
+          <li><strong>Numbered list</strong> — "5 Things…" sets a concrete, scannable expectation.</li>
+          <li><strong>Guided walkthrough</strong> — "A Beginner's Guide to X (Step-by-Step)" matches tutorial intent without assuming your topic is phrased as a command.</li>
+          <li><strong>Honest review / experiment</strong> — "I Tried X for 30 Days", "Is X Worth It?" — signals a real answer, not an ad.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">The 60-character rule (100 is the limit, not the target)</h2>
+        <p>
+          YouTube's title field accepts up to 100 characters, but that is not what viewers see. Search results, suggested videos, and mobile all truncate around 60–70 characters — past that, your title gets cut with an ellipsis. Front-load the specific, searchable words; put the flourish at the end where it can afford to be lost. Full breakdown in <a href="/blog/youtube-algorithm-video-titles-ctr-2026" class="text-cyan hover:underline">how the YouTube algorithm evaluates video titles</a>.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Generated titles vs. what's already ranking</h2>
+        <p>
+          These formulas give you a strong shortlist, not the final answer. Before you commit, open an incognito window, search your exact topic on YouTube, and see which titles are already winning the click for that query — the <a href="/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube rank checker method</a> covers exactly how. If two top videos use "How to" phrasing and none use a number list, that is a real signal about what your audience responds to for this topic.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">After you pick a title: tags and description still matter</h2>
+        <p>
+          A title gets the click; tags and description help YouTube classify the video for search it can't infer from the title alone. Build a matching tag set with the <a href="/tools/youtube-tag-generator" class="text-cyan hover:underline">free tag generator</a>, or extract what your top competitors use with the <a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">tag extractor</a>. For AI-generated titles, tags, and descriptions built together from your actual video, <a href="/#pricing" class="text-cyan hover:underline">VidRank's free tier</a> does the whole pass at once.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Frequently asked questions</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">More free YouTube SEO tools &amp; guides</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/tools/youtube-tag-generator" class="text-cyan hover:underline">YouTube Tag Generator — Free Tag List Maker</a></li>
+        <li><a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — See Any Video's Tags</a></li>
+        <li><a href="/tools/youtube-rank-checker" class="text-cyan hover:underline">YouTube Rank Checker — Track Your Position</a></li>
+        <li><a href="/blog/youtube-algorithm-video-titles-ctr-2026" class="text-cyan hover:underline">How the YouTube Algorithm Evaluates Titles</a></li>
+        <li><a href="/blog/crafting-high-converting-youtube-descriptions" class="text-cyan hover:underline">Crafting High-Converting Descriptions</a></li>
+        <li><a href="/blog/vidrank-vs-vidiq" class="text-cyan hover:underline">VidRank vs vidIQ: Which Should You Use?</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Last updated: September 25, 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("genForm");
+    const input = document.getElementById("topic");
+    const btn = document.getElementById("genBtn");
+    const results = document.getElementById("results");
+    const list = document.getElementById("titleList");
+
+    function titleCase(s) {
+      const small = new Set(["a", "an", "the", "and", "or", "but", "for", "on", "in", "of", "to", "at", "by", "vs"]);
+      return s
+        .split(" ")
+        .filter(Boolean)
+        .map((w, i) => (i > 0 && small.has(w.toLowerCase()) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(" ");
+    }
+
+    function generate(topic) {
+      const t = topic.trim().replace(/\s+/g, " ");
+      const tc = titleCase(t);
+      const year = new Date().getFullYear();
+      const titles = [
+        tc + ": Everything You Need to Know",
+        "A Beginner's Guide to " + t + " (Step-by-Step)",
+        "5 Things Nobody Tells You About " + t,
+        tc + " for Beginners in " + year,
+        "I Tried " + t + " for 30 Days — Here's What Happened",
+        "The Truth About " + t,
+        tc + ": The Complete Guide",
+        "Why " + t + " Is Harder Than It Looks",
+        tc + " in Under 10 Minutes",
+        tc + " Mistakes Everyone Makes (And How to Fix Them)",
+        "Is " + t + " Worth It? (Honest Review)",
+        tc + " — What I Wish I Knew Sooner",
+      ];
+      return [...new Set(titles)];
+    }
+
+    function lenClass(len) {
+      if (len > 70) return "text-red-400";
+      if (len > 60) return "text-amber-400";
+      return "text-[#8ea0b5]";
+    }
+
+    function render(titles) {
+      list.innerHTML = "";
+      titles.forEach((t) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "flex items-center justify-between gap-3 py-2.5 px-3.5 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-left hover:border-cyan/40 transition-colors cursor-pointer w-full";
+        const span = document.createElement("span");
+        span.className = "text-white text-[13.5px]";
+        span.textContent = t;
+        const count = document.createElement("span");
+        count.className = "font-mono text-[11px] shrink-0 " + lenClass(t.length);
+        count.textContent = t.length + " / 100";
+        row.appendChild(span);
+        row.appendChild(count);
+        row.addEventListener("click", () => {
+          navigator.clipboard.writeText(t).then(() => {
+            const original = span.textContent;
+            span.textContent = "Copied!";
+            setTimeout(() => (span.textContent = original), 1200);
+          });
+        });
+        list.appendChild(row);
+      });
+      results.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Generating…";
+      setTimeout(() => {
+        render(generate(input.value));
+        btn.disabled = false;
+        btn.textContent = "Generate Titles";
+      }, 250);
+    });
+  </script>
+</Layout>

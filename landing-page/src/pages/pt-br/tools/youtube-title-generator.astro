@@ -1,0 +1,255 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/pt-br/Navbar.astro";
+import Footer from "../../../components/pt-br/Footer.astro";
+import Icon from "../../../components/Icon.astro";
+import GeoBanner from "../../../components/GeoBanner.astro";
+
+const title = "Gerador de Títulos do YouTube — Títulos Grátis que Geram Cliques (2026)";
+const description = "Gerador de títulos do YouTube grátis: digite o tema e receba 12 fórmulas de título testadas — curiosidade, tutorial, lista, comparação — com contador de tamanho.";
+
+const faqs = [
+  {
+    q: "Como funciona esse gerador de títulos do YouTube?",
+    a: "Ele monta títulos a partir do seu tema usando fórmulas que consistentemente geram cliques: gatilho de curiosidade, listas numeradas, tutorial direto, análise honesta e frases que combinam com a busca. Tudo roda no seu navegador — nada é enviado a lugar nenhum. Escolha a opção que é realmente verdadeira sobre o seu vídeo; um título que promete demais derruba o tempo de exibição e prejudica o vídeo.",
+  },
+  {
+    q: "Esse gerador de títulos é gratuito?",
+    a: "Sim — uso ilimitado, sem login. Para um título gerado a partir do nome real do seu arquivo ou uma análise de IA mais completa do seu vídeo específico, o plano gratuito do VidRank gera títulos, tags e descrições juntos. Você também pode extrair as tags exatas que os vídeos mais bem posicionados usam com o extrator de tags do YouTube gratuito.",
+  },
+  {
+    q: "Quanto tempo deve ter um título do YouTube?",
+    a: "O limite máximo do YouTube é 100 caracteres, mas a maioria das telas — resultados de busca, vídeos sugeridos, celular — corta por volta de 60 a 70 caracteres. Coloque as palavras mais fortes e específicas primeiro para o título ainda fazer sentido se for cortado. O contador acima fica âmbar depois de 60 e vermelho depois de 70.",
+  },
+  {
+    q: "Meu título deve combinar com o que as pessoas buscam?",
+    a: "Sim — isso importa mais do que ser criativo. Um título precisa da frase que um espectador realmente digitaria, ou o YouTube não tem nada para combinar. Clickbait genérico como \"Você Não Vai Acreditar Nisso!!!\" não ranqueia para nada. Escolha a opção gerada mais próxima da sua frase de busca real e depois adicione o gancho de curiosidade ou benefício em volta dela.",
+  },
+  {
+    q: "Emojis ou CAIXA ALTA ajudam um título do YouTube?",
+    a: "Usados com moderação, um emoji ou uma palavra em maiúscula podem chamar a atenção em uma página de resultados concorrida — usados em excesso, os dois soam como spam e podem derrubar o CTR. Nenhum dos títulos gerados aqui adiciona isso por padrão; trate isso como um acento deliberado e ocasional, não como padrão.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "VidRank Gerador de Títulos do YouTube",
+  url: "https://vidrank.tech/tools/youtube-title-generator",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Any (web)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  dateModified: "2026-09-25",
+};
+---
+
+<Layout title={title} description={description} lang="pt-BR" altPaths={{ en: "/tools/youtube-title-generator", de: "/de/tools/youtube-title-generator" }}>
+  <Navbar />
+  <GeoBanner />
+
+  <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
+    <header class="text-center mb-10">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase border text-emerald-300 bg-emerald-400/10 border-emerald-400/25 mb-6">
+        <Icon name="wand-sparkles" /> 100% Grátis · Sem Login · Funciona no Seu Navegador
+      </span>
+      <h1 class="font-outfit font-extrabold text-[clamp(30px,4.5vw,48px)] leading-[1.12] tracking-[-0.03em] text-white mb-4">
+        Gerador de Títulos do YouTube Grátis
+      </h1>
+      <p class="text-[#94a3b8] text-[16px] leading-[1.65] max-w-[680px] mx-auto">
+        Digite o tema do seu vídeo e receba 12 títulos construídos a partir de fórmulas que realmente geram cliques — curiosidade, tutorial, lista, análise honesta — com um contador de tamanho ao vivo para você saber o que sobrevive ao corte.
+      </p>
+    </header>
+
+    <!-- Tool -->
+    <section class="p-6 sm:p-8 rounded-2xl bg-[#0c121e]/90 border border-[rgba(137,190,255,0.16)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-10">
+      <form id="genForm" class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="topic"
+          type="text"
+          required
+          placeholder="ex: editar vídeos do youtube no celular"
+          class="flex-1 min-h-[48px] px-4 rounded-lg bg-[#0a0f18] border border-white/10 text-white text-[14px] placeholder-[#5a6b80] focus:border-cyan focus:outline-none"
+          aria-label="Tema do vídeo"
+        />
+        <button
+          type="submit"
+          id="genBtn"
+          class="min-h-[48px] px-6 font-bold text-[13px] text-white bg-[#0066ee] hover:bg-[#0055cc] rounded-lg shadow-[0_8px_25px_rgba(0,102,238,0.4)] transition-all cursor-pointer whitespace-nowrap"
+        >
+          Gerar Títulos
+        </button>
+      </form>
+
+      <div id="results" class="hidden mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 class="text-white font-semibold text-[15px]">Suas opções de título</h2>
+          <span class="text-[#5a6b80] text-[11px]">Clique em qualquer título para copiar</span>
+        </div>
+        <div id="titleList" class="flex flex-col gap-2"></div>
+        <p class="mt-4 text-[#5a6b80] text-[12px]">Escolha o que é honestamente verdadeiro sobre o seu vídeo. Um título que promete demais mata o tempo de exibição e prejudica o vídeo — o YouTube acompanha isso.</p>
+      </div>
+    </section>
+
+    <!-- Content: question-shaped sections, answer-first -->
+    <section class="mb-10 space-y-8 text-[#94a3b8] text-[14px] leading-[1.7]">
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Por que essas 12 fórmulas (e não frases aleatórias)</h2>
+        <p>
+          Cada título gerado vem de um padrão que supera repetidamente frases genéricas, por um motivo específico:
+        </p>
+        <ul class="mt-2 space-y-1.5 list-disc pl-5">
+          <li><strong>Combinação com a busca</strong> — o seu tema exato, dito de forma direta. Vence quando o espectador já sabe o que quer.</li>
+          <li><strong>Gatilho de curiosidade</strong> — "A Verdade Sobre…", "O Que Ninguém Te Conta" — abre uma pergunta que o clique fecha.</li>
+          <li><strong>Lista numerada</strong> — "5 Coisas…" cria uma expectativa concreta e fácil de escanear.</li>
+          <li><strong>Passo a passo guiado</strong> — "Guia para Iniciantes em X (Passo a Passo)" combina com a intenção de tutorial sem exigir que o seu tema esteja escrito como um comando.</li>
+          <li><strong>Análise honesta / experimento</strong> — "Testei X por 30 Dias", "X Vale a Pena?" — sinaliza uma resposta real, não um anúncio.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">A regra dos 60 caracteres (100 é o limite, não o alvo)</h2>
+        <p>
+          O campo de título do YouTube aceita até 100 caracteres, mas isso não é o que os espectadores veem. Resultados de busca, vídeos sugeridos e celular cortam por volta de 60 a 70 caracteres — depois disso, o título é cortado com reticências. Coloque as palavras específicas e pesquisáveis na frente; deixe o floreio no final, onde ele pode se dar ao luxo de se perder.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Títulos gerados vs. o que já está ranqueando</h2>
+        <p>
+          Essas fórmulas te dão uma lista forte de opções, não a resposta final. Antes de escolher, abra uma janela anônima, busque o seu tema exato no YouTube e veja quais títulos já estão ganhando o clique para essa busca — o <a href="/pt-br/tools/youtube-rank-checker" class="text-cyan hover:underline">método do verificador de ranking do YouTube</a> mostra exatamente como. Se dois vídeos do topo usam frases de "Como fazer" e nenhum usa lista numerada, isso é um sinal real sobre o que o seu público responde para esse tema.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="font-outfit font-bold text-[22px] text-white mb-2">Depois de escolher o título: tags e descrição ainda importam</h2>
+        <p>
+          Um título ganha o clique; tags e descrição ajudam o YouTube a classificar o vídeo para buscas que ele não consegue inferir só pelo título. Monte um conjunto de tags combinando com o <a href="/pt-br/tools/youtube-tag-generator" class="text-cyan hover:underline">gerador de tags gratuito</a>, ou extraia o que os seus principais concorrentes usam com o <a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">extrator de tags</a>. Para títulos, tags e descrições gerados por IA juntos a partir do seu vídeo real, o <a href="/pt-br/#pricing" class="text-cyan hover:underline">plano gratuito do VidRank</a> faz tudo de uma vez.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mb-10">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-5">Perguntas frequentes</h2>
+      <div class="space-y-3">
+        {faqs.map((f) => (
+          <details class="group p-5 rounded-xl bg-[#0c121e]/80 border border-white/[0.08]">
+            <summary class="cursor-pointer text-white font-semibold text-[14px] list-none flex items-center justify-between gap-4">
+              {f.q}
+              <span class="text-cyan text-[18px] leading-none group-open:rotate-45 transition-transform">+</span>
+            </summary>
+            <p class="mt-3 text-[#94a3b8] text-[13.5px] leading-[1.7]">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- Internal links: hub-spoke -->
+    <section class="mb-6">
+      <h2 class="font-outfit font-bold text-[22px] text-white mb-4">Mais ferramentas e guias gratuitos de SEO para YouTube</h2>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
+        <li><a href="/pt-br/tools/youtube-tag-generator" class="text-cyan hover:underline">Gerador de Tags do YouTube — Criador de Tags Grátis</a></li>
+        <li><a href="/pt-br/tools/youtube-tag-extractor" class="text-cyan hover:underline">Extrator de Tags do YouTube — Veja as Tags de Qualquer Vídeo</a></li>
+        <li><a href="/pt-br/tools/youtube-rank-checker" class="text-cyan hover:underline">Verificador de Ranking do YouTube — Acompanhe sua Posição</a></li>
+      </ul>
+    </section>
+
+    <p class="text-[#5a6b80] text-[12px] mb-10">Última atualização: 25 de setembro de 2026</p>
+  </main>
+
+  <Footer />
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(appSchema)} />
+
+  <script is:inline>
+    const form = document.getElementById("genForm");
+    const input = document.getElementById("topic");
+    const btn = document.getElementById("genBtn");
+    const results = document.getElementById("results");
+    const list = document.getElementById("titleList");
+
+    function titleCase(s) {
+      const small = new Set(["de", "da", "do", "das", "dos", "e", "ou", "para", "em", "com", "por", "a", "o", "as", "os", "que", "no", "na"]);
+      return s
+        .split(" ")
+        .filter(Boolean)
+        .map((w, i) => (i > 0 && small.has(w.toLowerCase()) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(" ");
+    }
+
+    function generate(topic) {
+      const t = topic.trim().replace(/\s+/g, " ");
+      const tc = titleCase(t);
+      const year = new Date().getFullYear();
+      const titles = [
+        tc + ": Tudo o Que Você Precisa Saber",
+        "Guia para Iniciantes: " + t + " (Passo a Passo)",
+        "5 Coisas Que Ninguém Te Conta Sobre " + t,
+        tc + " para Iniciantes em " + year,
+        "Testei " + t + " por 30 Dias — Veja o Que Aconteceu",
+        "A Verdade Sobre " + t,
+        tc + ": O Guia Completo",
+        "Por Que " + t + " É Mais Difícil Do Que Parece",
+        tc + " em Menos de 10 Minutos",
+        tc + ": Erros Que Todo Mundo Comete (E Como Evitá-los)",
+        t + " Vale a Pena? (Análise Honesta)",
+        tc + " — O Que Eu Gostaria de Ter Sabido Antes",
+      ];
+      return [...new Set(titles)];
+    }
+
+    function lenClass(len) {
+      if (len > 70) return "text-red-400";
+      if (len > 60) return "text-amber-400";
+      return "text-[#8ea0b5]";
+    }
+
+    function render(titles) {
+      list.innerHTML = "";
+      titles.forEach((t) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "flex items-center justify-between gap-3 py-2.5 px-3.5 rounded-lg bg-[#141b27] border border-[rgba(137,190,255,0.14)] text-left hover:border-cyan/40 transition-colors cursor-pointer w-full";
+        const span = document.createElement("span");
+        span.className = "text-white text-[13.5px]";
+        span.textContent = t;
+        const count = document.createElement("span");
+        count.className = "font-mono text-[11px] shrink-0 " + lenClass(t.length);
+        count.textContent = t.length + " / 100";
+        row.appendChild(span);
+        row.appendChild(count);
+        row.addEventListener("click", () => {
+          navigator.clipboard.writeText(t).then(() => {
+            const original = span.textContent;
+            span.textContent = "Copiado!";
+            setTimeout(() => (span.textContent = original), 1200);
+          });
+        });
+        list.appendChild(row);
+      });
+      results.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "Gerando…";
+      setTimeout(() => {
+        render(generate(input.value));
+        btn.disabled = false;
+        btn.textContent = "Gerar Títulos";
+      }, 250);
+    });
+  </script>
+</Layout>

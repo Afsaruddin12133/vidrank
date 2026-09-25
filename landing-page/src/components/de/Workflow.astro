@@ -1,0 +1,24 @@
+---
+import Icon from "../Icon.astro";
+
+const eyebrow = "text-red font-outfit font-semibold text-[11px] tracking-[0.16em] uppercase inline-flex items-center";
+const dot = "inline-block w-[6px] h-[6px] bg-red rounded-full mr-[9px] shadow-[0_0_10px_#1688ff]";
+
+const workflowSteps = ["Erstellen", "Hochladen", "Analysieren", "Optimieren", "Veröffentlichen"];
+---
+
+<section class="py-[80px] px-[6vw] text-center border-b border-line">
+  <span class={eyebrow} data-reveal><i class={dot}></i>DER CREATOR-WORKFLOW</span>
+  <div class="workflow-row max-w-[950px] flex justify-between items-center my-10 mx-auto max-[768px]:flex-wrap max-[768px]:gap-6 max-[768px]:justify-center">
+    {workflowSteps.map((s, i) => (
+      <div class="flex items-center gap-3" data-reveal>
+        <span class="text-red font-outfit font-bold text-[12px] font-mono">{i + 1}</span>
+        <strong class="text-white font-outfit font-bold text-[18px]">{s}</strong>
+        {i < 4 && <span class="text-cyan ml-6 max-[768px]:ml-2"><Icon name="arrow-right" /></span>}
+      </div>
+    ))}
+  </div>
+  <h2 class="font-outfit font-bold text-[28px] max-[620px]:text-xl text-white" data-reveal>
+    Verbringe deine Zeit mit Kreativität. <span class="text-[#94a3b8]">Lass VidRank die SEO-Fleißarbeit erledigen.</span>
+  </h2>
+</section>

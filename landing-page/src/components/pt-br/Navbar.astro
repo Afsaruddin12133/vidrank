@@ -1,6 +1,6 @@
 ---
-import Icon from "./Icon.astro";
-import LangSwitcher from "./LangSwitcher.astro";
+import Icon from "../Icon.astro";
+import LangSwitcher from "../LangSwitcher.astro";
 
 const btn =
   "inline-flex items-center justify-center gap-[9px] min-h-[42px] px-5 font-bold text-[13px] text-white rounded-lg transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-[2px]";
@@ -11,12 +11,12 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   class="h-19.5 sticky top-0 z-40 flex items-center justify-between px-[5vw] bg-[rgba(10,13,20,.8)] backdrop-blur-[20px] border-b border-line"
 >
   <a
-    href="/"
+    href="/pt-br/"
     class="inline-flex items-center gap-2.5 font-outfit font-extrabold text-[17px] tracking-[0.12em] text-white no-underline"
   >
     <img
       src="/logo.svg"
-      alt="VidRank logo"
+      alt="Logo da VidRank"
       width="27"
       height="27"
       loading="eager"
@@ -28,17 +28,17 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   </a>
 
   <nav class="flex gap-8 text-[#8b99ad] text-[13px] max-[900px]:hidden">
-    <a href="/#showcase" class="hover:text-white transition-colors no-underline"
-      >Product</a
+    <a href="/pt-br/#showcase" class="hover:text-white transition-colors no-underline"
+      >Produto</a
     >
-    <a href="/#how" class="hover:text-white transition-colors no-underline"
-      >How it works</a
+    <a href="/pt-br/#how" class="hover:text-white transition-colors no-underline"
+      >Como funciona</a
     >
-    <a href="/#features" class="hover:text-white transition-colors no-underline"
-      >Features</a
+    <a href="/pt-br/#features" class="hover:text-white transition-colors no-underline"
+      >Recursos</a
     >
-    <a href="/#pricing" class="hover:text-white transition-colors no-underline"
-      >Pricing</a
+    <a href="/pt-br/#pricing" class="hover:text-white transition-colors no-underline"
+      >Preços</a
     >
     <a href="/blog" class="hover:text-white transition-colors no-underline"
       >Blog</a
@@ -72,7 +72,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
         ></path>
       </svg>
-      <span id="navLoginBtnText">Log in</span>
+      <span id="navLoginBtnText">Entrar</span>
     </button>
 
     <!-- Logged-in profile badge & dropdown container -->
@@ -94,14 +94,14 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
             id="navUserName"
             class="text-white text-[12px] font-semibold max-w-[95px] truncate leading-tight"
           >
-            Creator
+            Criador
           </span>
         </div>
         <span
           id="navUserTierBadge"
           class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-[#8ea0b5] border border-white/10 ml-0.5"
         >
-          FREE
+          GRÁTIS
         </span>
         <Icon name="chevron-down" />
       </button>
@@ -123,7 +123,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
               id="navUserDropdownName"
               class="text-white font-outfit font-bold text-[14px] truncate leading-tight"
             >
-              Creator
+              Criador
             </div>
             <div
               id="navUserDropdownEmail"
@@ -136,21 +136,21 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
 
         <div class="py-3 border-b border-white/10 flex flex-col gap-2">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-[#8ea0b5]">Current Plan</span>
+            <span class="text-[#8ea0b5]">Plano Atual</span>
             <span
               id="navDropdownPlan"
               class="font-bold text-[#3df2a4] uppercase text-[10px] px-1.5 py-0.5 rounded bg-[#3df2a4]/10 border border-[#3df2a4]/20"
             >
-              FREE
+              GRÁTIS
             </span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-[#8ea0b5]">Daily Quota</span>
+            <span class="text-[#8ea0b5]">Cota Diária</span>
             <span
               id="navDropdownQuota"
               class="font-semibold text-white font-mono text-[11px]"
             >
-              10 / 10 left
+              10 / 10 restantes
             </span>
           </div>
         </div>
@@ -175,21 +175,21 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
               <rect x="14" y="14" width="7" height="7"></rect>
               <rect x="3" y="14" width="7" height="7"></rect>
             </svg>
-            Dashboard & Usage
+            Painel e Uso
           </a>
           <a
             id="navUpgradeBtn"
-            href="/#pricing"
+            href="/pt-br/#pricing"
             class="w-full h-9 px-3 text-center rounded-lg bg-[#0066ee] hover:bg-[#0055cc] text-white font-bold text-[12px] no-underline transition-all shadow-[0_4px_15px_rgba(0,102,238,0.4)] flex items-center justify-center gap-2"
           >
-            Upgrade to Pro
+            Fazer Upgrade para Pro
           </a>
           <button
             id="navLogoutBtn"
             type="button"
             class="w-full py-1.5 px-3 text-center rounded-lg bg-transparent hover:bg-white/[0.06] text-[#ff6b6b] hover:text-[#ff8585] font-medium text-[12px] border-0 cursor-pointer transition-colors"
           >
-            Sign out
+            Sair
           </button>
         </div>
       </div>
@@ -211,7 +211,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         decoding="async"
         class="w-4 h-4 object-contain"
       />
-      <span>Add to Chrome</span>
+      <span>Adicionar ao Chrome</span>
     </a>
   </div>
 
@@ -219,7 +219,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   <button
     id="menuBtn"
     class="bg-transparent border-0 text-[#8b99ad] hover:text-white hidden max-[900px]:block cursor-pointer p-1 transition-colors"
-    aria-label="Open Menu"
+    aria-label="Abrir menu"
   >
     <Icon name="menu" />
   </button>
@@ -243,12 +243,12 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
       class="flex items-center justify-between pb-5 border-b border-white/10 mb-6"
     >
       <a
-        href="/"
+        href="/pt-br/"
         class="inline-flex items-center gap-[10px] font-outfit font-extrabold text-[16px] tracking-[0.12em] text-white no-underline"
       >
         <img
           src="/logo.svg"
-          alt="VidRank logo"
+          alt="Logo da VidRank"
           width="24"
           height="24"
           loading="lazy"
@@ -261,7 +261,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         id="closeMobileNav"
         type="button"
         class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-[#8b99ad] hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-        aria-label="Close menu"
+        aria-label="Fechar menu"
       >
         <svg
           class="w-4 h-4"
@@ -281,31 +281,31 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
     <!-- Navigation Links -->
     <nav class="flex flex-col gap-1.5 mobile-nav-links">
       <a
-        href="/#showcase"
+        href="/pt-br/#showcase"
         class="flex items-center justify-between py-3 px-3.5 rounded-xl text-[#cbd5e1] hover:text-white hover:bg-white/5 text-[14px] font-medium no-underline transition-all"
       >
-        <span>Product</span>
+        <span>Produto</span>
         <span class="text-[#8ea0b5]/50 text-xs">→</span>
       </a>
       <a
-        href="/#how"
+        href="/pt-br/#how"
         class="flex items-center justify-between py-3 px-3.5 rounded-xl text-[#cbd5e1] hover:text-white hover:bg-white/5 text-[14px] font-medium no-underline transition-all"
       >
-        <span>How it works</span>
+        <span>Como funciona</span>
         <span class="text-[#8ea0b5]/50 text-xs">→</span>
       </a>
       <a
-        href="/#features"
+        href="/pt-br/#features"
         class="flex items-center justify-between py-3 px-3.5 rounded-xl text-[#cbd5e1] hover:text-white hover:bg-white/5 text-[14px] font-medium no-underline transition-all"
       >
-        <span>Features</span>
+        <span>Recursos</span>
         <span class="text-[#8ea0b5]/50 text-xs">→</span>
       </a>
       <a
-        href="/#pricing"
+        href="/pt-br/#pricing"
         class="flex items-center justify-between py-3 px-3.5 rounded-xl text-[#cbd5e1] hover:text-white hover:bg-white/5 text-[14px] font-medium no-underline transition-all"
       >
-        <span>Pricing</span>
+        <span>Preços</span>
         <span class="text-[#8ea0b5]/50 text-xs">→</span>
       </a>
       <a
@@ -345,7 +345,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           ></path>
         </svg>
-        <span id="mobileLoginBtnText">Sign in with Google</span>
+        <span id="mobileLoginBtnText">Entrar com o Google</span>
       </button>
     </div>
 
@@ -366,7 +366,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
             id="mobileUserName"
             class="text-white font-bold text-[14px] truncate"
           >
-            Creator
+            Criador
           </div>
           <div id="mobileUserEmail" class="text-[#8ea0b5] text-[11px] truncate">
             creator@example.com
@@ -376,17 +376,17 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
           id="mobileUserBadge"
           class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/10 text-[#8ea0b5] border border-white/10"
         >
-          FREE
+          GRÁTIS
         </span>
       </div>
 
       <div
         class="flex items-center justify-between text-[11px] text-[#cbd5e1] pt-1 border-t border-white/5"
       >
-        <span>Daily Quota</span>
+        <span>Cota Diária</span>
         <span
           id="mobileUserQuota"
-          class="font-semibold text-[#3df2a4] font-mono">10 / 10 left</span
+          class="font-semibold text-[#3df2a4] font-mono">10 / 10 restantes</span
         >
       </div>
 
@@ -395,17 +395,17 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         type="button"
         class="w-full py-2 px-3 rounded-lg bg-white/[0.06] hover:bg-white/10 text-[#ff6b6b] hover:text-[#ff8585] font-medium text-[12px] border-0 cursor-pointer transition-colors"
       >
-        Sign out
+        Sair
       </button>
     </div>
 
     <a
       id="mobileUpgradeBtn"
-      href="/#pricing"
+      href="/pt-br/#pricing"
       class={`${btnPrimary} w-full text-center flex items-center justify-center gap-2 no-underline`}
     >
       <Icon name="sparkles" />
-      <span id="mobileUpgradeBtnText">Upgrade to Pro</span>
+      <span id="mobileUpgradeBtnText">Fazer Upgrade para Pro</span>
     </a>
 
     <div class="flex justify-center">
@@ -421,7 +421,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
     initAuthListener,
     getCachedUser,
     type VidRankUser,
-  } from "../lib/firebase";
+  } from "../../lib/firebase";
 
   // Elements
   const navLoginBtn = document.getElementById(
@@ -496,7 +496,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   ) {
     if (!container) return;
     if (photoUrl) {
-      container.innerHTML = `<img src="${photoUrl}" alt="${name || "User"}" class="w-full h-full object-cover" referrerpolicy="no-referrer" />`;
+      container.innerHTML = `<img src="${photoUrl}" alt="${name || "Usuário"}" class="w-full h-full object-cover" referrerpolicy="no-referrer" />`;
     } else {
       const initial = (name || "V").trim().charAt(0).toUpperCase();
       container.textContent = initial;
@@ -510,13 +510,13 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   function updateNavbarUI(user: VidRankUser | null) {
     if (user) {
       const isPro = user.tier === "pro";
-      const displayName = user.name || user.email?.split("@")[0] || "User";
+      const displayName = user.name || user.email?.split("@")[0] || "Usuário";
       const quotaRemaining =
         user.quota?.remaining != null ? user.quota.remaining : 10;
       const quotaLimit = user.quota?.limit != null ? user.quota.limit : 10;
       const quotaText = isPro
-        ? "Unlimited"
-        : `${quotaRemaining} / ${quotaLimit} left`;
+        ? "Ilimitado"
+        : `${quotaRemaining} / ${quotaLimit} restantes`;
 
       // Desktop
       if (navLoginBtn) navLoginBtn.classList.add("hidden");
@@ -531,14 +531,14 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         navUserDropdownEmail.textContent = user.email || "";
 
       if (navUserTierBadge) {
-        navUserTierBadge.textContent = isPro ? "PRO" : "FREE";
+        navUserTierBadge.textContent = isPro ? "PRO" : "GRÁTIS";
         navUserTierBadge.className = isPro
           ? "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#3df2a4]/15 text-[#3df2a4] border border-[#3df2a4]/30 ml-0.5 shadow-[0_0_10px_rgba(61,242,164,0.2)]"
           : "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-[#8ea0b5] border border-white/10 ml-0.5";
       }
 
       if (navDropdownPlan) {
-        navDropdownPlan.textContent = isPro ? "PRO" : "FREE";
+        navDropdownPlan.textContent = isPro ? "PRO" : "GRÁTIS";
         navDropdownPlan.className = isPro
           ? "font-bold text-[#3df2a4] uppercase text-[10px] px-1.5 py-0.5 rounded bg-[#3df2a4]/10 border border-[#3df2a4]/20"
           : "font-bold text-[#8ea0b5] uppercase text-[10px] px-1.5 py-0.5 rounded bg-white/10 border border-white/10";
@@ -555,12 +555,12 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         if (isPro) {
           navUpgradeBtn.innerHTML = `
             <span class="w-2 h-2 rounded-full bg-[#3df2a4] shadow-[0_0_6px_#3df2a4]"></span>
-            Pro Member
+            Membro Pro
           `;
           navUpgradeBtn.className =
             "w-full h-9 px-3 text-center rounded-lg bg-[#3df2a4]/10 text-[#3df2a4] font-bold text-[12px] border border-[#3df2a4]/25 flex items-center justify-center gap-2 pointer-events-none no-underline shadow-[0_0_12px_rgba(61,242,164,0.15)]";
         } else {
-          navUpgradeBtn.innerHTML = "Upgrade to Pro";
+          navUpgradeBtn.innerHTML = "Fazer Upgrade para Pro";
           navUpgradeBtn.className =
             "w-full h-9 px-3 text-center rounded-lg bg-[#0066ee] hover:bg-[#0055cc] text-white font-bold text-[12px] no-underline transition-all shadow-[0_4px_15px_rgba(0,102,238,0.4)] flex items-center justify-center gap-2";
         }
@@ -574,7 +574,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
       if (mobileUserName) mobileUserName.textContent = displayName;
       if (mobileUserEmail) mobileUserEmail.textContent = user.email || "";
       if (mobileUserBadge) {
-        mobileUserBadge.textContent = isPro ? "PRO" : "FREE";
+        mobileUserBadge.textContent = isPro ? "PRO" : "GRÁTIS";
         mobileUserBadge.className = isPro
           ? "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#3df2a4]/15 text-[#3df2a4] border border-[#3df2a4]/30"
           : "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/10 text-[#8ea0b5] border border-white/10";
@@ -585,10 +585,10 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
 
       if (mobileUpgradeBtn && mobileUpgradeBtnText) {
         if (isPro) {
-          mobileUpgradeBtnText.textContent = "Pro Member (Active)";
+          mobileUpgradeBtnText.textContent = "Membro Pro (Ativo)";
           mobileUpgradeBtn.classList.add("pointer-events-none", "opacity-75");
         } else {
-          mobileUpgradeBtnText.textContent = "Upgrade to Pro";
+          mobileUpgradeBtnText.textContent = "Fazer Upgrade para Pro";
           mobileUpgradeBtn.classList.remove(
             "pointer-events-none",
             "opacity-75",
@@ -601,7 +601,7 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         navLoginBtn.classList.remove("hidden");
         navLoginBtn.disabled = false;
       }
-      if (navLoginBtnText) navLoginBtnText.textContent = "Log in";
+      if (navLoginBtnText) navLoginBtnText.textContent = "Entrar";
       if (navUserContainer) navUserContainer.classList.add("hidden");
       if (navUserDropdown) navUserDropdown.classList.add("hidden");
       if (navBillingBtn) navBillingBtn.classList.add("hidden");
@@ -612,11 +612,11 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
         if (mobileLoginBtn) mobileLoginBtn.disabled = false;
       }
       if (mobileLoginBtnText)
-        mobileLoginBtnText.textContent = "Sign in with Google";
+        mobileLoginBtnText.textContent = "Entrar com o Google";
       if (mobileAuthIn) mobileAuthIn.classList.add("hidden");
 
       if (mobileUpgradeBtn && mobileUpgradeBtnText) {
-        mobileUpgradeBtnText.textContent = "Upgrade to Pro";
+        mobileUpgradeBtnText.textContent = "Fazer Upgrade para Pro";
         mobileUpgradeBtn.classList.remove("pointer-events-none", "opacity-75");
       }
     }
@@ -632,18 +632,18 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
   async function handleLogin() {
     try {
       if (navLoginBtn) navLoginBtn.disabled = true;
-      if (navLoginBtnText) navLoginBtnText.textContent = "Signing in...";
+      if (navLoginBtnText) navLoginBtnText.textContent = "Entrando...";
       if (mobileLoginBtn) mobileLoginBtn.disabled = true;
-      if (mobileLoginBtnText) mobileLoginBtnText.textContent = "Signing in...";
+      if (mobileLoginBtnText) mobileLoginBtnText.textContent = "Entrando...";
 
       await loginWithGoogle();
     } catch (err: any) {
       console.error("Login failed:", err);
       if (navLoginBtn) navLoginBtn.disabled = false;
-      if (navLoginBtnText) navLoginBtnText.textContent = "Log in";
+      if (navLoginBtnText) navLoginBtnText.textContent = "Entrar";
       if (mobileLoginBtn) mobileLoginBtn.disabled = false;
       if (mobileLoginBtnText)
-        mobileLoginBtnText.textContent = "Sign in with Google";
+        mobileLoginBtnText.textContent = "Entrar com o Google";
     }
   }
 
@@ -663,11 +663,11 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
     if (!user) return;
     try {
       navBillingBtn.disabled = true;
-      navBillingBtn.textContent = "Opening Portal...";
+      navBillingBtn.textContent = "Abrindo Portal...";
 
-      const { getFirebaseAuthToken } = await import("../lib/firebase");
+      const { getFirebaseAuthToken } = await import("../../lib/firebase");
       const idToken = await getFirebaseAuthToken();
-      if (!idToken) throw new Error("Please log in again.");
+      if (!idToken) throw new Error("Faça login novamente.");
 
       const backendUrl = "https://vidrank-backend.fahad288ali.workers.dev";
       const resp = await fetch(`${backendUrl}/v1/billing/customer-portal`, {
@@ -680,18 +680,18 @@ const btnPrimary = `${btn} bg-[#0066ee] hover:bg-[#0055cc] shadow-[0_4px_20px_rg
       const data = await resp.json();
       if (!resp.ok || !data.url) {
         throw new Error(
-          data.message || data.error || "Could not open portal session",
+          data.message || data.error || "Não foi possível abrir a sessão do portal",
         );
       }
       window.open(data.url, "_blank");
     } catch (err: any) {
       console.error("Customer Portal error:", err);
       alert(
-        err.message || "Failed to open billing portal. Please contact support.",
+        err.message || "Falha ao abrir o portal de cobrança. Entre em contato com o suporte.",
       );
     } finally {
       navBillingBtn.disabled = false;
-      navBillingBtn.textContent = "Manage Billing in Paddle";
+      navBillingBtn.textContent = "Gerenciar Cobrança no Paddle";
     }
   });
 

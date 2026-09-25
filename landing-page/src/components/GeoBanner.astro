@@ -1,0 +1,61 @@
+---
+// Suggests (never forces) a translated version to visitors whose request
+// carries a matching Cloudflare cf-ipcountry. This is purely a client-side
+// suggestion banner — it changes nothing about what a crawler sees or which
+// URL serves content, which is what keeps it safe for SEO (a forced redirect
+// based on geo would hide the translated pages from Googlebot, which always
+// crawls from US IPs).
+const TRANSLATED_PATHS = [
+  "/",
+  "/tools/youtube-tag-generator",
+  "/tools/youtube-tag-extractor",
+  "/tools/youtube-rank-checker",
+  "/tools/youtube-title-generator",
+];
+
+// One geo-country maps to one locale prefix + display copy. Add more here as
+// more languages ship — each is independent, only one can show per visit.
+const LOCALES: Record<string, { prefix: string; flag: string; message: string; cta: string; dismiss: string }> = {
+  BR: { prefix: "/pt-br", flag: "🇧🇷", message: "Você está no Brasil? Veja esta página em Português.", cta: "Ver em PT", dismiss: "Dispensar" },
+  DE: { prefix: "/de", flag: "🇩🇪", message: "Du bist in Deutschland? Sieh dir diese Seite auf Deutsch an.", cta: "Auf Deutsch ansehen", dismiss: "Schließen" },
+  AT: { prefix: "/de", flag: "🇩🇪", message: "Du bist in Österreich? Sieh dir diese Seite auf Deutsch an.", cta: "Auf Deutsch ansehen", dismiss: "Schließen" },
+  CH: { prefix: "/de", flag: "🇩🇪", message: "Du bist in der Schweiz? Sieh dir diese Seite auf Deutsch an.", cta: "Auf Deutsch ansehen", dismiss: "Schließen" },
+};
+
+const pathname = Astro.url.pathname;
+const hasTranslation = TRANSLATED_PATHS.includes(pathname);
+const country = Astro.request.headers.get("cf-ipcountry") || "";
+const locale = LOCALES[country];
+const show = hasTranslation && !!locale;
+const href = locale ? (pathname === "/" ? `${locale.prefix}/` : `${locale.prefix}${pathname}`) : "";
+---
+
+{show && (
+  <div
+    id="geoBanner"
+    class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] max-w-[92vw] w-[420px] flex items-center gap-3 py-3 px-4 rounded-xl bg-[#0c121e] border border-[rgba(137,190,255,0.2)] shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+  >
+    <span class="text-[20px] shrink-0">{locale.flag}</span>
+    <p class="flex-1 text-[12.5px] text-[#cbd5e1] leading-[1.5] m-0">
+      {locale.message}
+    </p>
+    <a href={href} class="shrink-0 px-3 py-1.5 rounded-lg bg-[#0066ee] hover:bg-[#0055cc] text-white text-[12px] font-bold no-underline transition-colors">{locale.cta}</a>
+    <button id="geoBannerDismiss" type="button" aria-label={locale.dismiss} class="shrink-0 text-[#5a6b80] hover:text-white bg-transparent border-0 cursor-pointer text-[16px] leading-none">×</button>
+  </div>
+)}
+
+{show && (
+  <script>
+    try {
+      if (!localStorage.getItem("vidrank_geo_banner_dismissed")) {
+        document.getElementById("geoBanner")?.classList.remove("hidden");
+      }
+    } catch (e) {}
+    document.getElementById("geoBannerDismiss")?.addEventListener("click", () => {
+      document.getElementById("geoBanner")?.classList.add("hidden");
+      try {
+        localStorage.setItem("vidrank_geo_banner_dismissed", "1");
+      } catch (e) {}
+    });
+  </script>
+)}

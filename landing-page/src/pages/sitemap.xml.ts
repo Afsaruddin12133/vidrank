@@ -39,6 +39,61 @@ export const GET: APIRoute = async ({ locals }) => {
       changefreq: "monthly",
       priority: "0.9",
     },
+    {
+      loc: `${SITE}/tools/youtube-title-generator`,
+      changefreq: "monthly",
+      priority: "0.9",
+    },
+    {
+      loc: `${SITE}/pt-br/`,
+      changefreq: "weekly",
+      priority: "0.9",
+    },
+    {
+      loc: `${SITE}/pt-br/tools/youtube-tag-generator`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/pt-br/tools/youtube-tag-extractor`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/pt-br/tools/youtube-rank-checker`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/pt-br/tools/youtube-title-generator`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/de/`,
+      changefreq: "weekly",
+      priority: "0.9",
+    },
+    {
+      loc: `${SITE}/de/tools/youtube-tag-generator`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/de/tools/youtube-tag-extractor`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/de/tools/youtube-rank-checker`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
+    {
+      loc: `${SITE}/de/tools/youtube-title-generator`,
+      changefreq: "monthly",
+      priority: "0.85",
+    },
     ...posts.map((post) => ({
       loc: `${SITE}/blog/${post.slug}`,
       lastmod: post.updated_at ? new Date(post.updated_at).toISOString().slice(0, 10) : undefined,

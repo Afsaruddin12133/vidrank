@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import Navbar from "../../components/Navbar.astro";
 import Footer from "../../components/Footer.astro";
 import Icon from "../../components/Icon.astro";
+import GeoBanner from "../../components/GeoBanner.astro";
 
 const title = "YouTube Rank Checker — Check Your Video Rankings Free";
 const description = "Free YouTube rank checker guide: see where your video ranks for any keyword in 2 minutes, why tag rankings move slowly, and how to fix videos stuck on page 2+.";
@@ -55,8 +56,9 @@ const articleSchema = {
 };
 ---
 
-<Layout title={title} description={description}>
+<Layout title={title} description={description} altPaths={{ "pt-BR": "/pt-br/tools/youtube-rank-checker", de: "/de/tools/youtube-rank-checker" }}>
   <Navbar />
+  <GeoBanner />
 
   <main class="min-h-screen py-12 px-[6vw] max-w-[900px] mx-auto">
     <header class="text-center mb-10">
@@ -139,6 +141,7 @@ const articleSchema = {
       <h2 class="font-outfit font-bold text-[22px] text-white mb-4">More free YouTube SEO tools &amp; guides</h2>
       <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13.5px]">
         <li><a href="/tools/youtube-tag-generator" class="text-cyan hover:underline">YouTube Tag Generator — Free Tag List Maker</a></li>
+        <li><a href="/tools/youtube-title-generator" class="text-cyan hover:underline">YouTube Title Generator — Free Click-Worthy Titles</a></li>
         <li><a href="/tools/youtube-tag-extractor" class="text-cyan hover:underline">YouTube Tag Extractor — See Any Video's Tags</a></li>
         <li><a href="/blog/tags-for-youtube-shorts" class="text-cyan hover:underline">YouTube Shorts Tags: Copy-Paste Sets by Niche</a></li>
         <li><a href="/blog/vidrank-vs-vidiq" class="text-cyan hover:underline">VidRank vs vidIQ: Which Should You Use?</a></li>
